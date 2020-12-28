@@ -1,25 +1,43 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 
 #include "lexer.h"
-#include "token.h"
+#include "parser.h"
 
 void print_token(const Token* token) {
         printf("\"%.*s\" : ln %u, col %u, len %u. Type : %d\n", token->length, token->source, token->line, token->column, token->length, token->type);
 }
 
 void main() {
-        Token token;
-        char* const buffer_start = malloc(1024);
-        char* line;
-        do {
-                line = fgets(buffer_start, 1024, stdin);
-                if (line == NULL) break;
+        char* line = NULL;
+        { size_t len = 0;
+                getline(&line, &len, stdin);
+        }
+        Token *tokens = calloc(128, sizeof(Token));
+        puts("Starting…");
+        {
+                char* current_char = line;
+                Token* current_token = tokens;
                 do {
-                        line = lex(line, &token);
-                        print_token(&token);
-                } while (token.type != TOKEN_EOF && token.type != TOKEN_ERROR);
-        } while (strlen(buffer_start));
-        free(buffer_start);
+                        current_char = lex(current_char, current_token++);
+                } while (current_token[-1].type != TOKEN_EOF && current_token[-1].type != TOKEN_ERROR);
+                if (current_token[-1].type == TOKEN_ERROR) {
+                        printf("Lexing error.\n");
+                        exit(-1);
+                }
+                else {
+                        for (Token* tk = tokens; tk<current_token; tk++) {
+                                print_token(tk);
+                        }
+                }
+        }
+        puts("Lexing done.");
+        {
+                Token* current_token = tokens;
+                freeNode(parse(&current_token, PREC_NONE));
+        }
+        puts("Parsing done.");
+        free(tokens);
+        free(line);
+
 }
