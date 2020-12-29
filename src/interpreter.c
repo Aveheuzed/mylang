@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NOTIMPLEMENTED() (puts("Operation not implemented.\n"), exit(-1))
+#define NOTIMPLEMENTED() (puts("Operation not implemented."), exit(-1))
 
  Object interpretVariable(const Node* root) {
          NOTIMPLEMENTED();
