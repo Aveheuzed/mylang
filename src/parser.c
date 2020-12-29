@@ -30,7 +30,7 @@ Node* prefixParseError(Token ** tokens) {
 }
 Node* unary_plusminus(Token ** tokens) {
         const Token operator = CONSUME(tokens);
-        return allocateNode(parse(tokens, PREC_ADD), NULL, operator, OP_MATH_UNARY);
+        return allocateNode(parse(tokens, PREC_UNARY), NULL, operator, OP_MATH_UNARY);
 }
 Node* literal(Token ** tokens) {
         return allocateNode(NULL, NULL, CONSUME(tokens), OP_LITERAL);

@@ -10,6 +10,7 @@ typedef enum Precedence {
         PREC_AFFECT,
         PREC_ADD,
         PREC_MUL,
+        PREC_UNARY,
 } Precedence;
 
 typedef enum {
