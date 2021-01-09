@@ -53,6 +53,7 @@ char* lex(char *source, Token *const token) {
                                 token->type = TOKEN_STR;
                                 do ADVANCE(); while (CURRENT_CHAR() != '"' && CURRENT_CHAR() != '\0');
                                 if (CURRENT_CHAR() == '"') ADVANCE();
+                                else token->type = TOKEN_ERROR;
                                 break;
                         }
                         else token->type = TOKEN_ERROR;
