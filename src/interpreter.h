@@ -4,7 +4,21 @@
 #include "parser.h"
 #include <stdint.h>
 
-typedef intmax_t Object;
+typedef enum ObjType {
+        TYPE_INT,
+        TYPE_BOOL,
+        TYPE_FLOAT,
+        TYPE_STR,
+} ObjType;
+
+typedef struct Object {
+        ObjType type;
+        union {
+                intmax_t intval;
+                double floatval;
+                char* strval;
+        };
+} Object;
 
 typedef Object (*InterpretFn)(const Node* root);
 

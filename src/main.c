@@ -9,6 +9,19 @@ void print_token(const Token* token) {
         printf("\"%.*s\" : ln %u, col %u, len %u. Type : %d\n", token->length, token->source, token->line, token->column, token->length, token->type);
 }
 
+void print_value(const Object obj) {
+        switch (obj.type) {
+                case TYPE_INT:
+                        printf("%ld\n", obj.intval); break;
+                case TYPE_BOOL:
+                        printf("%s\n", obj.intval?"true":"false"); break;
+                case TYPE_FLOAT:
+                        printf("%f\n", obj.floatval); break;
+                case TYPE_STR:
+                        printf("\"%s\"\n", obj.strval); break;
+        }
+}
+
 void main() {
         char* line = NULL;
         { size_t len = 0;
@@ -39,7 +52,7 @@ void main() {
                 root = parse(&current_token, PREC_NONE);
         }
         puts("Parsing done.");
-        printf("%ld\n", interpret(root));
+        print_value(interpret(root));
         puts("All done !");
         free(tokens);
         free(line);

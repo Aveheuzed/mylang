@@ -16,14 +16,21 @@ typedef enum Precedence {
 typedef enum {
         // no operand
         OP_VARIABLE,
-        OP_LITERAL,
+        OP_INT,
+        OP_BOOL,
+        OP_FLOAT,
+        OP_STR,
 
         // one operand
-        OP_MATH_UNARY,
+        OP_UNARY_PLUS,
+        OP_UNARY_MINUS,
         OP_GROUP,
 
         // two operands
-        OP_MATH_BINARY,
+        OP_SUM,
+        OP_DIFFERENCE,
+        OP_PRODUCT,
+        OP_DIVISION,
         OP_AFFECT,
 
         // up to two operands
