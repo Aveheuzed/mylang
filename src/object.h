@@ -9,6 +9,9 @@ typedef enum ObjType {
         TYPE_BOOL,
         TYPE_FLOAT,
         TYPE_CONTAINER,
+
+        
+        LEN_OBJTYPES // do NOT add anything below this line!
 } ObjType;
 
 typedef struct Object {
