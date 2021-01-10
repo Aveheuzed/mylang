@@ -43,13 +43,9 @@ typedef struct Node {
         Operator operator;
 } Node;
 
-typedef Node* (*UnaryParseFn)(Token ** tokens);
-typedef Node* (*BinaryParseFn)(Token ** tokens, Node* const root);
-
-Node* allocateNode(Node *const root, Node *const operand, Token token, Operator operator);
 void freeNode(Node* node);
 
 // tokens[] is supposed to end with a TOKEN_EOF
-Node* parse(Token ** tokens, const Precedence precedence);
+Node* parse(Token **const tokens, const Precedence precedence);
 
 #endif

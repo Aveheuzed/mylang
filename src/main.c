@@ -4,26 +4,10 @@
 #include "lexer.h"
 #include "parser.h"
 #include "interpreter.h"
+#include "builtins.h"
 
 void print_token(const Token* token) {
         printf("\"%.*s\" : ln %u, col %u, len %u. Type : %d\n", token->length, token->source, token->line, token->column, token->length, token->type);
-}
-
-void print_value(const Object obj) {
-        switch (obj.type) {
-                case TYPE_INT:
-                        printf("%ld\n", obj.intval); break;
-                case TYPE_BOOL:
-                        printf("%s\n", obj.intval?"true":"false"); break;
-                case TYPE_FLOAT:
-                        printf("%f\n", obj.floatval); break;
-                case TYPE_CONTAINER:
-                        switch (obj.payload->type) {
-                                case CONTENT_STRING:
-                                        printf("\"%.*s\"\n", (int)obj.payload->len, obj.payload->strval);
-                                        break;
-                        }
-        }
 }
 
 void main() {
@@ -58,6 +42,7 @@ void main() {
         puts("Parsing done.");
         print_value(interpret(root));
         puts("All done !");
+        freeNode(root);
         free(tokens);
         free(line);
 
