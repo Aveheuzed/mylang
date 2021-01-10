@@ -17,8 +17,12 @@ void print_value(const Object obj) {
                         printf("%s\n", obj.intval?"true":"false"); break;
                 case TYPE_FLOAT:
                         printf("%f\n", obj.floatval); break;
-                case TYPE_STR:
-                        printf("\"%s\"\n", obj.strval); break;
+                case TYPE_CONTAINER:
+                        switch (obj.payload->type) {
+                                case CONTENT_STRING:
+                                        printf("\"%.*s\"\n", (int)obj.payload->len, obj.payload->strval);
+                                        break;
+                        }
         }
 }
 

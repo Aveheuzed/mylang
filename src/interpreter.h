@@ -3,20 +3,33 @@
 
 #include "parser.h"
 #include <stdint.h>
+#include <stddef.h>
 
 typedef enum ObjType {
         TYPE_INT,
         TYPE_BOOL,
         TYPE_FLOAT,
-        TYPE_STR,
+        TYPE_CONTAINER,
 } ObjType;
+
+typedef enum ObjContainterType {
+        CONTENT_STRING,
+} ObjContainterType;
+
+typedef struct ObjContainter {
+        ObjContainterType type;
+        size_t len;
+        union {
+                char* strval;
+        };
+} ObjContainter;
 
 typedef struct Object {
         ObjType type;
         union {
                 intmax_t intval;
                 double floatval;
-                char* strval;
+                ObjContainter* payload;
         };
 } Object;
 

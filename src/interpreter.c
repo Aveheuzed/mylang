@@ -6,24 +6,35 @@
 #define NOTIMPLEMENTED() (puts("Operation not implemented."), exit(-1))
 #define TYPEERROR() (puts("Attempt to perform an operation on incompatible types"), exit(-1))
 
-Object concatenateStrings(char* strA, char* strB) {
+Object wrapString(char* string, size_t len) {
         // WARNING : hidden malloc()
-        const size_t len_A = strlen(strA);
-        char *const dest = malloc(len_A + strlen(strB) + 1);
-        strcpy(dest, strA);
-        strcpy(dest+len_A, strB);
-        return (Object) {.type=TYPE_STR, .strval=dest};
+        ObjContainter *const container = malloc(sizeof(ObjContainter));
+        *container = (ObjContainter){.type=CONTENT_STRING, .len=len, .strval=string};
+        return (Object) {.type=TYPE_CONTAINER, .payload=container};
 }
-Object multiplyString(char* str, intmax_t amount) {
+Object makeString(char* string, size_t len) {
+        // WARNING : hidden malloc()
+        return wrapString(strndup(string, len), len);
+}
+
+Object concatenateStrings(const ObjContainter* strA, const ObjContainter* strB) {
+        // WARNING : hidden malloc()
+        const size_t len_total = strA->len + strB->len;
+        char *const dest = malloc(len_total + 1);
+        strcpy(dest, strA->strval);
+        strcpy(dest+strA->len, strB->strval);
+        return wrapString(dest, len_total);
+}
+Object multiplyString(const ObjContainter* str, intmax_t amount) {
         // WARNING : hidden malloc()
         if (amount < 0) TYPEERROR();
 
-        const size_t len = strlen(str);
-        char *const dest = malloc(len*amount+1);
-        for (char* i=dest; amount>0; (amount--, i+=len)) {
-                strcpy(i, str);
+        const size_t len_total = str->len*amount;
+        char *const dest = malloc(len_total+1);
+        for (char* i=dest; amount>0; (amount--, i+=str->len)) {
+                strcpy(i, str->strval);
         }
-        return (Object) {.type=TYPE_STR, .strval=dest};
+        return wrapString(dest, len_total);
 }
 
 Object interpretVariable(const Node* root) {
@@ -40,8 +51,7 @@ Object interpretFloat(const Node* root) {
         return (Object) {.type=TYPE_FLOAT, .floatval=atof(root->token.source)};
 }
 Object interpretStr(const Node* root) {
-        // WARNING : hidden malloc()
-        return (Object) {.type=TYPE_STR, .strval=strndup(root->token.source+1, root->token.length-2)};
+        return makeString(root->token.source+1, root->token.length-2);
 }
 Object interpretUnaryPlus(const Node* root) {
         Object operand = interpret(root->operands[0]);
@@ -51,7 +61,7 @@ Object interpretUnaryPlus(const Node* root) {
                 case TYPE_BOOL:
                 case TYPE_FLOAT:
                         return operand;
-                case TYPE_STR:
+                case TYPE_CONTAINER:
                         TYPEERROR();
         }
 }
@@ -66,7 +76,7 @@ Object interpretUnaryMinus(const Node* root) {
                 case TYPE_FLOAT:
                         operand.floatval *= -1;
                         return operand;
-                case TYPE_STR:
+                case TYPE_CONTAINER:
                         TYPEERROR();
         }
 }
@@ -85,18 +95,25 @@ Object interpretSum(const Node* root) {
                                         return (Object) {.type=TYPE_INT, .intval=(opA.intval+opB.intval)};
                                 case TYPE_FLOAT:
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.intval+opB.floatval)};
-                                case TYPE_STR:
+                                case TYPE_CONTAINER:
                                         TYPEERROR();
                         }
-                case TYPE_STR:
-                        switch (opB.type) {
-                                case TYPE_INT:
-                                case TYPE_BOOL:
-                                case TYPE_FLOAT:
-                                        TYPEERROR();
-                                case TYPE_STR:
-                                        return concatenateStrings(opA.strval, opB.strval);
+                case TYPE_CONTAINER:
+                        switch (opA.payload->type) {
+                                case CONTENT_STRING:
+                                        switch (opB.type) {
+                                                case TYPE_INT:
+                                                case TYPE_BOOL:
+                                                case TYPE_FLOAT:
+                                                        TYPEERROR();
+                                                case TYPE_CONTAINER:
+                                                        switch (opA.payload->type) {
+                                                                case CONTENT_STRING:
+                                                                        return concatenateStrings(opA.payload, opB.payload);
+                                                        }
+                                        }
                         }
+
                 case TYPE_FLOAT:
                         switch (opB.type) {
                                 case TYPE_INT:
@@ -104,7 +121,7 @@ Object interpretSum(const Node* root) {
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval+opB.intval)};
                                 case TYPE_FLOAT:
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval+opB.floatval)};
-                                case TYPE_STR:
+                                case TYPE_CONTAINER:
                                         TYPEERROR();
                         }
         }
@@ -122,15 +139,15 @@ Object interpretDifference(const Node* root) {
                                         return (Object) {.type=TYPE_INT, .intval=(opA.intval-opB.intval)};
                                 case TYPE_FLOAT:
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.intval-opB.floatval)};
-                                case TYPE_STR:
+                                case TYPE_CONTAINER:
                                         TYPEERROR();
                         }
-                case TYPE_STR:
+                case TYPE_CONTAINER:
                         switch (opB.type) {
                                 case TYPE_INT:
                                 case TYPE_BOOL:
                                 case TYPE_FLOAT:
-                                case TYPE_STR:
+                                case TYPE_CONTAINER:
                                         TYPEERROR();
                         }
                 case TYPE_FLOAT:
@@ -140,7 +157,7 @@ Object interpretDifference(const Node* root) {
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval-opB.intval)};
                                 case TYPE_FLOAT:
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval-opB.floatval)};
-                                case TYPE_STR:
+                                case TYPE_CONTAINER:
                                         TYPEERROR();
                         }
         }
@@ -158,18 +175,24 @@ Object interpretProduct(const Node* root) {
                                         return (Object) {.type=TYPE_INT, .intval=(opA.intval*opB.intval)};
                                 case TYPE_FLOAT:
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.intval*opB.floatval)};
-                                case TYPE_STR:
-                                        return multiplyString(opB.strval, opA.intval);
+                                case TYPE_CONTAINER:
+                                        switch (opB.payload->type) {
+                                                case CONTENT_STRING:
+                                                        return multiplyString(opB.payload, opA.intval);
+                                        }
 
                         }
-                case TYPE_STR:
-                        switch (opB.type) {
-                                case TYPE_INT:
-                                case TYPE_BOOL:
-                                        return multiplyString(opA.strval, opB.intval);
-                                case TYPE_FLOAT:
-                                case TYPE_STR:
-                                        TYPEERROR();
+                case TYPE_CONTAINER:
+                        switch (opA.payload->type) {
+                                case CONTENT_STRING:
+                                switch (opB.type) {
+                                        case TYPE_INT:
+                                        case TYPE_BOOL:
+                                                return multiplyString(opA.payload, opB.intval);
+                                        case TYPE_FLOAT:
+                                        case TYPE_CONTAINER:
+                                                TYPEERROR();
+                                }
                         }
                 case TYPE_FLOAT:
                         switch (opB.type) {
@@ -178,7 +201,7 @@ Object interpretProduct(const Node* root) {
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval*opB.intval)};
                                 case TYPE_FLOAT:
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval*opB.floatval)};
-                                case TYPE_STR:
+                                case TYPE_CONTAINER:
                                         TYPEERROR();
                         }
         }
@@ -196,16 +219,19 @@ Object interpretDivision(const Node* root) {
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.intval/(double)opB.intval)};
                                 case TYPE_FLOAT:
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval*opB.floatval)};
-                                case TYPE_STR:
+                                case TYPE_CONTAINER:
                                         TYPEERROR();
                         }
-                case TYPE_STR:
-                        switch (opB.type) {
-                                case TYPE_INT:
-                                case TYPE_BOOL:
-                                case TYPE_FLOAT:
-                                case TYPE_STR:
-                                        TYPEERROR();
+                case TYPE_CONTAINER:
+                        switch (opA.payload->type) {
+                                case CONTENT_STRING:
+                                switch (opB.type) {
+                                        case TYPE_INT:
+                                        case TYPE_BOOL:
+                                        case TYPE_FLOAT:
+                                        case TYPE_CONTAINER:
+                                                TYPEERROR();
+                                }
                         }
                 case TYPE_FLOAT:
                         switch (opB.type) {
@@ -214,7 +240,7 @@ Object interpretDivision(const Node* root) {
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval/opB.intval)};
                                 case TYPE_FLOAT:
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval/opB.floatval)};
-                                case TYPE_STR:
+                                case TYPE_CONTAINER:
                                         TYPEERROR();
                         }
         }
