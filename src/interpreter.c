@@ -63,6 +63,7 @@ Object interpretUnaryPlus(const Node* root) {
                         return operand;
                 case TYPE_CONTAINER:
                         TYPEERROR();
+                default: TYPEERROR();
         }
 }
 Object interpretUnaryMinus(const Node* root) {
@@ -78,6 +79,7 @@ Object interpretUnaryMinus(const Node* root) {
                         return operand;
                 case TYPE_CONTAINER:
                         TYPEERROR();
+                default: TYPEERROR();
         }
 }
 Object interpretGroup(const Node* root) {
@@ -97,6 +99,7 @@ Object interpretSum(const Node* root) {
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.intval+opB.floatval)};
                                 case TYPE_CONTAINER:
                                         TYPEERROR();
+                                default: TYPEERROR();
                         }
                 case TYPE_CONTAINER:
                         switch (opA.payload->type) {
@@ -107,11 +110,14 @@ Object interpretSum(const Node* root) {
                                                 case TYPE_FLOAT:
                                                         TYPEERROR();
                                                 case TYPE_CONTAINER:
-                                                        switch (opA.payload->type) {
+                                                        switch (opB.payload->type) {
                                                                 case CONTENT_STRING:
                                                                         return concatenateStrings(opA.payload, opB.payload);
+                                                                default: TYPEERROR();
                                                         }
+                                                default: TYPEERROR();
                                         }
+                                default: TYPEERROR();
                         }
 
                 case TYPE_FLOAT:
@@ -123,7 +129,9 @@ Object interpretSum(const Node* root) {
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval+opB.floatval)};
                                 case TYPE_CONTAINER:
                                         TYPEERROR();
+                                default: TYPEERROR();
                         }
+                default: TYPEERROR();
         }
 
 }
@@ -141,6 +149,7 @@ Object interpretDifference(const Node* root) {
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.intval-opB.floatval)};
                                 case TYPE_CONTAINER:
                                         TYPEERROR();
+                                default: TYPEERROR();
                         }
                 case TYPE_CONTAINER:
                         switch (opB.type) {
@@ -149,6 +158,7 @@ Object interpretDifference(const Node* root) {
                                 case TYPE_FLOAT:
                                 case TYPE_CONTAINER:
                                         TYPEERROR();
+                                default: TYPEERROR();
                         }
                 case TYPE_FLOAT:
                         switch (opB.type) {
@@ -159,7 +169,9 @@ Object interpretDifference(const Node* root) {
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval-opB.floatval)};
                                 case TYPE_CONTAINER:
                                         TYPEERROR();
+                                default: TYPEERROR();
                         }
+                default: TYPEERROR();
         }
 
 }
@@ -179,20 +191,24 @@ Object interpretProduct(const Node* root) {
                                         switch (opB.payload->type) {
                                                 case CONTENT_STRING:
                                                         return multiplyString(opB.payload, opA.intval);
+                                                default: TYPEERROR();
                                         }
+                                default: TYPEERROR();
 
                         }
                 case TYPE_CONTAINER:
                         switch (opA.payload->type) {
                                 case CONTENT_STRING:
-                                switch (opB.type) {
-                                        case TYPE_INT:
-                                        case TYPE_BOOL:
-                                                return multiplyString(opA.payload, opB.intval);
-                                        case TYPE_FLOAT:
-                                        case TYPE_CONTAINER:
-                                                TYPEERROR();
-                                }
+                                        switch (opB.type) {
+                                                case TYPE_INT:
+                                                case TYPE_BOOL:
+                                                        return multiplyString(opA.payload, opB.intval);
+                                                case TYPE_FLOAT:
+                                                case TYPE_CONTAINER:
+                                                        TYPEERROR();
+                                                default: TYPEERROR();
+                                        }
+                                default: TYPEERROR();
                         }
                 case TYPE_FLOAT:
                         switch (opB.type) {
@@ -203,7 +219,9 @@ Object interpretProduct(const Node* root) {
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval*opB.floatval)};
                                 case TYPE_CONTAINER:
                                         TYPEERROR();
+                                default: TYPEERROR();
                         }
+                default: TYPEERROR();
         }
 
 }
@@ -221,17 +239,20 @@ Object interpretDivision(const Node* root) {
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval*opB.floatval)};
                                 case TYPE_CONTAINER:
                                         TYPEERROR();
+                                default: TYPEERROR();
                         }
                 case TYPE_CONTAINER:
                         switch (opA.payload->type) {
                                 case CONTENT_STRING:
-                                switch (opB.type) {
-                                        case TYPE_INT:
-                                        case TYPE_BOOL:
-                                        case TYPE_FLOAT:
-                                        case TYPE_CONTAINER:
-                                                TYPEERROR();
-                                }
+                                        switch (opB.type) {
+                                                case TYPE_INT:
+                                                case TYPE_BOOL:
+                                                case TYPE_FLOAT:
+                                                case TYPE_CONTAINER:
+                                                        TYPEERROR();
+                                                default: TYPEERROR();
+                                        }
+                                default: TYPEERROR();
                         }
                 case TYPE_FLOAT:
                         switch (opB.type) {
@@ -242,7 +263,9 @@ Object interpretDivision(const Node* root) {
                                         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval/opB.floatval)};
                                 case TYPE_CONTAINER:
                                         TYPEERROR();
+                                default: TYPEERROR();
                         }
+                default: TYPEERROR();
         }
 
 }
