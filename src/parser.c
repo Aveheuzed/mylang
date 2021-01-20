@@ -58,13 +58,17 @@ static Node* grouping(Token **const tokens) {
         else prefixParseError(tokens);
         return node;
 }
+static Node* semicolon(Token **const tokens) {
+        CONSUME(tokens);
+        return NULL;
+}
 
 // --------------------- infix parse functions ---------------------------------
 
 static Node* infixParseError(Token **const tokens, Node *const root) {
         const Token tk = **tokens;
         fprintf(stderr, "Parse error at line %u, column %u, at \"%.*s\"\n", tk.line, tk.column, tk.length, tk.source);
-        return root;
+        return NULL;
 }
 static Node* binary_plus(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
@@ -82,12 +86,6 @@ static Node* binary_slash(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
         return allocateNode(root, parse(tokens, PREC_MUL), operator, OP_DIVISION);
 }
-static Node* semicolon(Token **const tokens, Node *const root) {
-        const Token operator = CONSUME(tokens);
-        Node* operand = NULL;
-        if ((*tokens)->type != TOKEN_EOF) operand = parse(tokens, PREC_SEMICOLON);
-        return allocateNode(root, operand, operator, OP_SEMICOLON);
-}
 
 // ------------------ end parse functions --------------------------------------
 
@@ -101,7 +99,7 @@ Node* parse(Token **const tokens, const Precedence precedence) {
                 [TOKEN_PCLOSE] = {prefixParseError, infixParseError, PREC_NONE},
 
                 [TOKEN_EQUAL] = {prefixParseError, infixParseError, PREC_AFFECT},
-                [TOKEN_SEMICOLON] = {prefixParseError, semicolon, PREC_SEMICOLON},
+                [TOKEN_SEMICOLON] = {semicolon, infixParseError, PREC_NONE},
 
                 [TOKEN_IDENTIFIER] = {prefixParseError, infixParseError, PREC_NONE},
                 [TOKEN_INT] = {integer, infixParseError, PREC_NONE},
@@ -115,11 +113,15 @@ Node* parse(Token **const tokens, const Precedence precedence) {
         Node* root;
 
         root = rules[(*tokens)->type].prefix(tokens);
-        if (root == NULL) return root;
+        if (root == NULL) return root; // error
 
         while (precedence <= rules[(*tokens)->type].precedence) {
-                if ((*tokens)->type == TOKEN_EOF) break;
                 root = rules[(*tokens)->type].infix(tokens, root);
+                if ((*tokens)->type == TOKEN_SEMICOLON) {
+                        CONSUME(tokens);
+                        break;
+                }
+                if (root == NULL) break; // error
         }
         return root;
 }

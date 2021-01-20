@@ -256,10 +256,6 @@ static Object interpretDivision(const Node* root) {
 static Object interpretAffect(const Node* root) {
         NOTIMPLEMENTED();
 }
-static Object interpretSemicolon(const Node* root) {
-        interpret(root->operands[0]);
-        return interpret(root->operands[1]);
-}
 
 Object interpret(const Node* root) {
         static const InterpretFn interpreters[] = {
@@ -279,8 +275,6 @@ Object interpret(const Node* root) {
                 [OP_PRODUCT] = interpretProduct,
                 [OP_DIVISION] = interpretDivision,
                 [OP_AFFECT] = interpretAffect,
-
-                [OP_SEMICOLON] = interpretSemicolon,
         };
         return interpreters[root->operator](root);
 }

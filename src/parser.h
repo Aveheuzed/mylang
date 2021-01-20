@@ -6,7 +6,6 @@
 typedef enum Precedence {
         PREC_NONE,
         PREC_GROUPING,
-        PREC_SEMICOLON,
         PREC_AFFECT,
         PREC_ADD,
         PREC_MUL,
@@ -32,9 +31,6 @@ typedef enum {
         OP_PRODUCT,
         OP_DIVISION,
         OP_AFFECT,
-
-        // up to two operands
-        OP_SEMICOLON,
 } Operator;
 
 typedef struct Node {

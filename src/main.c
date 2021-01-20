@@ -12,10 +12,12 @@ void print_token(const Token* token) {
 
 void main() {
         char* line = NULL;
-        { size_t len = 0;
+        {
+                size_t len = 0;
                 getline(&line, &len, stdin);
         }
-        Token *tokens = calloc(128, sizeof(Token));
+        Token tokens[128];
+        Node* roots[128];
         puts("Starting…");
         {
                 char* current_char = line;
@@ -34,16 +36,19 @@ void main() {
                 }
         }
         puts("Lexing done.");
-        Node* root;
         {
                 Token* current_token = tokens;
-                root = parse(&current_token, PREC_NONE);
+                Node** current_root = roots - 1;
+                do {
+                        *++current_root = parse(&current_token, PREC_NONE);
+                } while (*current_root != NULL);
         }
         puts("Parsing done.");
-        print_value(interpret(root));
+        for (Node** current_root=roots; *current_root != NULL; current_root++) {
+                print_value(interpret(*current_root));
+        }
         puts("All done !");
-        freeNode(root);
-        free(tokens);
-        free(line);
-
+        for (Node** current_root=roots; *current_root != NULL; current_root++) {
+                freeNode(*current_root);
+        }
 }
