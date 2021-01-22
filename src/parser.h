@@ -3,15 +3,6 @@
 
 #include "token.h"
 
-typedef enum Precedence {
-        PREC_NONE,
-        PREC_GROUPING,
-        PREC_AFFECT,
-        PREC_ADD,
-        PREC_MUL,
-        PREC_UNARY,
-} Precedence;
-
 typedef enum {
         // no operand
         OP_VARIABLE,
@@ -19,7 +10,6 @@ typedef enum {
         OP_BOOL,
         OP_FLOAT,
         OP_STR,
-        OP_PARSE_ERROR,
 
         // one operand
         OP_UNARY_PLUS,
@@ -44,6 +34,6 @@ typedef struct Node {
 void freeNode(Node* node);
 
 // tokens[] is supposed to end with a TOKEN_EOF
-Node* parse(Token **const tokens, const Precedence precedence);
+Node* parse_statement(Token **const tokens);
 
 #endif

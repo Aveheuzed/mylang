@@ -4,9 +4,25 @@
 #include "parser.h"
 
 #define CONSUME(tkptrptr) (*(*tkptrptr)++)
+#define PEEK_TYPE(tkptrptr) ((*tkptrptr)->type)
 
 typedef Node* (*UnaryParseFn)(Token **const tokens);
 typedef Node* (*BinaryParseFn)(Token **const tokens, Node* const root);
+
+typedef enum Precedence {
+        PREC_SEMICOLON,
+        PREC_NONE,
+        PREC_GROUPING,
+        PREC_AFFECT,
+        PREC_ADD,
+        PREC_MUL,
+        PREC_UNARY,
+} Precedence;
+
+Node* parse(Token **const tokens, const Precedence precedence);
+static Node* prefixParseError(Token **const tokens);
+static Node* infixParseError(Token **const tokens, Node *const root);
+
 
 static Node* allocateNode(Node *const root, Node *const operand, Token token, Operator operator) {
         Node *const node = malloc(sizeof(Node));
@@ -29,15 +45,19 @@ void freeNode(Node* node) {
 static Node* prefixParseError(Token **const tokens) {
         const Token tk = **tokens;
         fprintf(stderr, "Parse error at line %u, column %u, at \"%.*s\"\n", tk.line, tk.column, tk.length, tk.source);
-        return allocateNode(NULL, NULL, tk, OP_PARSE_ERROR);
+        return NULL;
 }
 static Node* unary_plus(Token **const tokens) {
         const Token operator = CONSUME(tokens);
-        return allocateNode(parse(tokens, PREC_UNARY), NULL, operator, OP_UNARY_PLUS);
+        Node* operand = parse(tokens, PREC_UNARY);
+        if (operand == NULL) return NULL;
+        else return allocateNode(operand, NULL, operator, OP_UNARY_PLUS);
 }
 static Node* unary_minus(Token **const tokens) {
         const Token operator = CONSUME(tokens);
-        return allocateNode(parse(tokens, PREC_UNARY), NULL, operator, OP_UNARY_MINUS);
+        Node* operand = parse(tokens, PREC_UNARY);
+        if (operand == NULL) return NULL;
+        else return allocateNode(operand, NULL, operator, OP_UNARY_MINUS);
 }
 static Node* integer(Token **const tokens) {
         return allocateNode(NULL, NULL, CONSUME(tokens), OP_INT);
@@ -53,14 +73,15 @@ static Node* string(Token **const tokens) {
 }
 static Node* grouping(Token **const tokens) {
         const Token operator = CONSUME(tokens);
-        Node* node = allocateNode(parse(tokens, PREC_GROUPING), NULL, operator, OP_GROUP);
-        if ((*tokens)->type == TOKEN_PCLOSE) CONSUME(tokens);
-        else prefixParseError(tokens);
+        Node* operand = parse(tokens, PREC_GROUPING);
+        if (operand == NULL) return NULL;
+
+        Node* node = allocateNode(operand, NULL, operator, OP_GROUP);
+
+        if (PEEK_TYPE(tokens) == TOKEN_PCLOSE) CONSUME(tokens);
+        else return infixParseError(tokens, node);
+
         return node;
-}
-static Node* semicolon(Token **const tokens) {
-        CONSUME(tokens);
-        return NULL;
 }
 
 // --------------------- infix parse functions ---------------------------------
@@ -68,23 +89,44 @@ static Node* semicolon(Token **const tokens) {
 static Node* infixParseError(Token **const tokens, Node *const root) {
         const Token tk = **tokens;
         fprintf(stderr, "Parse error at line %u, column %u, at \"%.*s\"\n", tk.line, tk.column, tk.length, tk.source);
-        return allocateNode(root, NULL, tk, OP_PARSE_ERROR);
+        freeNode(root);
+        return NULL;
 }
 static Node* binary_plus(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
-        return allocateNode(root, parse(tokens, PREC_ADD), operator, OP_SUM);
+        Node* operand = parse(tokens, PREC_ADD);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        else return allocateNode(root, operand, operator, OP_SUM);
 }
 static Node* binary_minus(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
-        return allocateNode(root, parse(tokens, PREC_ADD), operator, OP_DIFFERENCE);
+        Node* operand = parse(tokens, PREC_ADD);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        else return allocateNode(root, operand, operator, OP_DIFFERENCE);
 }
 static Node* binary_star(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
-        return allocateNode(root, parse(tokens, PREC_MUL), operator, OP_PRODUCT);
+        Node* operand = parse(tokens, PREC_MUL);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        else return allocateNode(root, operand, operator, OP_PRODUCT);
 }
 static Node* binary_slash(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
-        return allocateNode(root, parse(tokens, PREC_MUL), operator, OP_DIVISION);
+        Node* operand = parse(tokens, PREC_MUL);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        else return allocateNode(root, operand, operator, OP_DIVISION);
 }
 
 // ------------------ end parse functions --------------------------------------
@@ -99,7 +141,7 @@ Node* parse(Token **const tokens, const Precedence precedence) {
                 [TOKEN_PCLOSE] = {prefixParseError, infixParseError, PREC_NONE},
 
                 [TOKEN_EQUAL] = {prefixParseError, infixParseError, PREC_AFFECT},
-                [TOKEN_SEMICOLON] = {semicolon, infixParseError, PREC_NONE},
+                [TOKEN_SEMICOLON] = {prefixParseError, infixParseError, PREC_SEMICOLON},
 
                 [TOKEN_IDENTIFIER] = {prefixParseError, infixParseError, PREC_NONE},
                 [TOKEN_INT] = {integer, infixParseError, PREC_NONE},
@@ -112,19 +154,33 @@ Node* parse(Token **const tokens, const Precedence precedence) {
 
         Node* root;
 
-        root = rules[(*tokens)->type].prefix(tokens);
-        if (root->operator == OP_PARSE_ERROR) return root;
+        root = rules[PEEK_TYPE(tokens)].prefix(tokens);
+        if (root == NULL) return root;
 
-        while (precedence <= rules[(*tokens)->type].precedence) {
-                root = rules[(*tokens)->type].infix(tokens, root);
-                if (root->operator == OP_PARSE_ERROR) break;
-                if ((*tokens)->type == TOKEN_SEMICOLON) {
-                        CONSUME(tokens);
-                        break;
-                }
+        while (precedence <= rules[PEEK_TYPE(tokens)].precedence) {
+                root = rules[PEEK_TYPE(tokens)].infix(tokens, root);
+                if (root == NULL) break;
         }
 
         return root;
 }
 
+Node* parse_statement(Token **const tokens) {
+        if (PEEK_TYPE(tokens) == TOKEN_EOF) return NULL;
+
+        Node* stmt = parse(tokens, PREC_NONE);
+        if (stmt == NULL) return NULL;
+        if (PEEK_TYPE(tokens) == TOKEN_SEMICOLON) {
+                CONSUME(tokens);
+                return stmt;
+        }
+        else {
+                Token tk = **tokens;
+                fprintf(stderr, "line %u, column %u, at \"%.*s\": expected ';'.\n", tk.line, tk.column, tk.length, tk.source);
+                freeNode(stmt);
+                return NULL;
+        }
+}
+
+#undef PEEK_TYPE
 #undef CONSUME

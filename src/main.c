@@ -39,26 +39,11 @@ void main() {
         puts("Lexing done.");
         {
                 Token* current_token = tokens;
+
                 do {
-                        roots[nb_stmt] = parse(&current_token, PREC_NONE);
-                        if (roots[nb_stmt] != NULL) {
-                                if (roots[nb_stmt]->operator != OP_PARSE_ERROR) {
-                                        nb_stmt++;
-                                        if (current_token->type != TOKEN_EOF) {
-                                                continue;
-                                        }
-                                        else {
-                                                break;
-                                        }
-                                }
-                                else {
-                                        break;
-                                }
-                        }
-                        else {
-                                continue;
-                        }
-                } while (1);
+                        roots[nb_stmt] = parse_statement(&current_token);
+                } while (roots[nb_stmt++] != NULL);
+                nb_stmt--;
         }
         printf("%d statements.\n", nb_stmt);
         puts("Parsing done.");
