@@ -18,6 +18,7 @@ void main() {
         }
         Token tokens[128];
         Node* roots[128];
+        unsigned int nb_stmt = 0;
         puts("Starting…");
         {
                 char* current_char = line;
@@ -38,17 +39,34 @@ void main() {
         puts("Lexing done.");
         {
                 Token* current_token = tokens;
-                Node** current_root = roots - 1;
                 do {
-                        *++current_root = parse(&current_token, PREC_NONE);
-                } while (*current_root != NULL);
+                        roots[nb_stmt] = parse(&current_token, PREC_NONE);
+                        if (roots[nb_stmt] != NULL) {
+                                if (roots[nb_stmt]->operator != OP_PARSE_ERROR) {
+                                        nb_stmt++;
+                                        if (current_token->type != TOKEN_EOF) {
+                                                continue;
+                                        }
+                                        else {
+                                                break;
+                                        }
+                                }
+                                else {
+                                        break;
+                                }
+                        }
+                        else {
+                                continue;
+                        }
+                } while (1);
         }
+        printf("%d statements.\n", nb_stmt);
         puts("Parsing done.");
-        for (Node** current_root=roots; *current_root != NULL; current_root++) {
-                print_value(interpret(*current_root));
+        for (unsigned int istmt=0; istmt<nb_stmt; istmt++) {
+                print_value(interpret(roots[istmt]));
         }
         puts("All done !");
-        for (Node** current_root=roots; *current_root != NULL; current_root++) {
-                freeNode(*current_root);
+        for (unsigned int istmt=0; istmt<nb_stmt; istmt++) {
+                freeNode(roots[istmt]);
         }
 }

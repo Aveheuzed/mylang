@@ -19,6 +19,7 @@ typedef enum {
         OP_BOOL,
         OP_FLOAT,
         OP_STR,
+        OP_PARSE_ERROR,
 
         // one operand
         OP_UNARY_PLUS,
@@ -38,6 +39,7 @@ typedef struct Node {
         Token token;
         Operator operator;
 } Node;
+
 
 void freeNode(Node* node);
 

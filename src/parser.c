@@ -29,7 +29,7 @@ void freeNode(Node* node) {
 static Node* prefixParseError(Token **const tokens) {
         const Token tk = **tokens;
         fprintf(stderr, "Parse error at line %u, column %u, at \"%.*s\"\n", tk.line, tk.column, tk.length, tk.source);
-        return NULL;
+        return allocateNode(NULL, NULL, tk, OP_PARSE_ERROR);
 }
 static Node* unary_plus(Token **const tokens) {
         const Token operator = CONSUME(tokens);
@@ -68,7 +68,7 @@ static Node* semicolon(Token **const tokens) {
 static Node* infixParseError(Token **const tokens, Node *const root) {
         const Token tk = **tokens;
         fprintf(stderr, "Parse error at line %u, column %u, at \"%.*s\"\n", tk.line, tk.column, tk.length, tk.source);
-        return NULL;
+        return allocateNode(root, NULL, tk, OP_PARSE_ERROR);
 }
 static Node* binary_plus(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
@@ -113,16 +113,17 @@ Node* parse(Token **const tokens, const Precedence precedence) {
         Node* root;
 
         root = rules[(*tokens)->type].prefix(tokens);
-        if (root == NULL) return root; // error
+        if (root->operator == OP_PARSE_ERROR) return root;
 
         while (precedence <= rules[(*tokens)->type].precedence) {
                 root = rules[(*tokens)->type].infix(tokens, root);
+                if (root->operator == OP_PARSE_ERROR) break;
                 if ((*tokens)->type == TOKEN_SEMICOLON) {
                         CONSUME(tokens);
                         break;
                 }
-                if (root == NULL) break; // error
         }
+
         return root;
 }
 
