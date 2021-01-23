@@ -19,7 +19,6 @@ void main() {
         Token tokens[128];
         Node* roots[128];
         unsigned int nb_stmt = 0;
-        puts("Starting…");
         {
                 char* current_char = line;
                 Token* current_token = tokens;
@@ -30,13 +29,7 @@ void main() {
                         printf("Lexing error.\n");
                         exit(-1);
                 }
-                else {
-                        for (Token* tk = tokens; tk<current_token; tk++) {
-                                print_token(tk);
-                        }
-                }
         }
-        puts("Lexing done.");
         {
                 Token* current_token = tokens;
 
@@ -45,12 +38,9 @@ void main() {
                 } while (roots[nb_stmt++] != NULL);
                 nb_stmt--;
         }
-        printf("%d statements.\n", nb_stmt);
-        puts("Parsing done.");
         for (unsigned int istmt=0; istmt<nb_stmt; istmt++) {
                 print_value(interpret(roots[istmt]));
         }
-        puts("All done !");
         for (unsigned int istmt=0; istmt<nb_stmt; istmt++) {
                 freeNode(roots[istmt]);
         }
