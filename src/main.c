@@ -10,7 +10,7 @@ void print_token(const Token* token) {
         printf("\"%.*s\" : ln %u, col %u, len %u. Type : %d\n", token->length, token->source, token->line, token->column, token->length, token->type);
 }
 
-void main() {
+void _main() {
         char* line = NULL;
         {
                 size_t len = 0;
@@ -29,6 +29,7 @@ void main() {
                         printf("Lexing error.\n");
                         exit(-1);
                 }
+
         }
         {
                 Token* current_token = tokens;
@@ -44,4 +45,9 @@ void main() {
         for (unsigned int istmt=0; istmt<nb_stmt; istmt++) {
                 freeNode(roots[istmt]);
         }
+}
+
+
+void main() {
+        while (1) _main();
 }
