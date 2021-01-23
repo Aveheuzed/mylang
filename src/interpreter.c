@@ -17,7 +17,7 @@ static Object interpretInt(const Node* root) {
         return (Object) {.type=TYPE_INT, .intval=atoll(root->token.source)};
 }
 static Object interpretBool(const Node* root) {
-        NOTIMPLEMENTED();
+        return (Object) {.type=TYPE_BOOL, .intval=(root->token.type == TOKEN_TRUE)};
 
 }
 static Object interpretFloat(const Node* root) {

@@ -147,6 +147,8 @@ Node* parse(Token **const tokens, const Precedence precedence) {
                 [TOKEN_INT] = {integer, infixParseError, PREC_NONE},
                 [TOKEN_FLOAT] = {fpval, infixParseError, PREC_NONE},
                 [TOKEN_STR] = {string, infixParseError, PREC_NONE},
+                [TOKEN_TRUE] = {boolean, infixParseError, PREC_NONE},
+                [TOKEN_FALSE] = {boolean, infixParseError, PREC_NONE},
 
                 [TOKEN_ERROR] = {prefixParseError, infixParseError, PREC_NONE},
                 [TOKEN_EOF] = {prefixParseError, infixParseError, PREC_NONE},

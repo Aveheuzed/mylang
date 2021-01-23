@@ -16,6 +16,8 @@ typedef enum {
         TOKEN_INT,
         TOKEN_FLOAT,
         TOKEN_STR,
+        TOKEN_TRUE,
+        TOKEN_FALSE,
 
         TOKEN_ERROR,
         TOKEN_EOF,

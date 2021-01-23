@@ -1,7 +1,28 @@
+#include <string.h>
+
 #include "token.h"
 #include "lexer.h"
 
-char* lex(char *source, Token *const token) {
+void detect_keywords(Token *const token) {
+        const static struct {char* source; TokenType type;} keywords[] = {
+                {"true", TOKEN_TRUE},
+                {"false", TOKEN_FALSE},
+
+                {NULL, 0}
+        };
+
+        if (token->type != TOKEN_IDENTIFIER) return;
+
+        for (unsigned int i=0; keywords[i].source != NULL; i++) {
+                if (!strncmp(token->source, keywords[i].source, token->length)) {
+                        token->type = keywords[i].type;
+                        break;
+                }
+        }
+
+}
+
+char* _lex(char *source, Token *const token) {
         #define CURRENT_CHAR() (*source)
         #define ADVANCE() ((*++source=='\n')?(line++, column=0):(column++))
         #define ISDIGIT() (CURRENT_CHAR() >= '0' && CURRENT_CHAR() <= '9')
@@ -68,4 +89,11 @@ char* lex(char *source, Token *const token) {
         #undef ISDIGIT
         #undef GETCHAR
         #undef ADVANCE
+}
+
+char* lex(char* source, Token *const token) {
+        source = _lex(source, token);
+        // TODO: intern strings + identifiers
+        detect_keywords(token);
+        return source;
 }
