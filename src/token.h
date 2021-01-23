@@ -6,11 +6,20 @@ typedef enum {
         TOKEN_MINUS,
         TOKEN_STAR,
         TOKEN_SLASH,
+        TOKEN_AND,
+        TOKEN_OR,
+        TOKEN_EQ, // "==": comparison
+        TOKEN_NE,
+        TOKEN_GE,
+        TOKEN_LE,
+        TOKEN_GT,
+        TOKEN_LT,
         TOKEN_POPEN,
         TOKEN_PCLOSE,
 
-        TOKEN_EQUAL,
+        TOKEN_EQUAL, // "=" : affectation
         TOKEN_SEMICOLON,
+        TOKEN_NOT,
 
         TOKEN_IDENTIFIER,
         TOKEN_INT,

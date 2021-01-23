@@ -15,6 +15,7 @@ typedef enum {
         OP_UNARY_PLUS,
         OP_UNARY_MINUS,
         OP_GROUP,
+        OP_INVERT,
 
         // two operands
         OP_SUM,
@@ -22,6 +23,11 @@ typedef enum {
         OP_PRODUCT,
         OP_DIVISION,
         OP_AFFECT,
+        OP_AND,
+        OP_OR,
+        OP_EQ,
+        OP_LT,
+        OP_LE,
 } Operator;
 
 typedef struct Node {

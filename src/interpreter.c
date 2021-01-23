@@ -256,6 +256,215 @@ static Object interpretDivision(const Node* root) {
 static Object interpretAffect(const Node* root) {
         NOTIMPLEMENTED();
 }
+static Object interpretInvert(const Node* root) {
+        Object operand = interpret(root->operands[0]);
+        switch (operand.type) {
+                case TYPE_INT:
+                        operand.type = TYPE_BOOL;
+                case TYPE_BOOL:
+                        operand.intval = !operand.intval;
+                        return operand;
+                case TYPE_FLOAT:
+                        TYPEERROR();
+                case TYPE_CONTAINER:
+                        TYPEERROR();
+                default: TYPEERROR();
+        }
+}
+static Object interpretAnd(const Node* root) {
+        Object operand = interpret(root->operands[0]);
+        switch (operand.type) {
+                case TYPE_INT:
+                case TYPE_BOOL:
+                        if (!operand.intval) return operand;
+                        break;
+                case TYPE_FLOAT:
+                        TYPEERROR();
+                case TYPE_CONTAINER:
+                        switch (operand.payload->type) {
+                                case CONTENT_STRING:
+                                        if (!strlen(operand.payload->strval)) return operand;
+                                        break;
+                                default:
+                                        TYPEERROR();
+                        }
+                        break;
+                default: TYPEERROR();
+        }
+        operand = interpret(root->operands[1]);
+        switch (operand.type) {
+                case TYPE_INT:
+                case TYPE_BOOL:
+                        return operand;
+                case TYPE_FLOAT:
+                        TYPEERROR();
+                case TYPE_CONTAINER:
+                        switch (operand.payload->type) {
+                                case CONTENT_STRING:
+                                        return operand;
+                                default:
+                                        TYPEERROR();
+                        }
+                default: TYPEERROR();
+        }
+}
+static Object interpretOr(const Node* root) {
+        Object operand = interpret(root->operands[0]);
+        switch (operand.type) {
+                case TYPE_INT:
+                case TYPE_BOOL:
+                        if (operand.intval) return operand;
+                        break;
+                case TYPE_FLOAT:
+                        TYPEERROR();
+                case TYPE_CONTAINER:
+                        switch (operand.payload->type) {
+                                case CONTENT_STRING:
+                                        if (strlen(operand.payload->strval)) return operand;
+                                        break;
+                                default:
+                                        TYPEERROR();
+                        }
+                        break;
+                default: TYPEERROR();
+        }
+        operand = interpret(root->operands[1]);
+        switch (operand.type) {
+                case TYPE_INT:
+                case TYPE_BOOL:
+                        return operand;
+                case TYPE_FLOAT:
+                        TYPEERROR();
+                case TYPE_CONTAINER:
+                        switch (operand.payload->type) {
+                                case CONTENT_STRING:
+                                        return operand;
+                                default:
+                                        TYPEERROR();
+                        }
+                default: TYPEERROR();
+        }
+}
+static Object interpretEq(const Node* root) {
+        static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] = {
+                [TYPE_INT] = {
+                        [TYPE_INT] = &&eq_int_int,
+                        [TYPE_BOOL] = &&eq_int_int,
+                },
+                [TYPE_BOOL] = {
+                        [TYPE_INT] = &&eq_int_int,
+                        [TYPE_BOOL] = &&eq_int_int,
+                },
+                [TYPE_CONTAINER] = {
+                        [TYPE_CONTAINER] = &&eq_container_container,
+                },
+        };
+
+        Object opA = interpret(root->operands[0]);
+        Object opB = interpret(root->operands[1]);
+        {
+                const void* handler = dispatcher[opA.type][opB.type];
+                if (handler == NULL) goto error; // undefined array members are initialized to NULL (C99)
+                else goto *handler;
+        }
+
+        eq_int_int:
+        return (Object) {.type=TYPE_BOOL, .intval=(opA.intval==opB.intval)};
+
+        eq_container_container:
+        if ((opA.payload->type == CONTENT_STRING) && (opB.payload->type == CONTENT_STRING)) {
+                return (Object) {.type=TYPE_BOOL, .intval=(strcmp(opA.payload->strval, opB.payload->strval)==0)};
+        }
+        else goto error;
+
+        error:
+        // two objects of incompatible types are different
+        return (Object) {.type=TYPE_BOOL, .intval=0};
+}
+static Object interpretLt(const Node* root) {
+        static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] = {
+                [TYPE_INT] = {
+                        [TYPE_INT] = &&lt_int_int,
+                        [TYPE_BOOL] = &&lt_int_int,
+                        [TYPE_FLOAT] = &&lt_int_float,
+                },
+                [TYPE_BOOL] = {
+                        [TYPE_INT] = &&lt_int_int,
+                        [TYPE_BOOL] = &&lt_int_int,
+                        [TYPE_FLOAT] = &&lt_int_float,
+                },
+                [TYPE_FLOAT] = {
+                        [TYPE_INT] = &&lt_float_int,
+                        [TYPE_BOOL] = &&lt_float_int,
+                        [TYPE_FLOAT] = &&lt_float_float,
+                },
+        };
+
+        Object opA = interpret(root->operands[0]);
+        Object opB = interpret(root->operands[1]);
+        {
+                const void* handler = dispatcher[opA.type][opB.type];
+                if (handler == NULL) goto error; // undefined array members are initialized to NULL (C99)
+                else goto *handler;
+        }
+
+        lt_int_int:
+        return (Object) {.type=TYPE_BOOL, .intval=(opA.intval<opB.intval)};
+
+        lt_int_float:
+        return (Object) {.type=TYPE_BOOL, .intval=(opA.intval<opB.floatval)};
+
+        lt_float_int:
+        return (Object) {.type=TYPE_BOOL, .intval=(opA.floatval<opB.intval)};
+
+        lt_float_float:
+        return (Object) {.type=TYPE_BOOL, .intval=(opA.floatval<opB.floatval)};
+
+        error:
+        TYPEERROR();
+}
+static Object interpretLe(const Node* root) {
+        static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] = {
+                [TYPE_INT] = {
+                        [TYPE_INT] = &&le_int_int,
+                        [TYPE_BOOL] = &&le_int_int,
+                        [TYPE_FLOAT] = &&le_int_float,
+                },
+                [TYPE_BOOL] = {
+                        [TYPE_INT] = &&le_int_int,
+                        [TYPE_BOOL] = &&le_int_int,
+                        [TYPE_FLOAT] = &&le_int_float,
+                },
+                [TYPE_FLOAT] = {
+                        [TYPE_INT] = &&le_float_int,
+                        [TYPE_BOOL] = &&le_float_int,
+                        [TYPE_FLOAT] = &&le_float_float,
+                },
+        };
+
+        Object opA = interpret(root->operands[0]);
+        Object opB = interpret(root->operands[1]);
+        {
+                const void* handler = dispatcher[opA.type][opB.type];
+                if (handler == NULL) goto error; // undefined array members are initialized to NULL (C99)
+                else goto *handler;
+        }
+
+        le_int_int:
+        return (Object) {.type=TYPE_BOOL, .intval=(opA.intval<=opB.intval)};
+
+        le_int_float:
+        return (Object) {.type=TYPE_BOOL, .intval=(opA.intval<=opB.floatval)};
+
+        le_float_int:
+        return (Object) {.type=TYPE_BOOL, .intval=(opA.floatval<=opB.intval)};
+
+        le_float_float:
+        return (Object) {.type=TYPE_BOOL, .intval=(opA.floatval<=opB.floatval)};
+
+        error:
+        TYPEERROR();
+}
 
 Object interpret(const Node* root) {
         static const InterpretFn interpreters[] = {
@@ -269,12 +478,18 @@ Object interpret(const Node* root) {
                 [OP_UNARY_PLUS] = interpretUnaryPlus,
                 [OP_UNARY_MINUS] = interpretUnaryMinus,
                 [OP_GROUP] = interpretGroup,
+                [OP_INVERT] = interpretInvert,
 
                 [OP_SUM] = interpretSum,
                 [OP_DIFFERENCE] = interpretDifference,
                 [OP_PRODUCT] = interpretProduct,
                 [OP_DIVISION] = interpretDivision,
                 [OP_AFFECT] = interpretAffect,
+                [OP_AND] = interpretAnd,
+                [OP_OR] = interpretOr,
+                [OP_EQ] = interpretEq,
+                [OP_LT] = interpretLt,
+                [OP_LE] = interpretLe,
         };
         return interpreters[root->operator](root);
 }

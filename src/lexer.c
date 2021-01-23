@@ -23,22 +23,23 @@ void detect_keywords(Token *const token) {
 }
 
 char* _lex(char *source, Token *const token) {
-        #define CURRENT_CHAR() (*source)
+        #define CURRENT_CHAR() (PEEK(0))
+        #define PEEK(n) (*(source+n))
         #define ADVANCE() ((*++source=='\n')?(line++, column=0):(column++))
         #define ISDIGIT() (CURRENT_CHAR() >= '0' && CURRENT_CHAR() <= '9')
         #define ISLETTER() ((CURRENT_CHAR() >= 'a' && CURRENT_CHAR() <= 'z') || (CURRENT_CHAR() >= 'A' && CURRENT_CHAR() <= 'Z'))
         #define ISBLANK() (CURRENT_CHAR() == '\n' || CURRENT_CHAR() == '\t' || CURRENT_CHAR() == '\r' || CURRENT_CHAR() == ' ')
+        #define EQUAL_FOLLOWS(then_, else_) (ADVANCE(), (CURRENT_CHAR() == '=') ? (ADVANCE(), then_) : else_)
+        #define REQUIRES(what, type) ((PEEK(1) == what) ? (ADVANCE(), ADVANCE(), type) : TOKEN_ERROR)
 
         static unsigned int line = 1;
         static unsigned short column = 0;
-        unsigned short length = 0;
 
         while (ISBLANK()) ADVANCE();
 
         token->source = source;
         token->line = line;
         token->column = column;
-        token->length = 0;
 
         if (CURRENT_CHAR() == '\0') {
                 token->type = TOKEN_EOF;
@@ -52,8 +53,27 @@ char* _lex(char *source, Token *const token) {
                 case '/': ADVANCE(), token->type = TOKEN_SLASH; break;
                 case '(': ADVANCE(), token->type = TOKEN_POPEN; break;
                 case ')': ADVANCE(), token->type = TOKEN_PCLOSE; break;
-                case '=': ADVANCE(), token->type = TOKEN_EQUAL; break;
                 case ';': ADVANCE(), token->type = TOKEN_SEMICOLON; break;
+
+                case '=':
+                        token->type = EQUAL_FOLLOWS(TOKEN_EQ, TOKEN_EQUAL);
+                        break;
+                case '!':
+                        token->type = EQUAL_FOLLOWS(TOKEN_NE, TOKEN_NOT);
+                        break;
+                case '>':
+                        token->type = EQUAL_FOLLOWS(TOKEN_GE, TOKEN_GT);
+                        break;
+                case '<':
+                        token->type = EQUAL_FOLLOWS(TOKEN_LE, TOKEN_LT);
+                        break;
+
+                case '&':
+                        token->type = REQUIRES('&', TOKEN_AND);
+                        break;
+                case '|':
+                        token->type = REQUIRES('|', TOKEN_OR);
+                        break;
 
                 default:
                         if (ISDIGIT()) {
@@ -65,7 +85,7 @@ char* _lex(char *source, Token *const token) {
                                 }
                                 break;
                         }
-                        else if (CURRENT_CHAR() == '_' || ISLETTER() || ISDIGIT()) {
+                        else if (CURRENT_CHAR() == '_' || ISLETTER()) {
                                 token->type = TOKEN_IDENTIFIER;
                                 do ADVANCE(); while (CURRENT_CHAR() == '_' || ISLETTER() || ISDIGIT());
                                 break;
@@ -84,10 +104,13 @@ char* _lex(char *source, Token *const token) {
         token->length = source - token->source;
         return source;
 
+        #undef REQUIRES
+        #undef EQUAL_FOLLOWS
         #undef ISBLANK
         #undef ISLETTER
         #undef ISDIGIT
-        #undef GETCHAR
+        #undef CURRENT_CHAR
+        #undef PEEK
         #undef ADVANCE
 }
 

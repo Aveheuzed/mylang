@@ -12,11 +12,14 @@ typedef Node* (*BinaryParseFn)(Token **const tokens, Node* const root);
 typedef enum Precedence {
         PREC_SEMICOLON,
         PREC_NONE,
-        PREC_GROUPING,
+        PREC_OR,
+        PREC_AND,
+        PREC_COMPARISON,
         PREC_AFFECT,
         PREC_ADD,
         PREC_MUL,
         PREC_UNARY,
+        PREC_GROUPING,
 } Precedence;
 
 Node* parse(Token **const tokens, const Precedence precedence);
@@ -83,6 +86,12 @@ static Node* grouping(Token **const tokens) {
 
         return node;
 }
+static Node* invert(Token **const tokens) {
+        const Token operator = CONSUME(tokens);
+        Node* operand = parse(tokens, PREC_UNARY);
+        if (operand == NULL) return NULL;
+        else return allocateNode(operand, NULL, operator, OP_INVERT);
+}
 
 // --------------------- infix parse functions ---------------------------------
 
@@ -128,6 +137,76 @@ static Node* binary_slash(Token **const tokens, Node* const root) {
         }
         else return allocateNode(root, operand, operator, OP_DIVISION);
 }
+static Node* binary_and(Token **const tokens, Node* const root) {
+        const Token operator = CONSUME(tokens);
+        Node* operand = parse(tokens, PREC_AND);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        else return allocateNode(root, operand, operator, OP_AND);
+}
+static Node* binary_or(Token **const tokens, Node* const root) {
+        const Token operator = CONSUME(tokens);
+        Node* operand = parse(tokens, PREC_OR);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        else return allocateNode(root, operand, operator, OP_OR);
+}
+static Node* lt(Token **const tokens, Node* const root) {
+        const Token operator = CONSUME(tokens);
+        Node* operand = parse(tokens, PREC_COMPARISON);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        else return allocateNode(root, operand, operator, OP_LT);
+
+}
+static Node* le(Token **const tokens, Node* const root) {
+        const Token operator = CONSUME(tokens);
+        Node* operand = parse(tokens, PREC_COMPARISON);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        else return allocateNode(root, operand, operator, OP_LE);
+
+}
+static Node* gt(Token **const tokens, Node* const root) {
+        // > is implemented as !(<=)
+        const Token operator = **tokens;
+        Node* operand = le(tokens, root);
+        if (operand == NULL) return NULL;
+        else return allocateNode(operand, NULL, operator, OP_INVERT);
+
+}
+static Node* ge(Token **const tokens, Node* const root) {
+        // >= is implemented as !(<)
+        const Token operator = **tokens;
+        Node* operand = lt(tokens, root);
+        if (operand == NULL) return NULL;
+        else return allocateNode(operand, NULL, operator, OP_INVERT);
+
+}
+static Node* eq(Token **const tokens, Node* const root) {
+        const Token operator = CONSUME(tokens);
+        Node* operand = parse(tokens, PREC_COMPARISON);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        else return allocateNode(root, operand, operator, OP_EQ);
+}
+static Node* ne(Token **const tokens, Node* const root) {
+        // != is implemented as !(==)
+        const Token operator = **tokens;
+        Node* operand = eq(tokens, root);
+        if (operand == NULL) return NULL;
+        else return allocateNode(operand, NULL, operator, OP_INVERT);
+}
 
 // ------------------ end parse functions --------------------------------------
 
@@ -137,11 +216,20 @@ Node* parse(Token **const tokens, const Precedence precedence) {
                 [TOKEN_MINUS] = {unary_minus, binary_minus, PREC_ADD},
                 [TOKEN_STAR] = {prefixParseError, binary_star, PREC_MUL},
                 [TOKEN_SLASH] = {prefixParseError, binary_slash, PREC_MUL},
+                [TOKEN_AND] {prefixParseError, binary_and, PREC_AND},
+                [TOKEN_OR] = {prefixParseError, binary_or, PREC_OR},
+                [TOKEN_EQ] = {prefixParseError, eq, PREC_COMPARISON},
+                [TOKEN_NE] = {prefixParseError, ne, PREC_COMPARISON},
+                [TOKEN_GE] = {prefixParseError, ge, PREC_COMPARISON},
+                [TOKEN_LE] = {prefixParseError, le, PREC_COMPARISON},
+                [TOKEN_GT] = {prefixParseError, gt, PREC_COMPARISON},
+                [TOKEN_LT] = {prefixParseError, lt, PREC_COMPARISON},
                 [TOKEN_POPEN] = {grouping, infixParseError, PREC_NONE},
-                [TOKEN_PCLOSE] = {prefixParseError, infixParseError, PREC_NONE},
+                [TOKEN_PCLOSE] = {prefixParseError, infixParseError, PREC_GROUPING},
 
                 [TOKEN_EQUAL] = {prefixParseError, infixParseError, PREC_AFFECT},
                 [TOKEN_SEMICOLON] = {prefixParseError, infixParseError, PREC_SEMICOLON},
+                [TOKEN_NOT] = {invert, infixParseError, PREC_UNARY},
 
                 [TOKEN_IDENTIFIER] = {prefixParseError, infixParseError, PREC_NONE},
                 [TOKEN_INT] = {integer, infixParseError, PREC_NONE},
