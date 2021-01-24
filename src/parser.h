@@ -1,6 +1,7 @@
 #ifndef parser_h
 #define parser_h
 
+#include <stdint.h> // for the uintptr_t, may be needed in the use of Nodes
 #include "token.h"
 
 typedef enum {
@@ -28,12 +29,16 @@ typedef enum {
         OP_EQ,
         OP_LT,
         OP_LE,
+
+        LEN_OPERATORS // do NOT add anything below this line!
 } Operator;
 
 typedef struct Node {
         Token token;
         Operator operator;
-        unsigned int nb_operands;
+        /*note about the f.a.m.:
+        For nodes that don't have a fixed number of children, the first element of this array MUST be cast to an uintptr_t that will indicate the number of children this array contains. In that case, the first child (if present) will be found at index 1.
+        */
         struct Node* operands[];
 } Node;
 
