@@ -1,26 +1,17 @@
 #ifndef container_h
 #define container_h
 
-#include <stddef.h>
 #include <stdint.h>
 
-typedef enum ObjContainterType {
-        CONTENT_STRING,
-} ObjContainterType;
+typedef struct ObjString {
+        intmax_t len;
+        char value[];
+} ObjString;
 
-typedef struct ObjContainter {
-        ObjContainterType type;
-        size_t len;
-        union {
-                char* strval;
-        };
-} ObjContainter;
+ObjString* makeString(const char* string, intmax_t len);
 
-ObjContainter* wrapString(char* string, size_t len);
-ObjContainter* makeString(char* string, size_t len);
+ObjString* concatenateStrings(const ObjString* strA, const ObjString* strB);
+ObjString* multiplyString(const ObjString* str, intmax_t amount);
 
-ObjContainter* concatenateStrings(const ObjContainter* strA, const ObjContainter* strB);
-ObjContainter* multiplyString(const ObjContainter* str, intmax_t amount);
-
-void free_container(ObjContainter* containter);
+void free_string(ObjString* container);
 #endif

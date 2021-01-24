@@ -8,9 +8,8 @@ typedef enum ObjType {
         TYPE_INT,
         TYPE_BOOL,
         TYPE_FLOAT,
-        TYPE_CONTAINER,
+        TYPE_STRING,
 
-        
         LEN_OBJTYPES // do NOT add anything below this line!
 } ObjType;
 
@@ -19,7 +18,7 @@ typedef struct Object {
         union {
                 intmax_t intval;
                 double floatval;
-                ObjContainter* payload;
+                ObjString* strval;
         };
 } Object;
 

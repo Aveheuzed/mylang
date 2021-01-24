@@ -24,7 +24,7 @@ static Object interpretFloat(const Node* root) {
         return (Object) {.type=TYPE_FLOAT, .floatval=atof(root->token.source)};
 }
 static Object interpretStr(const Node* root) {
-        return (Object) {.type=TYPE_CONTAINER, .payload=makeString(root->token.source+1, root->token.length-2)};
+        return (Object) {.type=TYPE_STRING, .strval=makeString(root->token.source+1, root->token.length-2)};
 }
 static Object interpretUnaryPlus(const Node* root) {
         Object operand = interpret(root->operands[0]);
@@ -34,7 +34,7 @@ static Object interpretUnaryPlus(const Node* root) {
                 case TYPE_BOOL:
                 case TYPE_FLOAT:
                         return operand;
-                case TYPE_CONTAINER:
+                case TYPE_STRING:
                         TYPEERROR();
                 default: TYPEERROR();
         }
@@ -50,7 +50,7 @@ static Object interpretUnaryMinus(const Node* root) {
                 case TYPE_FLOAT:
                         operand.floatval *= -1;
                         return operand;
-                case TYPE_CONTAINER:
+                case TYPE_STRING:
                         TYPEERROR();
                 default: TYPEERROR();
         }
@@ -75,8 +75,8 @@ static Object interpretSum(const Node* root) {
                         [TYPE_BOOL] = &&add_float_int,
                         [TYPE_FLOAT] = &&add_float_float,
                 },
-                [TYPE_CONTAINER] = {
-                        [TYPE_CONTAINER] = &&add_container_container,
+                [TYPE_STRING] = {
+                        [TYPE_STRING] = &&add_string_string,
                 },
         };
 
@@ -94,11 +94,8 @@ static Object interpretSum(const Node* root) {
         add_int_float:
         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.intval+opB.floatval)};
 
-        add_container_container:
-        if ((opA.payload->type == CONTENT_STRING) && (opB.payload->type == CONTENT_STRING)) {
-                return (Object) {.type=TYPE_CONTAINER, .payload=concatenateStrings(opA.payload, opB.payload)};
-        }
-        else goto error;
+        add_string_string:
+        return (Object) {.type=TYPE_STRING, .strval=concatenateStrings(opA.strval, opB.strval)};
 
         add_float_int:
         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval+opB.intval)};
@@ -157,22 +154,22 @@ static Object interpretProduct(const Node* root) {
                         [TYPE_INT] = &&mul_int_int,
                         [TYPE_BOOL] = &&mul_int_int,
                         [TYPE_FLOAT] = &&mul_int_float,
-                        [TYPE_CONTAINER] = &&mul_int_container,
+                        [TYPE_STRING] = &&mul_int_string,
                 },
                 [TYPE_BOOL] = {
                         [TYPE_INT] = &&mul_int_int,
                         [TYPE_BOOL] = &&mul_int_int,
                         [TYPE_FLOAT] = &&mul_int_float,
-                        [TYPE_CONTAINER] = &&mul_int_container,
+                        [TYPE_STRING] = &&mul_int_string,
                 },
                 [TYPE_FLOAT] = {
                         [TYPE_INT] = &&mul_float_int,
                         [TYPE_BOOL] = &&mul_float_int,
                         [TYPE_FLOAT] = &&mul_float_float,
                 },
-                [TYPE_CONTAINER] = {
-                        [TYPE_INT] = &&mul_container_int,
-                        [TYPE_BOOL] = &&mul_container_int,
+                [TYPE_STRING] = {
+                        [TYPE_INT] = &&mul_string_int,
+                        [TYPE_BOOL] = &&mul_string_int,
                 },
         };
 
@@ -190,16 +187,12 @@ static Object interpretProduct(const Node* root) {
         mul_int_float:
         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.intval*opB.floatval)};
 
-        mul_int_container:
-        if ((opB.payload->type == CONTENT_STRING) && (opA.intval >= 0)) {
-                return (Object) {.type=TYPE_CONTAINER, .payload=multiplyString(opB.payload, opA.intval)};
-        }
+        mul_int_string:
+        if (opA.intval >= 0) return (Object) {.type=TYPE_STRING, .strval=multiplyString(opB.strval, opA.intval)};
         else goto error;
 
-        mul_container_int:
-        if ((opA.payload->type == CONTENT_STRING) && (opB.intval >= 0)) {
-                return (Object) {.type=TYPE_CONTAINER, .payload=multiplyString(opA.payload, opB.intval)};
-        }
+        mul_string_int:
+        if (opB.intval >= 0) return (Object) {.type=TYPE_STRING, .strval=multiplyString(opA.strval, opB.intval)};
         else goto error;
 
         mul_float_int:
@@ -266,7 +259,7 @@ static Object interpretInvert(const Node* root) {
                         return operand;
                 case TYPE_FLOAT:
                         TYPEERROR();
-                case TYPE_CONTAINER:
+                case TYPE_STRING:
                         TYPEERROR();
                 default: TYPEERROR();
         }
@@ -280,14 +273,8 @@ static Object interpretAnd(const Node* root) {
                         break;
                 case TYPE_FLOAT:
                         TYPEERROR();
-                case TYPE_CONTAINER:
-                        switch (operand.payload->type) {
-                                case CONTENT_STRING:
-                                        if (!strlen(operand.payload->strval)) return operand;
-                                        break;
-                                default:
-                                        TYPEERROR();
-                        }
+                case TYPE_STRING:
+                        if (!operand.strval->len) return operand;
                         break;
                 default: TYPEERROR();
         }
@@ -295,16 +282,10 @@ static Object interpretAnd(const Node* root) {
         switch (operand.type) {
                 case TYPE_INT:
                 case TYPE_BOOL:
+                case TYPE_STRING:
                         return operand;
                 case TYPE_FLOAT:
                         TYPEERROR();
-                case TYPE_CONTAINER:
-                        switch (operand.payload->type) {
-                                case CONTENT_STRING:
-                                        return operand;
-                                default:
-                                        TYPEERROR();
-                        }
                 default: TYPEERROR();
         }
 }
@@ -317,14 +298,8 @@ static Object interpretOr(const Node* root) {
                         break;
                 case TYPE_FLOAT:
                         TYPEERROR();
-                case TYPE_CONTAINER:
-                        switch (operand.payload->type) {
-                                case CONTENT_STRING:
-                                        if (strlen(operand.payload->strval)) return operand;
-                                        break;
-                                default:
-                                        TYPEERROR();
-                        }
+                case TYPE_STRING:
+                        if (operand.strval->len) return operand;
                         break;
                 default: TYPEERROR();
         }
@@ -332,16 +307,10 @@ static Object interpretOr(const Node* root) {
         switch (operand.type) {
                 case TYPE_INT:
                 case TYPE_BOOL:
+                case TYPE_STRING:
                         return operand;
                 case TYPE_FLOAT:
                         TYPEERROR();
-                case TYPE_CONTAINER:
-                        switch (operand.payload->type) {
-                                case CONTENT_STRING:
-                                        return operand;
-                                default:
-                                        TYPEERROR();
-                        }
                 default: TYPEERROR();
         }
 }
@@ -355,8 +324,8 @@ static Object interpretEq(const Node* root) {
                         [TYPE_INT] = &&eq_int_int,
                         [TYPE_BOOL] = &&eq_int_int,
                 },
-                [TYPE_CONTAINER] = {
-                        [TYPE_CONTAINER] = &&eq_container_container,
+                [TYPE_STRING] = {
+                        [TYPE_STRING] = &&eq_string_string,
                 },
         };
 
@@ -371,11 +340,9 @@ static Object interpretEq(const Node* root) {
         eq_int_int:
         return (Object) {.type=TYPE_BOOL, .intval=(opA.intval==opB.intval)};
 
-        eq_container_container:
-        if ((opA.payload->type == CONTENT_STRING) && (opB.payload->type == CONTENT_STRING)) {
-                return (Object) {.type=TYPE_BOOL, .intval=(strcmp(opA.payload->strval, opB.payload->strval)==0)};
-        }
-        else goto error;
+        eq_string_string:
+        if (opA.strval->len != opB.strval->len) return (Object) {.type=TYPE_BOOL, .intval=0};
+        return (Object) {.type=TYPE_BOOL, .intval=!strcmp(opA.strval->value, opB.strval->value)};
 
         error:
         // two objects of incompatible types are different
