@@ -31,9 +31,10 @@ typedef enum {
 } Operator;
 
 typedef struct Node {
-        struct Node* operands[2];
         Token token;
         Operator operator;
+        unsigned int nb_operands;
+        struct Node* operands[];
 } Node;
 
 

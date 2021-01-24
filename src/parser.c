@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stddef.h>
+
 
 #include "parser.h"
 
@@ -27,19 +29,12 @@ static Node* prefixParseError(Token **const tokens);
 static Node* infixParseError(Token **const tokens, Node *const root);
 
 
-static Node* allocateNode(Node *const root, Node *const operand, Token token, Operator operator) {
-        Node *const node = malloc(sizeof(Node));
-        *node = (Node){
-                .operands = {root, operand},
-                .token = token,
-                .operator = operator,
-        };
-        return node;
+static Node* allocateNode(const unsigned int nb_children) {
+        return malloc(offsetof(Node, operands) + sizeof(Node*)*nb_children);
 }
 void freeNode(Node* node) {
         if (node == NULL) return;
-        freeNode(node->operands[0]);
-        freeNode(node->operands[1]);
+        for (unsigned int i = 0; i<node->nb_operands; i++) freeNode(node->operands[i]);
         free(node);
 }
 
@@ -54,43 +49,61 @@ static Node* unary_plus(Token **const tokens) {
         const Token operator = CONSUME(tokens);
         Node* operand = parse(tokens, PREC_UNARY);
         if (operand == NULL) return NULL;
-        else return allocateNode(operand, NULL, operator, OP_UNARY_PLUS);
+        Node *const new = allocateNode(1);
+        *new = (Node) {operator, OP_UNARY_PLUS, 1};
+        new->operands[0] = operand;
+        return new;
 }
 static Node* unary_minus(Token **const tokens) {
         const Token operator = CONSUME(tokens);
         Node* operand = parse(tokens, PREC_UNARY);
         if (operand == NULL) return NULL;
-        else return allocateNode(operand, NULL, operator, OP_UNARY_MINUS);
+        Node *const new = allocateNode(1);
+        *new = (Node) {operator, OP_UNARY_MINUS, 1};
+        new->operands[0] = operand;
+        return new;
 }
 static Node* integer(Token **const tokens) {
-        return allocateNode(NULL, NULL, CONSUME(tokens), OP_INT);
+        Node *const new = allocateNode(0);
+        *new = (Node) {CONSUME(tokens), OP_INT, 0};
+        return new;
 }
 static Node* boolean(Token **const tokens) {
-        return allocateNode(NULL, NULL, CONSUME(tokens), OP_BOOL);
+        Node *const new = allocateNode(0);
+        *new = (Node) {CONSUME(tokens), OP_BOOL, 0};
+        return new;
 }
 static Node* fpval(Token **const tokens) {
-        return allocateNode(NULL, NULL, CONSUME(tokens), OP_FLOAT);
+        Node *const new = allocateNode(0);
+        *new = (Node) {CONSUME(tokens), OP_FLOAT, 0};
+        return new;
 }
 static Node* string(Token **const tokens) {
-        return allocateNode(NULL, NULL, CONSUME(tokens), OP_STR);
+        Node *const new = allocateNode(0);
+        *new = (Node) {CONSUME(tokens), OP_STR, 0};
+        return new;
 }
 static Node* grouping(Token **const tokens) {
         const Token operator = CONSUME(tokens);
         Node* operand = parse(tokens, PREC_GROUPING);
         if (operand == NULL) return NULL;
 
-        Node* node = allocateNode(operand, NULL, operator, OP_GROUP);
-
         if (PEEK_TYPE(tokens) == TOKEN_PCLOSE) CONSUME(tokens);
-        else return infixParseError(tokens, node);
+        else return infixParseError(tokens, operand);
 
-        return node;
+        Node *const new = allocateNode(1);
+        *new = (Node) {operator, OP_GROUP, 1};
+        new->operands[0] = operand;
+        return new;
 }
 static Node* invert(Token **const tokens) {
         const Token operator = CONSUME(tokens);
         Node* operand = parse(tokens, PREC_UNARY);
         if (operand == NULL) return NULL;
-        else return allocateNode(operand, NULL, operator, OP_INVERT);
+        Node *const new = allocateNode(1);
+        *new = (Node) {operator, OP_INVERT, 1};
+        new->operands[0] = operand;
+        return new;
 }
 
 // --------------------- infix parse functions ---------------------------------
@@ -108,7 +121,11 @@ static Node* binary_plus(Token **const tokens, Node* const root) {
                 freeNode(root);
                 return NULL;
         }
-        else return allocateNode(root, operand, operator, OP_SUM);
+        Node *const new = allocateNode(2);
+        *new = (Node) {operator, OP_SUM, 2};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
 }
 static Node* binary_minus(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
@@ -117,7 +134,11 @@ static Node* binary_minus(Token **const tokens, Node* const root) {
                 freeNode(root);
                 return NULL;
         }
-        else return allocateNode(root, operand, operator, OP_DIFFERENCE);
+        Node *const new = allocateNode(2);
+        *new = (Node) {operator, OP_DIFFERENCE, 2};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
 }
 static Node* binary_star(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
@@ -126,7 +147,11 @@ static Node* binary_star(Token **const tokens, Node* const root) {
                 freeNode(root);
                 return NULL;
         }
-        else return allocateNode(root, operand, operator, OP_PRODUCT);
+        Node *const new = allocateNode(2);
+        *new = (Node) {operator, OP_PRODUCT, 2};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
 }
 static Node* binary_slash(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
@@ -135,7 +160,11 @@ static Node* binary_slash(Token **const tokens, Node* const root) {
                 freeNode(root);
                 return NULL;
         }
-        else return allocateNode(root, operand, operator, OP_DIVISION);
+        Node *const new = allocateNode(2);
+        *new = (Node) {operator, OP_DIVISION, 2};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
 }
 static Node* binary_and(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
@@ -144,7 +173,11 @@ static Node* binary_and(Token **const tokens, Node* const root) {
                 freeNode(root);
                 return NULL;
         }
-        else return allocateNode(root, operand, operator, OP_AND);
+        Node *const new = allocateNode(2);
+        *new = (Node) {operator, OP_AND, 2};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
 }
 static Node* binary_or(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
@@ -153,7 +186,11 @@ static Node* binary_or(Token **const tokens, Node* const root) {
                 freeNode(root);
                 return NULL;
         }
-        else return allocateNode(root, operand, operator, OP_OR);
+        Node *const new = allocateNode(2);
+        *new = (Node) {operator, OP_OR, 2};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
 }
 static Node* lt(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
@@ -162,8 +199,11 @@ static Node* lt(Token **const tokens, Node* const root) {
                 freeNode(root);
                 return NULL;
         }
-        else return allocateNode(root, operand, operator, OP_LT);
-
+        Node *const new = allocateNode(2);
+        *new = (Node) {operator, OP_LT, 2};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
 }
 static Node* le(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
@@ -172,24 +212,33 @@ static Node* le(Token **const tokens, Node* const root) {
                 freeNode(root);
                 return NULL;
         }
-        else return allocateNode(root, operand, operator, OP_LE);
-
+        Node *const new = allocateNode(2);
+        *new = (Node) {operator, OP_LE, 2};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
 }
 static Node* gt(Token **const tokens, Node* const root) {
         // > is implemented as !(<=)
         const Token operator = **tokens;
         Node* operand = le(tokens, root);
         if (operand == NULL) return NULL;
-        else return allocateNode(operand, NULL, operator, OP_INVERT);
 
+        Node *const new = allocateNode(1);
+        *new = (Node) {operator, OP_INVERT, 1};
+        new->operands[0] = operand;
+        return new;
 }
 static Node* ge(Token **const tokens, Node* const root) {
         // >= is implemented as !(<)
         const Token operator = **tokens;
         Node* operand = lt(tokens, root);
         if (operand == NULL) return NULL;
-        else return allocateNode(operand, NULL, operator, OP_INVERT);
 
+        Node *const new = allocateNode(1);
+        *new = (Node) {operator, OP_INVERT, 1};
+        new->operands[0] = operand;
+        return new;
 }
 static Node* eq(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
@@ -198,14 +247,22 @@ static Node* eq(Token **const tokens, Node* const root) {
                 freeNode(root);
                 return NULL;
         }
-        else return allocateNode(root, operand, operator, OP_EQ);
+        Node *const new = allocateNode(2);
+        *new = (Node) {operator, OP_EQ, 2};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
 }
 static Node* ne(Token **const tokens, Node* const root) {
         // != is implemented as !(==)
         const Token operator = **tokens;
         Node* operand = eq(tokens, root);
         if (operand == NULL) return NULL;
-        else return allocateNode(operand, NULL, operator, OP_INVERT);
+
+        Node *const new = allocateNode(1);
+        *new = (Node) {operator, OP_INVERT, 1};
+        new->operands[0] = operand;
+        return new;
 }
 
 // ------------------ end parse functions --------------------------------------
