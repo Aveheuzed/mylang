@@ -12,6 +12,7 @@ typedef Node* (*BinaryParseFn)(Token **const tokens, Node* const root);
 typedef enum Precedence {
         PREC_SEMICOLON,
         PREC_NONE,
+        PREC_GROUPING,
         PREC_OR,
         PREC_AND,
         PREC_COMPARISON,
@@ -19,7 +20,6 @@ typedef enum Precedence {
         PREC_ADD,
         PREC_MUL,
         PREC_UNARY,
-        PREC_GROUPING,
 } Precedence;
 
 Node* parse(Token **const tokens, const Precedence precedence);
@@ -225,7 +225,7 @@ Node* parse(Token **const tokens, const Precedence precedence) {
                 [TOKEN_GT] = {prefixParseError, gt, PREC_COMPARISON},
                 [TOKEN_LT] = {prefixParseError, lt, PREC_COMPARISON},
                 [TOKEN_POPEN] = {grouping, infixParseError, PREC_NONE},
-                [TOKEN_PCLOSE] = {prefixParseError, infixParseError, PREC_GROUPING},
+                [TOKEN_PCLOSE] = {prefixParseError, infixParseError, PREC_NONE},
 
                 [TOKEN_EQUAL] = {prefixParseError, infixParseError, PREC_AFFECT},
                 [TOKEN_SEMICOLON] = {prefixParseError, infixParseError, PREC_SEMICOLON},
@@ -247,7 +247,7 @@ Node* parse(Token **const tokens, const Precedence precedence) {
         root = rules[PEEK_TYPE(tokens)].prefix(tokens);
         if (root == NULL) return root;
 
-        while (precedence <= rules[PEEK_TYPE(tokens)].precedence) {
+        while (precedence < rules[PEEK_TYPE(tokens)].precedence) {
                 root = rules[PEEK_TYPE(tokens)].infix(tokens, root);
                 if (root == NULL) break;
         }
