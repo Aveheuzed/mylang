@@ -7,6 +7,7 @@ void detect_keywords(Token *const token) {
         const static struct {char* source; TokenType type;} keywords[] = {
                 {"true", TOKEN_TRUE},
                 {"false", TOKEN_FALSE},
+                {"none", TOKEN_NONE},
 
                 {NULL, 0}
         };

@@ -34,6 +34,7 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_BOOL] = 0,
         [OP_FLOAT] = 0,
         [OP_STR] = 0,
+        [OP_NONE] = 0,
 
         [OP_UNARY_PLUS] = 1,
         [OP_UNARY_MINUS] = 1,
@@ -132,6 +133,11 @@ static Node* invert(Token **const tokens) {
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INVERT);
         *new = (Node) {.token=operator, .operator=OP_INVERT};
         new->operands[0] = operand;
+        return new;
+}
+static Node* none(Token **const tokens) {
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_NONE);
+        *new = (Node) {.token=CONSUME(tokens), .operator=OP_NONE};
         return new;
 }
 
@@ -323,6 +329,7 @@ static Node* parse(Token **const tokens, const Precedence precedence) {
                 [TOKEN_STR] = {string, infixParseError, PREC_NONE},
                 [TOKEN_TRUE] = {boolean, infixParseError, PREC_NONE},
                 [TOKEN_FALSE] = {boolean, infixParseError, PREC_NONE},
+                [TOKEN_NONE] = {none, infixParseError, PREC_NONE},
 
                 [TOKEN_ERROR] = {prefixParseError, infixParseError, PREC_NONE},
                 [TOKEN_EOF] = {prefixParseError, infixParseError, PREC_NONE},

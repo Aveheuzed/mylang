@@ -11,6 +11,7 @@ typedef enum {
         OP_BOOL,
         OP_FLOAT,
         OP_STR,
+        OP_NONE,
 
         // one operand
         OP_UNARY_PLUS,

@@ -7,6 +7,7 @@
 typedef enum ObjType {
         TYPE_INT,
         TYPE_BOOL,
+        TYPE_NONE,
         TYPE_FLOAT,
         TYPE_STRING,
 

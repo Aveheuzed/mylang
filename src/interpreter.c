@@ -276,6 +276,8 @@ static Object interpretAnd(const Node* root) {
                 case TYPE_STRING:
                         if (!operand.strval->len) return operand;
                         break;
+                case TYPE_NONE:
+                        return operand;
                 default: TYPEERROR();
         }
         operand = interpret(root->operands[1]);
@@ -283,6 +285,7 @@ static Object interpretAnd(const Node* root) {
                 case TYPE_INT:
                 case TYPE_BOOL:
                 case TYPE_STRING:
+                case TYPE_NONE:
                         return operand;
                 case TYPE_FLOAT:
                         TYPEERROR();
@@ -301,6 +304,8 @@ static Object interpretOr(const Node* root) {
                 case TYPE_STRING:
                         if (operand.strval->len) return operand;
                         break;
+                case TYPE_NONE:
+                        break;
                 default: TYPEERROR();
         }
         operand = interpret(root->operands[1]);
@@ -308,6 +313,7 @@ static Object interpretOr(const Node* root) {
                 case TYPE_INT:
                 case TYPE_BOOL:
                 case TYPE_STRING:
+                case TYPE_NONE:
                         return operand;
                 case TYPE_FLOAT:
                         TYPEERROR();
@@ -327,6 +333,9 @@ static Object interpretEq(const Node* root) {
                 [TYPE_STRING] = {
                         [TYPE_STRING] = &&eq_string_string,
                 },
+                [TYPE_NONE] = {
+                        [TYPE_NONE] = && eq_none_none,
+                },
         };
 
         Object opA = interpret(root->operands[0]);
@@ -343,6 +352,9 @@ static Object interpretEq(const Node* root) {
         eq_string_string:
         if (opA.strval->len != opB.strval->len) return (Object) {.type=TYPE_BOOL, .intval=0};
         return (Object) {.type=TYPE_BOOL, .intval=!strcmp(opA.strval->value, opB.strval->value)};
+
+        eq_none_none:
+        return (Object) {.type=TYPE_BOOL, .intval=1};
 
         error:
         // two objects of incompatible types are different
@@ -432,6 +444,9 @@ static Object interpretLe(const Node* root) {
         error:
         TYPEERROR();
 }
+static Object interpretNone(const Node* root) {
+        return (Object) {.type=TYPE_NONE};
+}
 
 Object interpret(const Node* root) {
         static const InterpretFn interpreters[] = {
@@ -441,6 +456,7 @@ Object interpret(const Node* root) {
                 [OP_BOOL] = interpretBool,
                 [OP_FLOAT] = interpretFloat,
                 [OP_STR] = interpretStr,
+                [OP_NONE] = interpretNone,
 
                 [OP_UNARY_PLUS] = interpretUnaryPlus,
                 [OP_UNARY_MINUS] = interpretUnaryMinus,

@@ -27,6 +27,7 @@ typedef enum {
         TOKEN_STR,
         TOKEN_TRUE,
         TOKEN_FALSE,
+        TOKEN_NONE,
 
         TOKEN_ERROR,
         TOKEN_EOF,

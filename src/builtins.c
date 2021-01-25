@@ -11,6 +11,8 @@ void print_value(const Object obj) {
                 case TYPE_FLOAT:
                         printf("%f\n", obj.floatval); break;
                 case TYPE_STRING:
-                        printf("\"%s\"\n", obj.strval->value);
+                        printf("\"%s\"\n", obj.strval->value); break;
+                case TYPE_NONE:
+                        printf("none\n"); break;
         }
 }
