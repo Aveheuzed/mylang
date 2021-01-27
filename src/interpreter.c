@@ -24,9 +24,6 @@
 
          }
  }
- Object interpretGroup(const Node* root) {
-         return interpret(root->operands[0]);
- }
  Object interpretBinary(const Node* root) {
          Object opA = interpret(root->operands[0]);
          Object opB = interpret(root->operands[1]);
@@ -56,7 +53,6 @@
         [OP_LITERAL] = interpretLiteral,
 
         [OP_MATH_UNARY] = interpretUnary,
-        [OP_GROUP] = interpretGroup,
 
         [OP_MATH_BINARY] = interpretBinary,
         [OP_AFFECT] = interpretAffect,
