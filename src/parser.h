@@ -19,7 +19,6 @@ typedef enum {
 
         // one operand
         OP_MATH_UNARY,
-        OP_GROUP,
 
         // two operands
         OP_MATH_BINARY,

@@ -37,7 +37,7 @@ Node* literal(Token ** tokens) {
 }
 Node* grouping(Token ** tokens) {
         const Token operator = CONSUME(tokens);
-        Node* node = allocateNode(parse(tokens, PREC_GROUPING), NULL, operator, OP_GROUP);
+        Node* node = parse(tokens, PREC_GROUPING);
         if ((*tokens)->type == TOKEN_PCLOSE) CONSUME(tokens);
         else prefixParseError(tokens);
         return node;
