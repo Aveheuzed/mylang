@@ -37,7 +37,6 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
 
         [OP_UNARY_PLUS] = 1,
         [OP_UNARY_MINUS] = 1,
-        [OP_GROUP] = 1,
         [OP_INVERT] = 1,
 
         [OP_SUM] = 2,

@@ -55,9 +55,6 @@ static Object interpretUnaryMinus(const Node* root) {
                 default: TYPEERROR();
         }
 }
-static Object interpretGroup(const Node* root) {
-        return interpret(root->operands[0]);
-}
 static Object interpretSum(const Node* root) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
                 [TYPE_INT] = {
@@ -444,7 +441,6 @@ Object interpret(const Node* root) {
 
                 [OP_UNARY_PLUS] = interpretUnaryPlus,
                 [OP_UNARY_MINUS] = interpretUnaryMinus,
-                [OP_GROUP] = interpretGroup,
                 [OP_INVERT] = interpretInvert,
 
                 [OP_SUM] = interpretSum,
