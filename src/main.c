@@ -4,18 +4,21 @@
 #include "lexer.h"
 #include "parser.h"
 #include "interpreter.h"
+#include "builtins.h"
 
 void print_token(const Token* token) {
         printf("\"%.*s\" : ln %u, col %u, len %u. Type : %d\n", token->length, token->source, token->line, token->column, token->length, token->type);
 }
 
-void main() {
+void _main() {
         char* line = NULL;
-        { size_t len = 0;
+        {
+                size_t len = 0;
                 getline(&line, &len, stdin);
         }
-        Token *tokens = calloc(128, sizeof(Token));
-        puts("Starting…");
+        Token tokens[128];
+        Node* roots[128];
+        unsigned int nb_stmt = 0;
         {
                 char* current_char = line;
                 Token* current_token = tokens;
@@ -26,22 +29,25 @@ void main() {
                         printf("Lexing error.\n");
                         exit(-1);
                 }
-                else {
-                        for (Token* tk = tokens; tk<current_token; tk++) {
-                                print_token(tk);
-                        }
-                }
+
         }
-        puts("Lexing done.");
-        Node* root;
         {
                 Token* current_token = tokens;
-                root = parse(&current_token, PREC_NONE);
-        }
-        puts("Parsing done.");
-        printf("%ld\n", interpret(root));
-        puts("All done !");
-        free(tokens);
-        free(line);
 
+                do {
+                        roots[nb_stmt] = parse_statement(&current_token);
+                } while (roots[nb_stmt++] != NULL);
+                nb_stmt--;
+        }
+        for (unsigned int istmt=0; istmt<nb_stmt; istmt++) {
+                print_value(interpret(roots[istmt]));
+        }
+        for (unsigned int istmt=0; istmt<nb_stmt; istmt++) {
+                freeNode(roots[istmt]);
+        }
+}
+
+
+void main() {
+        while (1) _main();
 }

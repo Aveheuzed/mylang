@@ -2,11 +2,7 @@
 #define interpreter_h
 
 #include "parser.h"
-#include <stdint.h>
-
-typedef intmax_t Object;
-
-typedef Object (*InterpretFn)(const Node* root);
+#include "object.h"
 
 Object interpret(const Node* root);
 
