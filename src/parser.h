@@ -16,7 +16,6 @@ typedef enum {
         // one operand
         OP_UNARY_PLUS,
         OP_UNARY_MINUS,
-        OP_GROUP,
         OP_INVERT,
 
         // two operands

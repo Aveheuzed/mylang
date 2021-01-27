@@ -38,7 +38,6 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
 
         [OP_UNARY_PLUS] = 1,
         [OP_UNARY_MINUS] = 1,
-        [OP_GROUP] = 1,
         [OP_INVERT] = 1,
 
         [OP_SUM] = 2,
@@ -121,10 +120,7 @@ static Node* grouping(Token **const tokens) {
         if (PEEK_TYPE(tokens) == TOKEN_PCLOSE) CONSUME(tokens);
         else return infixParseError(tokens, operand);
 
-        Node *const new = ALLOCATE_SIMPLE_NODE(OP_GROUP);
-        *new = (Node) {.token=operator, .operator=OP_GROUP};
-        new->operands[0] = operand;
-        return new;
+        return operand;
 }
 static Node* invert(Token **const tokens) {
         const Token operator = CONSUME(tokens);
