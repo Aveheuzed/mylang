@@ -3,6 +3,7 @@
 
 #include "lexer.h"
 #include "parser.h"
+#include "interpreter.h"
 
 void print_token(const Token* token) {
         printf("\"%.*s\" : ln %u, col %u, len %u. Type : %d\n", token->length, token->source, token->line, token->column, token->length, token->type);
@@ -32,11 +33,14 @@ void main() {
                 }
         }
         puts("Lexing done.");
+        Node* root;
         {
                 Token* current_token = tokens;
-                freeNode(parse(&current_token, PREC_NONE));
+                root = parse(&current_token, PREC_NONE);
         }
         puts("Parsing done.");
+        printf("%ld\n", interpret(root));
+        puts("All done !");
         free(tokens);
         free(line);
 
