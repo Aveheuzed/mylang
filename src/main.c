@@ -40,9 +40,14 @@ void _main() {
                 } while (roots[nb_stmt++] != NULL);
                 nb_stmt--;
         }
+
+        Namespace* ns = allocateNamespace();
         for (unsigned int istmt=0; istmt<nb_stmt; istmt++) {
-                print_value(interpret(roots[istmt]));
+                print_value(interpret(roots[istmt], &ns));
         }
+        freeNamespace(ns);
+
+
         for (unsigned int istmt=0; istmt<nb_stmt; istmt++) {
                 freeNode(roots[istmt]);
         }

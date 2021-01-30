@@ -4,30 +4,34 @@
 
 #include "interpreter.h"
 #include "builtins.h"
+#include "namespace.h"
 
 #define NOTIMPLEMENTED() (puts("Operation not implemented."), exit(-1))
 #define TYPEERROR() (puts("Attempt to perform an operation on incompatible types"), exit(-1))
+#define RUNTIMEERROR() (puts("Runtime error !"), exit(-1))
 
-typedef Object (*InterpretFn)(const Node* root);
+typedef Object (*InterpretFn)(const Node* root, Namespace **const ns);
 
-static Object interpretVariable(const Node* root) {
-        NOTIMPLEMENTED();
+static Object interpretVariable(const Node* root, Namespace **const ns) {
+        Object* obj = ns_get_value(*ns, root->token.source);
+        if (obj == NULL) RUNTIMEERROR();
+        else return *obj;
 }
-static Object interpretInt(const Node* root) {
+static Object interpretInt(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_INT, .intval=atoll(root->token.source)};
 }
-static Object interpretBool(const Node* root) {
+static Object interpretBool(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_BOOL, .intval=(root->token.type == TOKEN_TRUE)};
 
 }
-static Object interpretFloat(const Node* root) {
+static Object interpretFloat(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_FLOAT, .floatval=atof(root->token.source)};
 }
-static Object interpretStr(const Node* root) {
+static Object interpretStr(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_STRING, .strval=makeString(root->token.source+1, root->token.length-2)};
 }
-static Object interpretUnaryPlus(const Node* root) {
-        Object operand = interpret(root->operands[0]);
+static Object interpretUnaryPlus(const Node* root, Namespace **const ns) {
+        Object operand = interpret(root->operands[0], ns);
 
         switch (operand.type) {
                 case TYPE_INT:
@@ -39,8 +43,8 @@ static Object interpretUnaryPlus(const Node* root) {
                 default: TYPEERROR();
         }
 }
-static Object interpretUnaryMinus(const Node* root) {
-        Object operand = interpret(root->operands[0]);
+static Object interpretUnaryMinus(const Node* root, Namespace **const ns) {
+        Object operand = interpret(root->operands[0], ns);
 
         switch (operand.type) {
                 case TYPE_INT:
@@ -55,10 +59,10 @@ static Object interpretUnaryMinus(const Node* root) {
                 default: TYPEERROR();
         }
 }
-static Object interpretGroup(const Node* root) {
-        return interpret(root->operands[0]);
+static Object interpretGroup(const Node* root, Namespace **const ns) {
+        return interpret(root->operands[0], ns);
 }
-static Object interpretSum(const Node* root) {
+static Object interpretSum(const Node* root, Namespace **const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
                 [TYPE_INT] = {
                         [TYPE_INT] = &&add_int_int,
@@ -80,8 +84,8 @@ static Object interpretSum(const Node* root) {
                 },
         };
 
-        Object opA = interpret(root->operands[0]);
-        Object opB = interpret(root->operands[1]);
+        Object opA = interpret(root->operands[0], ns);
+        Object opB = interpret(root->operands[1], ns);
         {
                 const void* handler = dispatcher[opA.type][opB.type];
                 if (handler == NULL) goto error; // undefined array members are initialized to NULL (C99)
@@ -106,7 +110,7 @@ static Object interpretSum(const Node* root) {
         error:
         TYPEERROR();
 }
-static Object interpretDifference(const Node* root) {
+static Object interpretDifference(const Node* root, Namespace **const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
                 [TYPE_INT] = {
                         [TYPE_INT] = &&sub_int_int,
@@ -125,8 +129,8 @@ static Object interpretDifference(const Node* root) {
                 },
         };
 
-        Object opA = interpret(root->operands[0]);
-        Object opB = interpret(root->operands[1]);
+        Object opA = interpret(root->operands[0], ns);
+        Object opB = interpret(root->operands[1], ns);
         {
                 const void* handler = dispatcher[opA.type][opB.type];
                 if (handler == NULL) goto error; // undefined array members are initialized to NULL (C99)
@@ -148,7 +152,7 @@ static Object interpretDifference(const Node* root) {
         error:
         TYPEERROR();
 }
-static Object interpretProduct(const Node* root) {
+static Object interpretProduct(const Node* root, Namespace **const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
                 [TYPE_INT] = {
                         [TYPE_INT] = &&mul_int_int,
@@ -173,8 +177,8 @@ static Object interpretProduct(const Node* root) {
                 },
         };
 
-        Object opA = interpret(root->operands[0]);
-        Object opB = interpret(root->operands[1]);
+        Object opA = interpret(root->operands[0], ns);
+        Object opB = interpret(root->operands[1], ns);
         {
                 const void* handler = dispatcher[opA.type][opB.type];
                 if (handler == NULL) goto error; // undefined array members are initialized to NULL (C99)
@@ -204,7 +208,7 @@ static Object interpretProduct(const Node* root) {
         error:
         TYPEERROR();
 }
-static Object interpretDivision(const Node* root) {
+static Object interpretDivision(const Node* root, Namespace **const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
                 [TYPE_INT] = {
                         [TYPE_INT] = &&div_int_int,
@@ -223,8 +227,8 @@ static Object interpretDivision(const Node* root) {
                 },
         };
 
-        Object opA = interpret(root->operands[0]);
-        Object opB = interpret(root->operands[1]);
+        Object opA = interpret(root->operands[0], ns);
+        Object opB = interpret(root->operands[1], ns);
         {
                 const void* handler = dispatcher[opA.type][opB.type];
                 if (handler == NULL) goto error; // undefined array members are initialized to NULL (C99)
@@ -246,11 +250,13 @@ static Object interpretDivision(const Node* root) {
         error:
         TYPEERROR();
 }
-static Object interpretAffect(const Node* root) {
-        NOTIMPLEMENTED();
+static Object interpretAffect(const Node* root, Namespace **const ns) {
+        Object obj = interpret(root->operands[1], ns);
+        ns_set_value(ns, root->operands[0]->token.source, obj);
+        return obj;
 }
-static Object interpretInvert(const Node* root) {
-        Object operand = interpret(root->operands[0]);
+static Object interpretInvert(const Node* root, Namespace **const ns) {
+        Object operand = interpret(root->operands[0], ns);
         switch (operand.type) {
                 case TYPE_INT:
                         operand.type = TYPE_BOOL;
@@ -264,8 +270,8 @@ static Object interpretInvert(const Node* root) {
                 default: TYPEERROR();
         }
 }
-static Object interpretAnd(const Node* root) {
-        Object operand = interpret(root->operands[0]);
+static Object interpretAnd(const Node* root, Namespace **const ns) {
+        Object operand = interpret(root->operands[0], ns);
         switch (operand.type) {
                 case TYPE_INT:
                 case TYPE_BOOL:
@@ -278,7 +284,7 @@ static Object interpretAnd(const Node* root) {
                         break;
                 default: TYPEERROR();
         }
-        operand = interpret(root->operands[1]);
+        operand = interpret(root->operands[1], ns);
         switch (operand.type) {
                 case TYPE_INT:
                 case TYPE_BOOL:
@@ -289,8 +295,8 @@ static Object interpretAnd(const Node* root) {
                 default: TYPEERROR();
         }
 }
-static Object interpretOr(const Node* root) {
-        Object operand = interpret(root->operands[0]);
+static Object interpretOr(const Node* root, Namespace **const ns) {
+        Object operand = interpret(root->operands[0], ns);
         switch (operand.type) {
                 case TYPE_INT:
                 case TYPE_BOOL:
@@ -303,7 +309,7 @@ static Object interpretOr(const Node* root) {
                         break;
                 default: TYPEERROR();
         }
-        operand = interpret(root->operands[1]);
+        operand = interpret(root->operands[1], ns);
         switch (operand.type) {
                 case TYPE_INT:
                 case TYPE_BOOL:
@@ -314,7 +320,7 @@ static Object interpretOr(const Node* root) {
                 default: TYPEERROR();
         }
 }
-static Object interpretEq(const Node* root) {
+static Object interpretEq(const Node* root, Namespace **const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] = {
                 [TYPE_INT] = {
                         [TYPE_INT] = &&eq_int_int,
@@ -329,8 +335,8 @@ static Object interpretEq(const Node* root) {
                 },
         };
 
-        Object opA = interpret(root->operands[0]);
-        Object opB = interpret(root->operands[1]);
+        Object opA = interpret(root->operands[0], ns);
+        Object opB = interpret(root->operands[1], ns);
         {
                 const void* handler = dispatcher[opA.type][opB.type];
                 if (handler == NULL) goto error; // undefined array members are initialized to NULL (C99)
@@ -348,7 +354,7 @@ static Object interpretEq(const Node* root) {
         // two objects of incompatible types are different
         return (Object) {.type=TYPE_BOOL, .intval=0};
 }
-static Object interpretLt(const Node* root) {
+static Object interpretLt(const Node* root, Namespace **const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] = {
                 [TYPE_INT] = {
                         [TYPE_INT] = &&lt_int_int,
@@ -367,8 +373,8 @@ static Object interpretLt(const Node* root) {
                 },
         };
 
-        Object opA = interpret(root->operands[0]);
-        Object opB = interpret(root->operands[1]);
+        Object opA = interpret(root->operands[0], ns);
+        Object opB = interpret(root->operands[1], ns);
         {
                 const void* handler = dispatcher[opA.type][opB.type];
                 if (handler == NULL) goto error; // undefined array members are initialized to NULL (C99)
@@ -390,7 +396,7 @@ static Object interpretLt(const Node* root) {
         error:
         TYPEERROR();
 }
-static Object interpretLe(const Node* root) {
+static Object interpretLe(const Node* root, Namespace **const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] = {
                 [TYPE_INT] = {
                         [TYPE_INT] = &&le_int_int,
@@ -409,8 +415,8 @@ static Object interpretLe(const Node* root) {
                 },
         };
 
-        Object opA = interpret(root->operands[0]);
-        Object opB = interpret(root->operands[1]);
+        Object opA = interpret(root->operands[0], ns);
+        Object opB = interpret(root->operands[1], ns);
         {
                 const void* handler = dispatcher[opA.type][opB.type];
                 if (handler == NULL) goto error; // undefined array members are initialized to NULL (C99)
@@ -433,7 +439,7 @@ static Object interpretLe(const Node* root) {
         TYPEERROR();
 }
 
-Object interpret(const Node* root) {
+Object interpret(const Node* root, Namespace **const ns) {
         static const InterpretFn interpreters[] = {
                 [OP_VARIABLE] = interpretVariable,
 
@@ -458,7 +464,7 @@ Object interpret(const Node* root) {
                 [OP_LT] = interpretLt,
                 [OP_LE] = interpretLe,
         };
-        return interpreters[root->operator](root);
+        return interpreters[root->operator](root, ns);
 }
 
 #undef TYPEERROR

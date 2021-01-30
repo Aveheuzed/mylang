@@ -299,10 +299,10 @@ static Node* ne(Token **const tokens, Node* const root) {
         return new;
 }
 static Node* affect(Token **const tokens, Node *const root) {
-        if (root->operator != OP_IDENTIFIER) return infixParseError(tokens, root);
+        if (root->operator != OP_VARIABLE) return infixParseError(tokens, root);
 
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_AFFECT);
+        Node* operand = parse(tokens, PREC_AFFECT-1);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
