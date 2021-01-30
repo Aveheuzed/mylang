@@ -20,16 +20,17 @@ void _main() {
         Node* roots[128];
         unsigned int nb_stmt = 0;
         {
+                IdentifiersRecord* record = allocateRecord();
                 char* current_char = line;
                 Token* current_token = tokens;
                 do {
-                        current_char = lex(current_char, current_token++);
+                        current_char = lex(current_char, current_token++, &record);
                 } while (current_token[-1].type != TOKEN_EOF && current_token[-1].type != TOKEN_ERROR);
                 if (current_token[-1].type == TOKEN_ERROR) {
                         printf("Lexing error.\n");
                         exit(-1);
                 }
-
+                freeRecord(record);
         }
         {
                 Token* current_token = tokens;

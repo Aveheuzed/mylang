@@ -2,6 +2,12 @@
 
 #include "token.h"
 #include "lexer.h"
+#include "identifiers_record.h"
+
+void intern_identifiers(Token *const token, IdentifiersRecord **const record) {
+        if (token->type != TOKEN_IDENTIFIER) return;
+        token->source = internalize(record, token->source, token->length);
+}
 
 void detect_keywords(Token *const token) {
         const static struct {char* source; TokenType type;} keywords[] = {
@@ -114,9 +120,9 @@ char* _lex(char *source, Token *const token) {
         #undef ADVANCE
 }
 
-char* lex(char* source, Token *const token) {
+char* lex(char* source, Token *const token, IdentifiersRecord **const record) {
         source = _lex(source, token);
-        // TODO: intern strings + identifiers
+        intern_identifiers(token, record);
         detect_keywords(token);
         return source;
 }

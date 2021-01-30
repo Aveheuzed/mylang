@@ -134,6 +134,11 @@ static Node* invert(Token **const tokens) {
         new->operands[0] = operand;
         return new;
 }
+static Node* identifier(Token **const tokens) {
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_VARIABLE);
+        *new = (Node) {.token=CONSUME(tokens), .operator=OP_VARIABLE};
+        return new;
+}
 
 // --------------------- infix parse functions ---------------------------------
 
@@ -293,6 +298,21 @@ static Node* ne(Token **const tokens, Node* const root) {
         new->operands[0] = operand;
         return new;
 }
+static Node* affect(Token **const tokens, Node *const root) {
+        if (root->operator != OP_IDENTIFIER) return infixParseError(tokens, root);
+
+        const Token operator = CONSUME(tokens);
+        Node* operand = parse(tokens, PREC_AFFECT);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_AFFECT);
+        *new = (Node) {.token=operator, .operator=OP_AFFECT};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
+}
 
 // ------------------ end parse functions --------------------------------------
 
@@ -313,11 +333,11 @@ static Node* parse(Token **const tokens, const Precedence precedence) {
                 [TOKEN_POPEN] = {grouping, infixParseError, PREC_NONE},
                 [TOKEN_PCLOSE] = {prefixParseError, infixParseError, PREC_NONE},
 
-                [TOKEN_EQUAL] = {prefixParseError, infixParseError, PREC_AFFECT},
+                [TOKEN_EQUAL] = {prefixParseError, affect, PREC_AFFECT},
                 [TOKEN_SEMICOLON] = {prefixParseError, infixParseError, PREC_SEMICOLON},
                 [TOKEN_NOT] = {invert, infixParseError, PREC_UNARY},
 
-                [TOKEN_IDENTIFIER] = {prefixParseError, infixParseError, PREC_NONE},
+                [TOKEN_IDENTIFIER] = {identifier, infixParseError, PREC_NONE},
                 [TOKEN_INT] = {integer, infixParseError, PREC_NONE},
                 [TOKEN_FLOAT] = {fpval, infixParseError, PREC_NONE},
                 [TOKEN_STR] = {string, infixParseError, PREC_NONE},
