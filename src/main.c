@@ -20,16 +20,17 @@ void _main() {
         Node* roots[128];
         unsigned int nb_stmt = 0;
         {
+                IdentifiersRecord* record = allocateRecord();
                 char* current_char = line;
                 Token* current_token = tokens;
                 do {
-                        current_char = lex(current_char, current_token++);
+                        current_char = lex(current_char, current_token++, &record);
                 } while (current_token[-1].type != TOKEN_EOF && current_token[-1].type != TOKEN_ERROR);
                 if (current_token[-1].type == TOKEN_ERROR) {
                         printf("Lexing error.\n");
                         exit(-1);
                 }
-
+                freeRecord(record);
         }
         {
                 Token* current_token = tokens;
@@ -39,9 +40,14 @@ void _main() {
                 } while (roots[nb_stmt++] != NULL);
                 nb_stmt--;
         }
+
+        Namespace* ns = allocateNamespace();
         for (unsigned int istmt=0; istmt<nb_stmt; istmt++) {
-                print_value(interpret(roots[istmt]));
+                print_value(interpret(roots[istmt], &ns));
         }
+        freeNamespace(ns);
+
+
         for (unsigned int istmt=0; istmt<nb_stmt; istmt++) {
                 freeNode(roots[istmt]);
         }

@@ -3,7 +3,8 @@
 
 #include "parser.h"
 #include "object.h"
+#include "namespace.h"
 
-Object interpret(const Node* root);
+Object interpret(const Node* root, Namespace **const ns);
 
 #endif
