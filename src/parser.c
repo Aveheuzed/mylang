@@ -51,10 +51,15 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_EQ] = 2,
         [OP_LT] = 2,
         [OP_LE] = 2,
+
+        [OP_BLOCK] = UINTPTR_MAX,
 }; // set to UINTPTR_MAX for a variable number of operands
 
 static Node* allocateNode(const uintptr_t nb_children) {
         return malloc(offsetof(Node, operands) + sizeof(Node*)*nb_children);
+}
+static Node* reallocateNode(Node* nd, const uintptr_t nb_children) {
+        return realloc(nd, offsetof(Node, operands) + sizeof(Node*)*nb_children);
 }
 void freeNode(Node* node) {
         if (node == NULL) return;
@@ -335,6 +340,8 @@ static Node* parseExpression(Token **const tokens, const Precedence precedence) 
                 [TOKEN_LT] = {prefixParseError, lt, PREC_COMPARISON},
                 [TOKEN_POPEN] = {grouping, infixParseError, PREC_NONE},
                 [TOKEN_PCLOSE] = {prefixParseError, infixParseError, PREC_BAILOUT},
+                [TOKEN_BOPEN] = {prefixParseError, infixParseError, PREC_NONE},
+                [TOKEN_BCLOSE] = {prefixParseError, infixParseError, PREC_BAILOUT},
 
                 [TOKEN_EQUAL] = {prefixParseError, affect, PREC_AFFECT},
                 [TOKEN_SEMICOLON] = {prefixParseError, infixParseError, PREC_BAILOUT},
@@ -382,15 +389,35 @@ static Node* simple_statement(Token **const tokens) {
         return stmt;
 }
 
+static Node* block_statement(Token **const tokens) {
+        uintptr_t nb_children = 0;
+        Node* stmt = allocateNode(nb_children + 1); // add one, for the length of the array
+        stmt->token = CONSUME(tokens);
+        stmt->operator = OP_BLOCK;
+        while (PEEK_TYPE(tokens) != TOKEN_BCLOSE) {
+                Node* substmt = parse_statement(tokens);
+                if (substmt == NULL) {
+                        freeNode(stmt);
+                        return NULL;
+                }
+                stmt = reallocateNode(stmt, ++nb_children+1);
+                stmt->operands[nb_children] = substmt;
+        }
+        stmt->operands[0] = (void*) nb_children;
+        CONSUME(tokens);
+        return stmt;
+}
+
 // ------------------ end statement handlers -----------------------------------
 
 Node* parse_statement(Token **const tokens) {
-        static const struct {TokenType token; StatementHandler handler;} handlers[TOKEN_EOF] = {
+        static const StatementHandler handlers[TOKEN_EOF] = {
+                [TOKEN_BOPEN] = block_statement,
         };
 
         if (PEEK_TYPE(tokens) == TOKEN_EOF || PEEK_TYPE(tokens) == TOKEN_ERROR) return NULL;
 
-        StatementHandler handler = handlers[PEEK_TYPE(tokens)].handler;
+        StatementHandler handler = handlers[PEEK_TYPE(tokens)];
         if (handler == NULL) return simple_statement(tokens);
         else return handler(tokens);
 }

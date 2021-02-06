@@ -61,6 +61,8 @@ char* _lex(char *source, Token *const token) {
                 case '(': ADVANCE(), token->type = TOKEN_POPEN; break;
                 case ')': ADVANCE(), token->type = TOKEN_PCLOSE; break;
                 case ';': ADVANCE(), token->type = TOKEN_SEMICOLON; break;
+                case '{': ADVANCE(), token->type = TOKEN_BOPEN; break;
+                case '}': ADVANCE(), token->type = TOKEN_BCLOSE; break;
 
                 case '=':
                         token->type = EQUAL_FOLLOWS(TOKEN_EQ, TOKEN_EQUAL);

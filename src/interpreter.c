@@ -453,6 +453,18 @@ static Object interpretLe(const Node* root, Namespace **const ns) {
 static Object interpretNone(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_NONE};
 }
+static Object interpretBlock(const Node* root, Namespace **const ns) {
+        const uintptr_t nb_children = (uintptr_t) root->operands[0];
+
+        Namespace * new_ns = allocateNamespace();
+
+        for (uintptr_t i=1; i<=nb_children; i++) {
+                interpret(root->operands[i], &new_ns);
+        }
+
+        freeNamespace(new_ns);
+        return (Object) {.type=TYPE_NONE};
+}
 
 Object interpret(const Node* root, Namespace **const ns) {
         static const InterpretFn interpreters[] = {
@@ -478,6 +490,8 @@ Object interpret(const Node* root, Namespace **const ns) {
                 [OP_EQ] = interpretEq,
                 [OP_LT] = interpretLt,
                 [OP_LE] = interpretLe,
+
+                [OP_BLOCK] = interpretBlock,
         };
         return interpreters[root->operator](root, ns);
 }

@@ -16,6 +16,8 @@ typedef enum {
         TOKEN_LT,
         TOKEN_POPEN,
         TOKEN_PCLOSE,
+        TOKEN_BOPEN,
+        TOKEN_BCLOSE,
 
         TOKEN_EQUAL, // "=" : affectation
         TOKEN_SEMICOLON,
