@@ -12,9 +12,8 @@ typedef Node* (*UnaryParseFn)(Token **const tokens);
 typedef Node* (*BinaryParseFn)(Token **const tokens, Node* const root);
 
 typedef enum Precedence {
-        PREC_SEMICOLON,
+        PREC_BAILOUT,
         PREC_NONE,
-        PREC_GROUPING,
         PREC_OR,
         PREC_AND,
         PREC_COMPARISON,
@@ -333,10 +332,10 @@ static Node* parse(Token **const tokens, const Precedence precedence) {
                 [TOKEN_GT] = {prefixParseError, gt, PREC_COMPARISON},
                 [TOKEN_LT] = {prefixParseError, lt, PREC_COMPARISON},
                 [TOKEN_POPEN] = {grouping, infixParseError, PREC_NONE},
-                [TOKEN_PCLOSE] = {prefixParseError, infixParseError, PREC_NONE},
+                [TOKEN_PCLOSE] = {prefixParseError, infixParseError, PREC_BAILOUT},
 
                 [TOKEN_EQUAL] = {prefixParseError, affect, PREC_AFFECT},
-                [TOKEN_SEMICOLON] = {prefixParseError, infixParseError, PREC_SEMICOLON},
+                [TOKEN_SEMICOLON] = {prefixParseError, infixParseError, PREC_BAILOUT},
                 [TOKEN_NOT] = {invert, infixParseError, PREC_UNARY},
 
                 [TOKEN_IDENTIFIER] = {identifier, infixParseError, PREC_NONE},
@@ -347,8 +346,8 @@ static Node* parse(Token **const tokens, const Precedence precedence) {
                 [TOKEN_FALSE] = {boolean, infixParseError, PREC_NONE},
                 [TOKEN_NONE] = {none, infixParseError, PREC_NONE},
 
-                [TOKEN_ERROR] = {prefixParseError, infixParseError, PREC_NONE},
-                [TOKEN_EOF] = {prefixParseError, infixParseError, PREC_NONE},
+                [TOKEN_ERROR] = {prefixParseError, infixParseError, PREC_BAILOUT},
+                [TOKEN_EOF] = {prefixParseError, infixParseError, PREC_BAILOUT},
         };
 
         Node* root;
