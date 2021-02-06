@@ -14,6 +14,8 @@ void detect_keywords(Token *const token) {
                 {"true", TOKEN_TRUE},
                 {"false", TOKEN_FALSE},
                 {"none", TOKEN_NONE},
+                {"if", TOKEN_IF},
+                {"else", TOKEN_ELSE},
 
                 {NULL, 0}
         };

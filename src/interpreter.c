@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "interpreter.h"
 #include "builtins.h"
@@ -465,6 +466,28 @@ static Object interpretBlock(const Node* root, Namespace **const ns) {
         freeNamespace(new_ns);
         return (Object) {.type=TYPE_NONE};
 }
+static Object interpretIf(const Node* root, Namespace **const ns) {
+        Object predicate = interpret(root->operands[0], ns);
+        bool branch;
+        switch (predicate.type) {
+                case TYPE_INT:
+                        branch = (predicate.intval != 0); break;
+                case TYPE_BOOL:
+                        branch = (predicate.intval != 0); break;
+                case TYPE_NONE:
+                        branch = false; break;
+                case TYPE_FLOAT:
+                        branch = false; break;
+                case TYPE_STRING:
+                        branch = (predicate.strval->len > 0); break;
+                default:
+                        branch = false;
+
+        }
+        if (branch) interpret(root->operands[1], ns);
+        else if (root->operands[2] != NULL) interpret(root->operands[2], ns);
+        return (Object) {.type=TYPE_NONE};
+}
 
 Object interpret(const Node* root, Namespace **const ns) {
         static const InterpretFn interpreters[] = {
@@ -492,6 +515,7 @@ Object interpret(const Node* root, Namespace **const ns) {
                 [OP_LE] = interpretLe,
 
                 [OP_BLOCK] = interpretBlock,
+                [OP_IFELSE] = interpretIf,
         };
         return interpreters[root->operator](root, ns);
 }

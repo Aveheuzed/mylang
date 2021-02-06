@@ -31,6 +31,9 @@ typedef enum {
         TOKEN_FALSE,
         TOKEN_NONE,
 
+        TOKEN_IF,
+        TOKEN_ELSE,
+
         TOKEN_ERROR,
         TOKEN_EOF, // please don't put new token types below here
 } TokenType;

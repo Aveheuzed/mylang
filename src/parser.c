@@ -53,6 +53,7 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_LE] = 2,
 
         [OP_BLOCK] = UINTPTR_MAX,
+        [OP_IFELSE] = 3, // predicate, if_stmt, else_stmt
 }; // set to UINTPTR_MAX for a variable number of operands
 
 static Node* allocateNode(const uintptr_t nb_children) {
@@ -408,11 +409,34 @@ static Node* block_statement(Token **const tokens) {
         return stmt;
 }
 
+static Node* ifelse_statement(Token **const tokens) {
+        Node* new = ALLOCATE_SIMPLE_NODE(OP_IFELSE);
+        *new = (Node) {.token=CONSUME(tokens), .operator=OP_IFELSE};
+        if ((new->operands[0] = parseExpression(tokens, PREC_NONE)) == NULL) {
+                freeNode(new);
+                return NULL;
+        }
+        if ((new->operands[1] = parse_statement(tokens)) == NULL) {
+                freeNode(new);
+                return NULL;
+        }
+        if (PEEK_TYPE(tokens) == TOKEN_ELSE) {
+                CONSUME(tokens);
+                if ((new->operands[2] = parse_statement(tokens)) == NULL) {
+                        freeNode(new);
+                        return NULL;
+                }
+        }
+        else new->operands[2] = NULL;
+        return new;
+}
+
 // ------------------ end statement handlers -----------------------------------
 
 Node* parse_statement(Token **const tokens) {
         static const StatementHandler handlers[TOKEN_EOF] = {
                 [TOKEN_BOPEN] = block_statement,
+                [TOKEN_IF] = ifelse_statement,
         };
 
         if (PEEK_TYPE(tokens) == TOKEN_EOF || PEEK_TYPE(tokens) == TOKEN_ERROR) return NULL;
