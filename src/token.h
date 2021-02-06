@@ -30,7 +30,7 @@ typedef enum {
         TOKEN_NONE,
 
         TOKEN_ERROR,
-        TOKEN_EOF,
+        TOKEN_EOF, // please don't put new token types below here
 } TokenType;
 
 typedef struct Token {

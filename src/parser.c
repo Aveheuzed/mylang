@@ -11,6 +11,8 @@
 typedef Node* (*UnaryParseFn)(Token **const tokens);
 typedef Node* (*BinaryParseFn)(Token **const tokens, Node* const root);
 
+typedef Node* (*StatementHandler)(Token **const tokens);
+
 typedef enum Precedence {
         PREC_BAILOUT,
         PREC_NONE,
@@ -23,7 +25,7 @@ typedef enum Precedence {
         PREC_UNARY,
 } Precedence;
 
-static Node* parse(Token **const tokens, const Precedence precedence);
+static Node* parseExpression(Token **const tokens, const Precedence precedence);
 static Node* prefixParseError(Token **const tokens);
 static Node* infixParseError(Token **const tokens, Node *const root);
 
@@ -75,7 +77,7 @@ static Node* prefixParseError(Token **const tokens) {
 }
 static Node* unary_plus(Token **const tokens) {
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_UNARY);
+        Node* operand = parseExpression(tokens, PREC_UNARY);
         if (operand == NULL) return NULL;
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_UNARY_PLUS);
         *new = (Node) {.token=operator, .operator=OP_UNARY_PLUS};
@@ -84,7 +86,7 @@ static Node* unary_plus(Token **const tokens) {
 }
 static Node* unary_minus(Token **const tokens) {
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_UNARY);
+        Node* operand = parseExpression(tokens, PREC_UNARY);
         if (operand == NULL) return NULL;
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_UNARY_MINUS);
         *new = (Node) {.token=operator, .operator=OP_UNARY_MINUS};
@@ -113,7 +115,7 @@ static Node* string(Token **const tokens) {
 }
 static Node* grouping(Token **const tokens) {
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_GROUPING);
+        Node* operand = parseExpression(tokens, PREC_NONE);
         if (operand == NULL) return NULL;
 
         if (PEEK_TYPE(tokens) == TOKEN_PCLOSE) CONSUME(tokens);
@@ -123,7 +125,7 @@ static Node* grouping(Token **const tokens) {
 }
 static Node* invert(Token **const tokens) {
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_UNARY);
+        Node* operand = parseExpression(tokens, PREC_UNARY);
         if (operand == NULL) return NULL;
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INVERT);
         *new = (Node) {.token=operator, .operator=OP_INVERT};
@@ -151,7 +153,7 @@ static Node* infixParseError(Token **const tokens, Node *const root) {
 }
 static Node* binary_plus(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_ADD);
+        Node* operand = parseExpression(tokens, PREC_ADD);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -164,7 +166,7 @@ static Node* binary_plus(Token **const tokens, Node* const root) {
 }
 static Node* binary_minus(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_ADD);
+        Node* operand = parseExpression(tokens, PREC_ADD);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -177,7 +179,7 @@ static Node* binary_minus(Token **const tokens, Node* const root) {
 }
 static Node* binary_star(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_MUL);
+        Node* operand = parseExpression(tokens, PREC_MUL);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -190,7 +192,7 @@ static Node* binary_star(Token **const tokens, Node* const root) {
 }
 static Node* binary_slash(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_MUL);
+        Node* operand = parseExpression(tokens, PREC_MUL);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -203,7 +205,7 @@ static Node* binary_slash(Token **const tokens, Node* const root) {
 }
 static Node* binary_and(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_AND);
+        Node* operand = parseExpression(tokens, PREC_AND);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -216,7 +218,7 @@ static Node* binary_and(Token **const tokens, Node* const root) {
 }
 static Node* binary_or(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_OR);
+        Node* operand = parseExpression(tokens, PREC_OR);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -229,7 +231,7 @@ static Node* binary_or(Token **const tokens, Node* const root) {
 }
 static Node* lt(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_COMPARISON);
+        Node* operand = parseExpression(tokens, PREC_COMPARISON);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -242,7 +244,7 @@ static Node* lt(Token **const tokens, Node* const root) {
 }
 static Node* le(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_COMPARISON);
+        Node* operand = parseExpression(tokens, PREC_COMPARISON);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -277,7 +279,7 @@ static Node* ge(Token **const tokens, Node* const root) {
 }
 static Node* eq(Token **const tokens, Node* const root) {
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_COMPARISON);
+        Node* operand = parseExpression(tokens, PREC_COMPARISON);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -303,7 +305,7 @@ static Node* affect(Token **const tokens, Node *const root) {
         if (root->operator != OP_VARIABLE) return infixParseError(tokens, root);
 
         const Token operator = CONSUME(tokens);
-        Node* operand = parse(tokens, PREC_AFFECT-1);
+        Node* operand = parseExpression(tokens, PREC_AFFECT-1);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -317,7 +319,7 @@ static Node* affect(Token **const tokens, Node *const root) {
 
 // ------------------ end parse functions --------------------------------------
 
-static Node* parse(Token **const tokens, const Precedence precedence) {
+static Node* parseExpression(Token **const tokens, const Precedence precedence) {
         static const struct {UnaryParseFn prefix; BinaryParseFn infix; Precedence precedence;} rules[] = {
                 [TOKEN_PLUS] = {unary_plus, binary_plus, PREC_ADD},
                 [TOKEN_MINUS] = {unary_minus, binary_minus, PREC_ADD},
@@ -363,21 +365,34 @@ static Node* parse(Token **const tokens, const Precedence precedence) {
         return root;
 }
 
-Node* parse_statement(Token **const tokens) {
-        if (PEEK_TYPE(tokens) == TOKEN_EOF) return NULL;
+// ------------------ begin statement handlers ---------------------------------
 
-        Node* stmt = parse(tokens, PREC_NONE);
+static Node* simple_statement(Token **const tokens) {
+        Node* stmt = parseExpression(tokens, PREC_NONE);
         if (stmt == NULL) return NULL;
         if (PEEK_TYPE(tokens) == TOKEN_SEMICOLON) {
                 CONSUME(tokens);
-                return stmt;
         }
         else {
                 Token tk = **tokens;
                 fprintf(stderr, "line %u, column %u, at \"%.*s\": expected ';'.\n", tk.line, tk.column, tk.length, tk.source);
                 freeNode(stmt);
-                return NULL;
+                stmt = NULL;
         }
+        return stmt;
+}
+
+// ------------------ end statement handlers -----------------------------------
+
+Node* parse_statement(Token **const tokens) {
+        static const struct {TokenType token; StatementHandler handler;} handlers[TOKEN_EOF] = {
+        };
+
+        if (PEEK_TYPE(tokens) == TOKEN_EOF || PEEK_TYPE(tokens) == TOKEN_ERROR) return NULL;
+
+        StatementHandler handler = handlers[PEEK_TYPE(tokens)].handler;
+        if (handler == NULL) return simple_statement(tokens);
+        else return handler(tokens);
 }
 
 #undef ALLOCATE_SIMPLE_NODE
