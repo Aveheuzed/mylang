@@ -43,7 +43,7 @@ void _main() {
 
         Namespace* ns = allocateNamespace();
         for (unsigned int istmt=0; istmt<nb_stmt; istmt++) {
-                print_value(interpret(roots[istmt], &ns));
+                interpretStatement(roots[istmt], &ns);
         }
         freeNamespace(ns);
 

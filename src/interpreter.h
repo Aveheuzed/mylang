@@ -5,6 +5,7 @@
 #include "object.h"
 #include "namespace.h"
 
-Object interpret(const Node* root, Namespace **const ns);
+Object interpretExpression(const Node* root, Namespace **const ns);
+void interpretStatement(const Node* root, Namespace **const ns);
 
 #endif
