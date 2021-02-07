@@ -1,5 +1,7 @@
-#ifndef token_h
-#define token_h
+#ifndef lexer_h
+#define lexer_h
+
+#include "headers/utils/identifiers_record.h"
 
 typedef enum {
         TOKEN_PLUS,
@@ -45,5 +47,7 @@ typedef struct Token {
         unsigned short length;
         TokenType type;
 } Token;
+
+char* lex(char *source, Token *const token, IdentifiersRecord **const record);
 
 #endif

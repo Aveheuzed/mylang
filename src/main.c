@@ -1,10 +1,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "lexer.h"
-#include "parser.h"
-#include "interpreter.h"
-#include "builtins.h"
+#include "headers/pipeline/lexer.h"
+#include "headers/pipeline/parser.h"
+#include "headers/pipeline/interpreter.h"
+#include "headers/utils/builtins.h"
 
 void print_token(const Token* token) {
         printf("\"%.*s\" : ln %u, col %u, len %u. Type : %d\n", token->length, token->source, token->line, token->column, token->length, token->type);

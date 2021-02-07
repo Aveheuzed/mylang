@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 
-#include "namespace.h"
+#include "headers/utils/namespace.h"
 
 #define GROW_THRESHHOLD (0.8) // TODO: benchmark this value
 

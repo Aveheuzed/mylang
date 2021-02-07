@@ -3,8 +3,8 @@
 
 #include <stddef.h>
 
-#include "hash.h"
-#include "object.h"
+#include "headers/utils/hash.h"
+#include "headers/utils/object.h"
 
 typedef struct Variable {
         /* Since identifiers are internalized, we use the pointer to the string

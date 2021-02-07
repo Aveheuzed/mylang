@@ -2,7 +2,8 @@
 #define parser_h
 
 #include <stdint.h> // for the uintptr_t, may be needed in the use of Nodes
-#include "token.h"
+
+#include "headers/pipeline/lexer.h"
 
 typedef enum {
         // no operand
