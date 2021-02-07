@@ -1,7 +1,7 @@
 #ifndef interpreter_h
 #define interpreter_h
 
-#include "headers/pipeline/parser.h"
+#include "headers/pipeline/node.h"
 #include "headers/utils/object.h"
 #include "headers/utils/namespace.h"
 
