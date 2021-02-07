@@ -4,12 +4,11 @@
 #include "lexer.h"
 #include "identifiers_record.h"
 
-void intern_identifiers(Token *const token, IdentifiersRecord **const record) {
-        if (token->type != TOKEN_IDENTIFIER) return;
+static inline void intern_identifiers(Token *const token, IdentifiersRecord **const record) {
         token->source = internalize(record, token->source, token->length);
 }
 
-void detect_keywords(Token *const token) {
+static inline void detect_keywords(Token *const token) {
         const static struct {char* source; TokenType type;} keywords[] = {
                 {"true", TOKEN_TRUE},
                 {"false", TOKEN_FALSE},
@@ -19,8 +18,6 @@ void detect_keywords(Token *const token) {
 
                 {NULL, 0}
         };
-
-        if (token->type != TOKEN_IDENTIFIER) return;
 
         for (unsigned int i=0; keywords[i].source != NULL; i++) {
                 if (!strncmp(token->source, keywords[i].source, token->length)) {
@@ -127,7 +124,9 @@ char* _lex(char *source, Token *const token) {
 
 char* lex(char* source, Token *const token, IdentifiersRecord **const record) {
         source = _lex(source, token);
-        intern_identifiers(token, record);
-        detect_keywords(token);
+        if (token->type == TOKEN_IDENTIFIER) {
+                intern_identifiers(token, record);
+                detect_keywords(token);
+        }
         return source;
 }
