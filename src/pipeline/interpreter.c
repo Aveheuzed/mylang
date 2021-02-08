@@ -3,9 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "interpreter.h"
-#include "builtins.h"
-#include "namespace.h"
+#include "headers/pipeline/interpreter.h"
 
 #define NOTIMPLEMENTED() (puts("Operation not implemented."), exit(-1))
 #define TYPEERROR() (puts("Attempt to perform an operation on incompatible types"), exit(-1))

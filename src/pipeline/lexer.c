@@ -1,8 +1,6 @@
 #include <string.h>
 
-#include "token.h"
-#include "lexer.h"
-#include "identifiers_record.h"
+#include "headers/pipeline/lexer.h"
 
 static inline void intern_identifiers(Token *const token, IdentifiersRecord **const record) {
         token->source = internalize(record, token->source, token->length);

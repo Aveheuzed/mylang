@@ -1,8 +1,7 @@
-#ifndef parser_h
-#define parser_h
+#ifndef node_h
+#define node_h
 
-#include <stdint.h> // for the uintptr_t, may be needed in the use of Nodes
-#include "token.h"
+#include "headers/pipeline/token.h"
 
 typedef enum {
         // no operand
@@ -45,10 +44,6 @@ typedef struct Node {
         struct Node* operands[];
 } Node;
 
-
 void freeNode(Node* node);
-
-// tokens[] is supposed to end with a TOKEN_EOF
-Node* parse_statement(Token **const tokens);
 
 #endif

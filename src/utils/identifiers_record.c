@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "identifiers_record.h"
+#include "headers/utils/identifiers_record.h"
 
 #define GROW_THRESHHOLD (0.8) // TODO: benchmark this value
 
@@ -34,6 +34,9 @@ IdentifiersRecord* allocateRecord(void) {
         return pool;
 }
 void freeRecord(IdentifiersRecord* pool) {
+        for (size_t i=0; i<pool->len; i++) {
+                free(pool->pool[i].source); // either it's a pointer to a malloc'd string, or NULL
+        }
         free(pool);
 }
 
@@ -70,7 +73,9 @@ char* internalize(IdentifiersRecord **const record, char *const string, unsigned
                 id = ADVANCE();
         } while (BUCKET_FULL(id));
 
-        (*record)->pool[mask&index] = (Identifier) {.source=string, .hash=hash};
+        char* copy = strndup(string, length);
+
+        (*record)->pool[mask&index] = (Identifier) {.source=copy, .hash=hash};
         (*record)->nb_entries++;
 
         return string;

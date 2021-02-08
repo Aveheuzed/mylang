@@ -1,8 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stddef.h>
+#include <stdint.h>
 
-#include "parser.h"
+#include "headers/pipeline/parser.h"
 
 #define CONSUME(tkptrptr) (*(*tkptrptr)++)
 #define PEEK_TYPE(tkptrptr) ((*tkptrptr)->type)
