@@ -47,13 +47,10 @@ char* _lex(char *source, Token *const token) {
         token->line = line;
         token->column = column;
 
-        if (CURRENT_CHAR() == '\0') {
-                token->type = TOKEN_EOF;
-                return source;
-        }
+        switch(CURRENT_CHAR()) {
+                case '\0': token->type = TOKEN_EOF; break;
 
-         switch(CURRENT_CHAR()) {
-                case '+': ADVANCE(), token->type = TOKEN_PLUS;  break;
+                case '+': ADVANCE(), token->type = TOKEN_PLUS; break;
                 case '-': ADVANCE(), token->type = TOKEN_MINUS; break;
                 case '*': ADVANCE(), token->type = TOKEN_STAR; break;
                 case '/': ADVANCE(), token->type = TOKEN_SLASH; break;
