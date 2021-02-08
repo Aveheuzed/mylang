@@ -1,9 +1,19 @@
 #include <string.h>
 
 #include "headers/pipeline/lexer.h"
+#include "headers/utils/identifiers_record.h"
 
-static inline void intern_identifiers(Token *const token, IdentifiersRecord **const record) {
-        token->source = internalize(record, token->source, token->length);
+static IdentifiersRecord* record = NULL;
+void init_lexing(void) {
+        record = allocateRecord();
+}
+void end_lexing(void) {
+        freeRecord(record);
+}
+
+static inline void intern_token(Token *const token) {
+        if (token->length)
+        token->source = internalize(&record, token->source, token->length);
 }
 
 static inline void detect_keywords(Token *const token) {
@@ -117,10 +127,10 @@ char* _lex(char *source, Token *const token) {
         #undef ADVANCE
 }
 
-char* lex(char* source, Token *const token, IdentifiersRecord **const record) {
+char* lex(char* source, Token *const token) {
         source = _lex(source, token);
+        intern_token(token);
         if (token->type == TOKEN_IDENTIFIER) {
-                intern_identifiers(token, record);
                 detect_keywords(token);
         }
         return source;

@@ -15,7 +15,7 @@ static int repl() {
         size_t len_tokens = TOKENS_START_NUMBER;
         Token* tokens = calloc(sizeof(Token), len_tokens);
 
-        IdentifiersRecord* record = allocateRecord();
+        init_lexing();
 
         Namespace* ns = allocateNamespace();
 
@@ -27,8 +27,6 @@ static int repl() {
                         puts("");
                         return EXIT_SUCCESS;
                 }
-                // the memory for the line is never freed; this is intentionnal.
-                // (regarding IdentifiersRecord, witch doesn't own its strings)
 
                 nb_tokens = 0;
                 do {
@@ -36,7 +34,7 @@ static int repl() {
                                 len_tokens *= 2;
                                 tokens = reallocarray(tokens, sizeof(Token), len_tokens);
                         }
-                        source = lex(source, &(tokens[nb_tokens++]), &record);
+                        source = lex(source, &(tokens[nb_tokens++]));
                 } while (tokens[nb_tokens-1].type != TOKEN_EOF && tokens[nb_tokens-1].type != TOKEN_ERROR);
                 if (tokens[nb_tokens-1].type == TOKEN_ERROR) {
                         puts("Lexing error.");
@@ -56,7 +54,7 @@ static int repl() {
 
         // unreachable
         free(tokens);
-        freeRecord(record);
+        end_lexing();
         freeNamespace(ns);
 
         return EXIT_SUCCESS;
@@ -76,7 +74,7 @@ static int run_file(const char* filename) {
         contents[fread(contents, size, sizeof(char), file)] = '\0';
         fclose(file);
 
-        IdentifiersRecord* record = allocateRecord();
+        init_lexing();
         Namespace* ns = allocateNamespace();
 
         size_t nb_tokens;
@@ -90,7 +88,7 @@ static int run_file(const char* filename) {
                         len_tokens *= 2;
                         tokens = reallocarray(tokens, sizeof(Token), len_tokens);
                 }
-                source = lex(source, &(tokens[nb_tokens++]), &record);
+                source = lex(source, &(tokens[nb_tokens++]));
         } while (tokens[nb_tokens-1].type != TOKEN_EOF && tokens[nb_tokens-1].type != TOKEN_ERROR);
         if (tokens[nb_tokens-1].type == TOKEN_ERROR) {
                 puts("Lexing error.");
@@ -108,7 +106,6 @@ static int run_file(const char* filename) {
 
         free(contents);
         free(tokens);
-        freeRecord(record);
         freeNamespace(ns);
 
         return EXIT_SUCCESS;
