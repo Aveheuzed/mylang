@@ -1,11 +1,9 @@
 #ifndef interpreter_h
 #define interpreter_h
 
-#include "headers/pipeline/node.h"
-#include "headers/utils/object.h"
+#include "headers/pipeline/parser.h"
 #include "headers/utils/namespace.h"
 
-Object interpretExpression(const Node* root, Namespace **const ns);
-void interpretStatement(const Node* root, Namespace **const ns);
+int interpretStatement(parser_info *const prsinfo, Namespace **const ns);
 
 #endif

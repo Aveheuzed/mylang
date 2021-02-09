@@ -4,13 +4,20 @@
 #include <stdbool.h>
 
 #include "headers/pipeline/interpreter.h"
+#include "headers/pipeline/node.h"
+
+#define SUCCESS 1
+#define FAILURE 0
 
 #define NOTIMPLEMENTED() (puts("Operation not implemented."), exit(-1))
 #define TYPEERROR() (puts("Attempt to perform an operation on incompatible types"), exit(-1))
 #define RUNTIMEERROR() (puts("Runtime error !"), exit(-1))
 
+Object interpretExpression(const Node* root, Namespace **const ns);
+int _interpretStatement(parser_info *const prsinfo, const Node* root, Namespace **const ns);
+
 typedef Object (*ExprInterpretFn)(const Node* root, Namespace **const ns);
-typedef void (*StmtInterpretFn)(const Node* root, Namespace **const ns);
+typedef int (*StmtInterpretFn)(parser_info *const prsinfo, const Node* root, Namespace **const ns);
 
 static Object interpretVariable(const Node* root, Namespace **const ns) {
         Object* obj = ns_get_value(*ns, root->token.source);
@@ -454,18 +461,24 @@ static Object interpretNone(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_NONE};
 }
 
-static void interpretBlock(const Node* root, Namespace **const ns) {
+static int interpretBlock(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
         const uintptr_t nb_children = (uintptr_t) root->operands[0];
 
         Namespace * new_ns = allocateNamespace();
 
+        int exit_code = SUCCESS;
+
         for (uintptr_t i=1; i<=nb_children; i++) {
-                interpretExpression(root->operands[i], &new_ns);
+                if (!_interpretStatement(prsinfo, root->operands[i], &new_ns)) {
+                        exit_code = FAILURE;
+                        break;
+                }
         }
 
         freeNamespace(new_ns);
+        return exit_code;
 }
-static void interpretIf(const Node* root, Namespace **const ns) {
+static int interpretIf(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
         Object predicate = interpretExpression(root->operands[0], ns);
         bool branch;
         switch (predicate.type) {
@@ -483,8 +496,8 @@ static void interpretIf(const Node* root, Namespace **const ns) {
                         branch = false;
 
         }
-        if (branch) interpretStatement(root->operands[1], ns);
-        else if (root->operands[2] != NULL) interpretStatement(root->operands[2], ns);
+        if (branch) return _interpretStatement(prsinfo, root->operands[1], ns);
+        else if (root->operands[2] != NULL) return _interpretStatement(prsinfo, root->operands[2], ns);
 }
 
 Object interpretExpression(const Node* root, Namespace **const ns) {
@@ -514,16 +527,30 @@ Object interpretExpression(const Node* root, Namespace **const ns) {
         };
         return interpreters[root->operator](root, ns);
 }
-void interpretStatement(const Node* root, Namespace **const ns) {
+int _interpretStatement(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
         static const StmtInterpretFn interpreters[LEN_OPERATORS] = {
                 [OP_BLOCK] = interpretBlock,
                 [OP_IFELSE] = interpretIf,
         };
+
+        if (root == NULL) return FAILURE;
+
         StmtInterpretFn interpreter = interpreters[root->operator];
 
         if (interpreter == NULL) interpretExpression(root, ns);
-        else interpreters[root->operator](root, ns);
+        else interpreters[root->operator](prsinfo, root, ns);
+
+        return SUCCESS;
 }
+
+int interpretStatement(parser_info *const prsinfo, Namespace **const ns) {
+        Node* root = parse_statement(prsinfo);
+        return _interpretStatement(prsinfo, root, ns);
+}
+
+#undef SUCCESS
+#undef FAILURE
 
 #undef TYPEERROR
 #undef NOTIMPLEMENTED
+#undef RUNTIMEERROR
