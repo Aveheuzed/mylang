@@ -1,9 +1,32 @@
 #include <string.h>
+#include <stdlib.h>
 
 #include "headers/pipeline/lexer.h"
+#include "headers/utils/identifiers_record.h"
 
-static inline void intern_identifiers(Token *const token, IdentifiersRecord **const record) {
-        token->source = internalize(record, token->source, token->length);
+static IdentifiersRecord* record = NULL;
+void init_lexing(void) {
+        record = allocateRecord();
+}
+void end_lexing(void) {
+        freeRecord(record);
+}
+
+inline lexer_info mk_lexer_info(FILE* file) {
+        return (lexer_info) {.file=file, .line=1, .column=1};
+}
+
+/*
+Note on the content of the token (source) :
+Its value is allocated through malloc() in _lex, then the "ownership" is
+transferred to the static record in intern_token => internalize.
+Therefore, internalize needn't `strndup` it, but it should `free` it if it
+deduplicates it.
+*/
+
+static inline void intern_token(Token *const token) {
+        if (token->length)
+        token->source = internalize(&record, token->source, token->length);
 }
 
 static inline void detect_keywords(Token *const token) {
@@ -26,102 +49,180 @@ static inline void detect_keywords(Token *const token) {
 
 }
 
-char* _lex(char *source, Token *const token) {
-        #define CURRENT_CHAR() (PEEK(0))
-        #define PEEK(n) (*(source+n))
-        #define ADVANCE() ((*++source=='\n')?(line++, column=0):(column++))
-        #define ISDIGIT() (CURRENT_CHAR() >= '0' && CURRENT_CHAR() <= '9')
-        #define ISLETTER() ((CURRENT_CHAR() >= 'a' && CURRENT_CHAR() <= 'z') || (CURRENT_CHAR() >= 'A' && CURRENT_CHAR() <= 'Z'))
-        #define ISBLANK() (CURRENT_CHAR() == '\n' || CURRENT_CHAR() == '\t' || CURRENT_CHAR() == '\r' || CURRENT_CHAR() == ' ')
-        #define EQUAL_FOLLOWS(then_, else_) (ADVANCE(), (CURRENT_CHAR() == '=') ? (ADVANCE(), then_) : else_)
-        #define REQUIRES(what, type) ((PEEK(1) == what) ? (ADVANCE(), ADVANCE(), type) : TOKEN_ERROR)
+struct token_buffer {
+        char* source;
+        size_t bufsize;
+        size_t taken;
+};
+static void commit(struct token_buffer *const buffer, char c) {
+        if (buffer->taken >= buffer->bufsize) {
+                buffer->bufsize = buffer->bufsize*2 || 1;
+                buffer->source = reallocarray(buffer->source, buffer->bufsize, sizeof(char));
+        }
+        buffer->source[buffer->taken++] = c;
+}
+static char pull_char(lexer_info *const state) {
+        const char c = getc(state->file);
+        if (c == '\n') {
+                state->line++;
+                state->column = 1;
+        } else {
+                state->column++;
+        }
+        return c;
+}
+static char peek(lexer_info *const state) {
+        char c = getc(state->file);
+        ungetc(c, state->file);
+        return c;
+}
 
-        static unsigned int line = 1;
-        static unsigned short column = 0;
+Token _lex(lexer_info *const state) {
+        #define PEEK() (peek(state))
+        #define COMMIT(c) (commit(&buffer, c))
+        #define EQUAL_FOLLOWS(then_, else_) (\
+                COMMIT(staging),\
+                (PEEK() == '=')?\
+                (\
+                        COMMIT(pull_char(state)),\
+                        then_\
+                ):\
+                else_\
+        )
+        #define REQUIRES(chr, ttype) (\
+                COMMIT(staging),\
+                (PEEK() == chr)?\
+                (\
+                        COMMIT(staging),\
+                        COMMIT(pull_char(state)), \
+                        ttype\
+                ):\
+                TOKEN_ERROR\
+        )
 
-        while (ISBLANK()) ADVANCE();
+        #define ISDIGIT(c) (c >= '0' && c <= '9')
+        #define ISLETTER(c) (\
+                (c >= 'a' && c <= 'z')\
+                || (c >= 'A' && c <= 'Z')\
+        )
+        #define ISBLANK(c) (\
+                c == '\n'\
+                || c == '\t'\
+                || c == '\r'\
+                || c == ' '\
+        )
 
-        token->source = source;
-        token->line = line;
-        token->column = column;
+        Token target;
+        struct token_buffer buffer = (struct token_buffer) {.source = malloc(0), .bufsize=0, .taken=0};
+        char staging;
 
-        switch(CURRENT_CHAR()) {
-                case '\0': token->type = TOKEN_EOF; break;
+        while (ISBLANK(PEEK())) pull_char(state);
 
-                case '+': ADVANCE(), token->type = TOKEN_PLUS; break;
-                case '-': ADVANCE(), token->type = TOKEN_MINUS; break;
-                case '*': ADVANCE(), token->type = TOKEN_STAR; break;
-                case '/': ADVANCE(), token->type = TOKEN_SLASH; break;
-                case '(': ADVANCE(), token->type = TOKEN_POPEN; break;
-                case ')': ADVANCE(), token->type = TOKEN_PCLOSE; break;
-                case ';': ADVANCE(), token->type = TOKEN_SEMICOLON; break;
-                case '{': ADVANCE(), token->type = TOKEN_BOPEN; break;
-                case '}': ADVANCE(), token->type = TOKEN_BCLOSE; break;
+        target.line = state->line;
+        target.column = state->column;
+
+        switch(staging = pull_char(state)) {
+                case EOF: target.type = TOKEN_EOF; break;
+
+                case '+': COMMIT(staging); target.type = TOKEN_PLUS; break;
+                case '-': COMMIT(staging); target.type = TOKEN_MINUS; break;
+                case '*': COMMIT(staging); target.type = TOKEN_STAR; break;
+                case '/': COMMIT(staging); target.type = TOKEN_SLASH; break;
+                case '(': COMMIT(staging); target.type = TOKEN_POPEN; break;
+                case ')': COMMIT(staging); target.type = TOKEN_PCLOSE; break;
+                case ';': COMMIT(staging); target.type = TOKEN_SEMICOLON; break;
+                case '{': COMMIT(staging); target.type = TOKEN_BOPEN; break;
+                case '}': COMMIT(staging); target.type = TOKEN_BCLOSE; break;
 
                 case '=':
-                        token->type = EQUAL_FOLLOWS(TOKEN_EQ, TOKEN_EQUAL);
+                        target.type = EQUAL_FOLLOWS(TOKEN_EQ, TOKEN_EQUAL);
                         break;
                 case '!':
-                        token->type = EQUAL_FOLLOWS(TOKEN_NE, TOKEN_NOT);
+                        target.type = EQUAL_FOLLOWS(TOKEN_NE, TOKEN_NOT);
                         break;
                 case '>':
-                        token->type = EQUAL_FOLLOWS(TOKEN_GE, TOKEN_GT);
+                        target.type = EQUAL_FOLLOWS(TOKEN_GE, TOKEN_GT);
                         break;
                 case '<':
-                        token->type = EQUAL_FOLLOWS(TOKEN_LE, TOKEN_LT);
+                        target.type = EQUAL_FOLLOWS(TOKEN_LE, TOKEN_LT);
                         break;
 
                 case '&':
-                        token->type = REQUIRES('&', TOKEN_AND);
+                        target.type = REQUIRES('&', TOKEN_AND);
                         break;
                 case '|':
-                        token->type = REQUIRES('|', TOKEN_OR);
+                        target.type = REQUIRES('|', TOKEN_OR);
                         break;
 
                 default:
-                        if (ISDIGIT()) {
-                                token->type = TOKEN_INT;
-                                do ADVANCE(); while (ISDIGIT());
-                                if (CURRENT_CHAR() == '.') {
-                                        token->type = TOKEN_FLOAT;
-                                        do ADVANCE(); while (ISDIGIT());
+                        if (ISDIGIT(staging)) {
+                                COMMIT(staging);
+                                target.type = TOKEN_INT;
+                                while (ISDIGIT(PEEK())) {
+                                        COMMIT(pull_char(state));
+                                }
+                                if (PEEK() == '.') {
+                                        COMMIT(pull_char(state));
+                                        target.type = TOKEN_FLOAT;
+                                        while (ISDIGIT(PEEK())) {
+                                                COMMIT(pull_char(state));
+                                        }
                                 }
                                 break;
                         }
-                        else if (CURRENT_CHAR() == '_' || ISLETTER()) {
-                                token->type = TOKEN_IDENTIFIER;
-                                do ADVANCE(); while (CURRENT_CHAR() == '_' || ISLETTER() || ISDIGIT());
+                        else if (staging == '_' || ISLETTER(staging)) {
+                                COMMIT(staging);
+                                target.type = TOKEN_IDENTIFIER;
+                                while (staging = PEEK(),
+                                        staging == '_' || ISLETTER(staging) || ISDIGIT(staging)
+                                ) {
+                                        COMMIT(pull_char(state));
+                                }
                                 break;
                         }
-                        else if (CURRENT_CHAR() == '"') {
-                                token->type = TOKEN_STR;
-                                do ADVANCE(); while (CURRENT_CHAR() != '"' && CURRENT_CHAR() != '\0');
-                                if (CURRENT_CHAR() == '"') ADVANCE();
-                                else token->type = TOKEN_ERROR;
+                        else if (staging == '"') {
+                                COMMIT(staging);
+                                target.type = TOKEN_STR;
+                                while (staging = PEEK(),
+                                        staging != '"' && staging != EOF
+                                ) {
+                                        COMMIT(pull_char(state));
+                                }
+                                if (staging == '"') COMMIT(pull_char(state));
+                                else target.type = TOKEN_ERROR;
                                 break;
                         }
-                        else token->type = TOKEN_ERROR;
+                        else {
+                                COMMIT(staging);
+                                target.type = TOKEN_ERROR;
+                        }
                         break;
         }
 
-        token->length = source - token->source;
-        return source;
+        target.length = buffer.taken;
+        target.source = buffer.source;
 
-        #undef REQUIRES
-        #undef EQUAL_FOLLOWS
-        #undef ISBLANK
-        #undef ISLETTER
-        #undef ISDIGIT
-        #undef CURRENT_CHAR
+        return target;
+
         #undef PEEK
-        #undef ADVANCE
+        #undef COMMIT
+        #undef EQUAL_FOLLOWS
+        #undef REQUIRES
+        #undef ISDIGIT
+        #undef ISLETTER
+        #undef ISBLANK
 }
 
-char* lex(char* source, Token *const token, IdentifiersRecord **const record) {
-        source = _lex(source, token);
-        if (token->type == TOKEN_IDENTIFIER) {
-                intern_identifiers(token, record);
-                detect_keywords(token);
+Token lex(lexer_info *const state) {
+        Token tk = _lex(state);
+        intern_token(&tk);
+        if (tk.type == TOKEN_IDENTIFIER) {
+                detect_keywords(&tk);
         }
-        return source;
+
+#ifdef DEBUG
+        printf("[%-32s] Producing type-%.2d token: `%.*s`. (line %u[%u:%u])\n", __BASE_FILE__, tk.type, tk.length, tk.source, tk.line, tk.column, tk.column+tk.length-1);
+#endif
+
+        return tk;
 }

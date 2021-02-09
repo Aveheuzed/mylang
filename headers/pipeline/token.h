@@ -41,8 +41,8 @@ typedef enum {
 typedef struct Token {
         char* source;
         unsigned int line;
-        unsigned short column;
-        unsigned short length;
+        unsigned int column;
+        unsigned int length;
         TokenType type;
 } Token;
 
