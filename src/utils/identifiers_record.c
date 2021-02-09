@@ -24,7 +24,7 @@ static IdentifiersRecord* growRecord(IdentifiersRecord* pool) {
                 Identifier id = pool->pool[i];
                 if (id.source != NULL) put_identifier(new_pool, id);
         }
-        freeRecord(pool);
+        free(pool); // NOT freeRecord, because we want to keep the contents intact
         return new_pool;
 }
 
@@ -40,6 +40,12 @@ void freeRecord(IdentifiersRecord* pool) {
         free(pool);
 }
 
+/*
+Note: [see also the note in pipeline/lexer.c]
+`internalize` expects to get a — not necessarily null-terminated — malloc'd string.
+In all cases, the record takes ownership of that string.
+If `internalize` deduplicates it, then it frees the string it was passed (the one that doesn't get returned).
+*/
 char* internalize(IdentifiersRecord **const record, char *const string, unsigned short length) {
         #define BUCKET_FULL(bucket) ((bucket).source != NULL)
         #define SAME_HASH(bucket, hsh) ((bucket).hash == (hsh))
@@ -66,16 +72,17 @@ char* internalize(IdentifiersRecord **const record, char *const string, unsigned
                 id = ADVANCE();
         }
 
-        if (BUCKET_FULL(id)) return id.source;
+        if (BUCKET_FULL(id)) {
+                free(string);
+                return id.source;
+        }
 
         // Step 2: it's not there, put it in.
         do {
                 id = ADVANCE();
         } while (BUCKET_FULL(id));
 
-        char* copy = strndup(string, length);
-
-        (*record)->pool[mask&index] = (Identifier) {.source=copy, .hash=hash};
+        (*record)->pool[mask&index] = (Identifier) {.source=string, .hash=hash};
         (*record)->nb_entries++;
 
         return string;
