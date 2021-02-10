@@ -3,6 +3,9 @@
 
 #include "headers/utils/namespace.h"
 
+#include "headers/utils/debug.h"
+
+
 #define GROW_THRESHHOLD (0.8) // TODO: benchmark this value
 
 #define BUCKET_FULL(bucket) ((bucket).key != NULL)
@@ -20,6 +23,9 @@ static void raw_ns_set_value(Namespace *const pool, Variable v) {
 
 static Namespace* growNamespace(Namespace* pool) {
         const size_t new_size = pool->len * 2;
+
+        LOG("Namespace grows from %lu to %lu entries", pool->len, new_size);
+
         Namespace *new_pool = calloc(offsetof(Namespace, pool) + sizeof(Variable)*new_size, 1);
         new_pool->len = new_size;
         for (size_t i=0; i<pool->len; i++) {

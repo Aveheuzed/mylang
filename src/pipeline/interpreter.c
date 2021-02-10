@@ -6,6 +6,8 @@
 #include "headers/pipeline/interpreter.h"
 #include "headers/pipeline/node.h"
 
+#include "headers/utils/debug.h"
+
 #define SUCCESS 1
 #define FAILURE 0
 
@@ -544,6 +546,7 @@ int _interpretStatement(parser_info *const prsinfo, const Node* root, Namespace 
 }
 
 int interpretStatement(parser_info *const prsinfo, Namespace **const ns) {
+        LOG("Interpreting a new statement");
         Node* root = parse_statement(prsinfo);
         return _interpretStatement(prsinfo, root, ns);
 }
