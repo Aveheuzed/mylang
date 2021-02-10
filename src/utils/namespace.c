@@ -26,7 +26,7 @@ static Namespace* growNamespace(Namespace* pool) {
                 Variable v = pool->pool[i];
                 if (v.key != NULL) raw_ns_set_value(new_pool, v);
         }
-        freeNamespace(pool);
+        free(pool);
         return new_pool;
 }
 
