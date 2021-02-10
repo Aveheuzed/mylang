@@ -406,10 +406,7 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
 static Node* simple_statement(parser_info *const state) {
         Node* stmt = parseExpression(state, PREC_NONE);
         if (stmt == NULL) return NULL;
-        if (PEEK_TYPE(state) == TOKEN_SEMICOLON) {
-                produce(state);
-        }
-        else {
+        if (PEEK_TYPE(state) != TOKEN_SEMICOLON) {
                 Token tk = state->last_produced;
                 fprintf(stderr, "line %u, column %u, at \"%.*s\": expected ';'.\n", tk.line, tk.column, tk.length, tk.source);
                 freeNode(stmt);
@@ -434,7 +431,6 @@ static Node* block_statement(parser_info *const state) {
                 stmt->operands[nb_children] = substmt;
         }
         stmt->operands[0] = (void*) nb_children;
-        produce(state);
         return stmt;
 }
 
