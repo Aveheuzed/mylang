@@ -4,8 +4,6 @@
 #include "headers/pipeline/lexer.h"
 #include "headers/utils/identifiers_record.h"
 
-#include "headers/utils/debug.h"
-
 static IdentifiersRecord* record = NULL;
 void init_lexing(void) {
         record = allocateRecord();

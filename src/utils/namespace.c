@@ -3,9 +3,6 @@
 
 #include "headers/utils/namespace.h"
 
-#include "headers/utils/debug.h"
-
-
 #define GROW_THRESHHOLD (0.8) // TODO: benchmark this value
 
 #define BUCKET_FULL(bucket) ((bucket).key != NULL)

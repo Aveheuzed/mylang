@@ -4,8 +4,6 @@
 
 #include "headers/utils/identifiers_record.h"
 
-#include "headers/utils/debug.h"
-
 #define GROW_THRESHHOLD (0.8) // TODO: benchmark this value
 
 static void put_identifier(IdentifiersRecord *const pool, Identifier id) {

@@ -5,8 +5,6 @@
 
 #include "headers/pipeline/parser.h"
 
-#include "headers/utils/debug.h"
-
 #define PEEK_TYPE(prsinfo) ((prsinfo)->last_produced.type)
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 

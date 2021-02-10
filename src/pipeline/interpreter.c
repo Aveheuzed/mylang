@@ -6,8 +6,6 @@
 #include "headers/pipeline/interpreter.h"
 #include "headers/pipeline/node.h"
 
-#include "headers/utils/debug.h"
-
 #define SUCCESS 1
 #define FAILURE 0
 
