@@ -5,6 +5,8 @@
 
 #include "headers/pipeline/parser.h"
 
+#include "headers/utils/debug.h"
+
 #define PEEK_TYPE(prsinfo) ((prsinfo)->last_produced.type)
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 
@@ -466,6 +468,8 @@ Node* parse_statement(parser_info *const state) {
                 [TOKEN_BOPEN] = block_statement,
                 [TOKEN_IF] = ifelse_statement,
         };
+
+        LOG("Building a new statement");
 
         produce(state);
 

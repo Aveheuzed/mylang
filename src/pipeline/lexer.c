@@ -4,6 +4,8 @@
 #include "headers/pipeline/lexer.h"
 #include "headers/utils/identifiers_record.h"
 
+#include "headers/utils/debug.h"
+
 static IdentifiersRecord* record = NULL;
 void init_lexing(void) {
         record = allocateRecord();
@@ -220,9 +222,7 @@ Token lex(lexer_info *const state) {
                 detect_keywords(&tk);
         }
 
-#ifdef DEBUG
-        printf("[%-32s] Producing type-%.2d token: `%.*s`. (line %u[%u:%u])\n", __BASE_FILE__, tk.type, tk.length, tk.source, tk.line, tk.column, tk.column+tk.length-1);
-#endif
+        LOG("Producing type-%.2d token: `%.*s`. (line %u[%u:%u])", tk.type, tk.length, tk.source, tk.line, tk.column, tk.column+tk.length-1);
 
         return tk;
 }
