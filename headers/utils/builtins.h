@@ -3,6 +3,7 @@
 
 #include "headers/utils/object.h"
 
-void print_value(const Object obj);
+Object print_value(const uintptr_t argc, const Object* obj);
+Object native_clock(const uintptr_t argc, const Object* obj);
 
 #endif

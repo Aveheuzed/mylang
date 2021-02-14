@@ -29,6 +29,8 @@ typedef enum {
         OP_LT,
         OP_LE,
 
+        OP_CALL,
+
         OP_BLOCK,
         OP_IFELSE,
 

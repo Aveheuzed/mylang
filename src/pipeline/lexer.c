@@ -5,11 +5,13 @@
 #include "headers/utils/identifiers_record.h"
 
 static IdentifiersRecord* record = NULL;
-void init_lexing(void) {
-        record = allocateRecord();
+IdentifiersRecord** init_lexing(void) {
+        if (record == NULL) record = allocateRecord();
+        return &record;
 }
 void end_lexing(void) {
         freeRecord(record);
+        record = NULL;
 }
 
 inline lexer_info mk_lexer_info(FILE* file) {
@@ -131,6 +133,7 @@ Token _lex(lexer_info *const state) {
                 case '(': COMMIT(staging); target.type = TOKEN_POPEN; break;
                 case ')': COMMIT(staging); target.type = TOKEN_PCLOSE; break;
                 case ';': COMMIT(staging); target.type = TOKEN_SEMICOLON; break;
+                case ',': COMMIT(staging); target.type = TOKEN_COMMA; break;
                 case '{': COMMIT(staging); target.type = TOKEN_BOPEN; break;
                 case '}': COMMIT(staging); target.type = TOKEN_BCLOSE; break;
 

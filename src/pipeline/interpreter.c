@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <alloca.h>
 
 #include "headers/pipeline/interpreter.h"
 #include "headers/pipeline/node.h"
@@ -460,6 +461,19 @@ static Object interpretLe(const Node* root, Namespace **const ns) {
 static Object interpretNone(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_NONE};
 }
+static Object interpretCall(const Node* root, Namespace **const ns) {
+        Object funcnode = interpretExpression(root->operands[1], ns);
+        if (funcnode.type != TYPE_NATIVEF) TYPEERROR();
+
+
+        const uintptr_t argc = (uintptr_t) root->operands[0]-1;
+
+        Object *const argv = alloca(argc*sizeof(Object));
+        for (uintptr_t iarg=0; iarg<argc; iarg++) {
+                argv[iarg] = interpretExpression(root->operands[iarg+2], ns);
+        }
+        return funcnode.natfunval(argc, argv);
+}
 
 static int interpretBlock(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
         const uintptr_t nb_children = (uintptr_t) root->operands[0];
@@ -524,7 +538,10 @@ Object interpretExpression(const Node* root, Namespace **const ns) {
                 [OP_EQ] = interpretEq,
                 [OP_LT] = interpretLt,
                 [OP_LE] = interpretLe,
+
+                [OP_CALL] = interpretCall,
         };
+        LOG("");
         return interpreters[root->operator](root, ns);
 }
 int _interpretStatement(parser_info *const prsinfo, const Node* root, Namespace **const ns) {

@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "headers/pipeline/token.h"
+#include "headers/utils/identifiers_record.h"
 
 typedef struct lexer_info {
         FILE* file;
@@ -13,7 +14,7 @@ typedef struct lexer_info {
 
 lexer_info mk_lexer_info(FILE* file);
 
-void init_lexing(void);
+IdentifiersRecord** init_lexing(void);
 void end_lexing(void); // not to be called until tokens are not needed any more
 Token lex(lexer_info *const state);
 

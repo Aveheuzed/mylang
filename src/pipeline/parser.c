@@ -23,6 +23,7 @@ typedef enum Precedence {
         PREC_ADD,
         PREC_MUL,
         PREC_UNARY,
+        PREC_CALL,
 } Precedence;
 
 static Node* parseExpression(parser_info *const state, const Precedence precedence);
@@ -51,6 +52,8 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_EQ] = 2,
         [OP_LT] = 2,
         [OP_LE] = 2,
+
+        [OP_CALL] = UINTPTR_MAX,
 
         [OP_BLOCK] = UINTPTR_MAX,
         [OP_IFELSE] = 3, // predicate, if_stmt, else_stmt
@@ -348,6 +351,34 @@ static Node* affect(parser_info *const state, Node *const root) {
         new->operands[1] = operand;
         return new;
 }
+static Node* call(parser_info *const state, Node *const root) {
+        // [count, fnode, argnode...]
+        if (root->operator != OP_VARIABLE) return infixParseError(state, root);
+        uintptr_t count = 1; // function node
+        Node* new = allocateNode(count + 1);
+
+        new->token = state->last_produced;
+        new->operator = OP_CALL;
+        new->operands[1] = root;
+        produce(state);
+
+        while (state->last_produced.type != TOKEN_PCLOSE) {
+                Node* arg = parseExpression(state, PREC_NONE);
+                if (arg == NULL) {
+                        new->operands[0] = (void*) count;
+                        freeNode(new);
+                        return NULL;
+                }
+                new = reallocateNode(new, ++count+1);
+                new->operands[count] = arg;
+
+                if (state->last_produced.type == TOKEN_COMMA) produce(state);
+        }
+        produce(state);
+        new->operands[0] = (void*) count;
+        return new;
+
+}
 
 // ------------------ end parse functions --------------------------------------
 
@@ -365,7 +396,7 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                 [TOKEN_LE] = {prefixParseError, le, PREC_COMPARISON},
                 [TOKEN_GT] = {prefixParseError, gt, PREC_COMPARISON},
                 [TOKEN_LT] = {prefixParseError, lt, PREC_COMPARISON},
-                [TOKEN_POPEN] = {grouping, infixParseError, PREC_NONE},
+                [TOKEN_POPEN] = {grouping, call, PREC_CALL},
                 [TOKEN_PCLOSE] = {prefixParseError, infixParseError, PREC_BAILOUT},
                 [TOKEN_BOPEN] = {prefixParseError, infixParseError, PREC_NONE},
                 [TOKEN_BCLOSE] = {prefixParseError, infixParseError, PREC_BAILOUT},
@@ -385,6 +416,8 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                 [TOKEN_ERROR] = {prefixParseError, infixParseError, PREC_BAILOUT},
                 [TOKEN_EOF] = {prefixParseError, infixParseError, PREC_BAILOUT},
         };
+
+        LOG("Appel avec une précédence de %d", precedence);
 
         Node* root;
 

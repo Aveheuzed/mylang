@@ -21,6 +21,7 @@ typedef enum {
 
         TOKEN_EQUAL, // "=" : affectation
         TOKEN_SEMICOLON,
+        TOKEN_COMMA,
         TOKEN_NOT,
 
         TOKEN_IDENTIFIER,

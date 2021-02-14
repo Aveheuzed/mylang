@@ -1,18 +1,26 @@
 #include <stdio.h>
+#include <time.h>
 
 #include "headers/utils/builtins.h"
 
-void print_value(const Object obj) {
-        switch (obj.type) {
+Object print_value(const uintptr_t argc, const Object* obj) {
+        if (argc == 1) switch (obj[0].type) {
                 case TYPE_INT:
-                        printf("%ld\n", obj.intval); break;
+                        printf("%ld\n", obj[0].intval); break;
                 case TYPE_BOOL:
-                        printf("%s\n", obj.intval?"true":"false"); break;
+                        printf("%s\n", obj[0].intval?"true":"false"); break;
                 case TYPE_FLOAT:
-                        printf("%f\n", obj.floatval); break;
+                        printf("%f\n", obj[0].floatval); break;
                 case TYPE_STRING:
-                        printf("\"%s\"\n", obj.strval->value); break;
+                        printf("\"%s\"\n", obj[0].strval->value); break;
                 case TYPE_NONE:
                         printf("none\n"); break;
+                case TYPE_NATIVEF:
+                        printf("<function>\n"); break;
         }
+        return (Object) {.type=TYPE_NONE};
+}
+
+Object native_clock(const uintptr_t argc, const Object* obj) {
+        return (Object) {.type=TYPE_FLOAT, .floatval=((double)clock())/(CLOCKS_PER_SEC)};
 }
