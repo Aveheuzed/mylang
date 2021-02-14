@@ -2,9 +2,11 @@
 #include <time.h>
 
 #include "headers/utils/builtins.h"
+#include "headers/utils/error.h"
 
 Object print_value(const uintptr_t argc, const Object* obj) {
-        if (argc == 1) switch (obj[0].type) {
+        if (argc != 1) ARITYERROR(1, argc);
+        switch (obj[0].type) {
                 case TYPE_INT:
                         printf("%ld\n", obj[0].intval); break;
                 case TYPE_BOOL:
@@ -22,5 +24,6 @@ Object print_value(const uintptr_t argc, const Object* obj) {
 }
 
 Object native_clock(const uintptr_t argc, const Object* obj) {
+        if (argc) ARITYERROR(0, argc);
         return (Object) {.type=TYPE_FLOAT, .floatval=((double)clock())/(CLOCKS_PER_SEC)};
 }

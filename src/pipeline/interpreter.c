@@ -6,13 +6,10 @@
 
 #include "headers/pipeline/interpreter.h"
 #include "headers/pipeline/node.h"
+#include "headers/utils/error.h"
 
 #define SUCCESS 1
 #define FAILURE 0
-
-#define NOTIMPLEMENTED() (puts("Operation not implemented."), exit(-1))
-#define TYPEERROR() (puts("Attempt to perform an operation on incompatible types"), exit(-1))
-#define RUNTIMEERROR() (puts("Runtime error !"), exit(-1))
 
 Object interpretExpression(const Node* root, Namespace **const ns);
 int _interpretStatement(parser_info *const prsinfo, const Node* root, Namespace **const ns);
