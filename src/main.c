@@ -8,6 +8,15 @@
 #include "headers/pipeline/interpreter.h"
 #include "headers/utils/builtins.h"
 
+
+static inline void declare_variable(parser_info *const prsinfo, Namespace **const ns, const char* key, Object value) {
+        ns_set_value(
+                ns,
+                internalize(&(prsinfo->lxinfo.record), strdup(key), strlen(key)),
+                value
+        );
+}
+
 int main(int argc, char* argv[]) {
         FILE* source_code;
         switch (argc) {
@@ -20,17 +29,14 @@ int main(int argc, char* argv[]) {
                         return EXIT_FAILURE;
         }
         parser_info psinfo = mk_parser_info(source_code);
-        IdentifiersRecord** tstring = init_lexing();
         Namespace* ns = allocateNamespace();
 
-        LOG("Starting to put built-in functions in the global namespace");
-
-        ns_set_value(&ns, internalize(tstring, strdup("print"), strlen("print")), (Object){.type=TYPE_NATIVEF, .natfunval=&print_value});
-        ns_set_value(&ns, internalize(tstring, strdup("clock"), strlen("clock")), (Object){.type=TYPE_NATIVEF, .natfunval=&native_clock});
-
-        LOG("Done putting built-in functions in the global namespace");
+        declare_variable(&psinfo, &ns, "print", (Object){.type=TYPE_NATIVEF, .natfunval=&print_value});
+        declare_variable(&psinfo, &ns, "clock", (Object){.type=TYPE_NATIVEF, .natfunval=&native_clock});
 
         while (interpretStatement(&psinfo, &ns));
-        fclose(source_code);
+
+        del_parser_info(psinfo);
+
         return EXIT_SUCCESS;
 }

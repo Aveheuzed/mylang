@@ -4,18 +4,14 @@
 #include "headers/pipeline/lexer.h"
 #include "headers/utils/identifiers_record.h"
 
-static IdentifiersRecord* record = NULL;
-IdentifiersRecord** init_lexing(void) {
-        if (record == NULL) record = allocateRecord();
-        return &record;
-}
-void end_lexing(void) {
-        freeRecord(record);
-        record = NULL;
-}
-
 inline lexer_info mk_lexer_info(FILE* file) {
-        return (lexer_info) {.file=file, .line=1, .column=1};
+        lexer_info lxinfo = (lexer_info) {.file=file, .line=1, .column=1};
+        lxinfo.record = allocateRecord();
+        return lxinfo;
+}
+inline void del_lexer_info(lexer_info lxinfo) {
+        fclose(lxinfo.file);
+        freeRecord(lxinfo.record);
 }
 
 /*
@@ -26,9 +22,9 @@ Therefore, internalize needn't `strndup` it, but it should `free` it if it
 deduplicates it.
 */
 
-static inline void intern_token(Token *const token) {
+static inline void intern_token(lexer_info *const lxinfo, Token *const token) {
         if (token->length)
-        token->source = internalize(&record, token->source, token->length);
+        token->source = internalize(&(lxinfo->record), token->source, token->length);
 }
 
 static inline void detect_keywords(Token *const token) {
@@ -218,7 +214,7 @@ Token _lex(lexer_info *const state) {
 
 Token lex(lexer_info *const state) {
         Token tk = _lex(state);
-        intern_token(&tk);
+        intern_token(state, &tk);
         if (tk.type == TOKEN_IDENTIFIER) {
                 detect_keywords(&tk);
         }
