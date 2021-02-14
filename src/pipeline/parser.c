@@ -422,6 +422,7 @@ static Node* block_statement(parser_info *const state) {
         while (PEEK_TYPE(state) != TOKEN_BCLOSE) {
                 Node* substmt = parse_statement(state);
                 if (substmt == NULL) {
+                        stmt->operands[0] = (void*) nb_children;
                         freeNode(stmt);
                         return NULL;
                 }
