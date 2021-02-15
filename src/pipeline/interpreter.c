@@ -500,11 +500,11 @@ static int interpretIf(parser_info *const prsinfo, const Node* root, Namespace *
                 case TYPE_NONE:
                         branch = false; break;
                 case TYPE_FLOAT:
-                        branch = false; break;
+                        TYPEERROR(); break;
                 case TYPE_STRING:
                         branch = (predicate.strval->len > 0); break;
                 default:
-                        branch = false;
+                        TYPEERROR();
 
         }
         if (branch) return _interpretStatement(prsinfo, root->operands[1], ns);
