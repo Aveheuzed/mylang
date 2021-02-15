@@ -406,6 +406,7 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
 
                 [TOKEN_EQUAL] = {prefixParseError, affect, PREC_AFFECT},
                 [TOKEN_SEMICOLON] = {prefixParseError, infixParseError, PREC_BAILOUT},
+                [TOKEN_COMMA] = {prefixParseError, infixParseError, PREC_BAILOUT},
                 [TOKEN_NOT] = {invert, infixParseError, PREC_UNARY},
 
                 [TOKEN_IDENTIFIER] = {identifier, infixParseError, PREC_NONE},
