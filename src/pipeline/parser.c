@@ -376,6 +376,7 @@ static Node* call(parser_info *const state, Node *const root) {
                 new->operands[count] = arg;
 
                 if (state->last_produced.type == TOKEN_COMMA) produce(state);
+                else if (state->last_produced.type != TOKEN_PCLOSE) return infixParseError(state, new);
         }
         produce(state);
         new->operands[0] = (void*) count;
