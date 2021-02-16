@@ -13,6 +13,7 @@ typedef struct parser_info {
 
 parser_info mk_parser_info(FILE* file);
 
+void start_parsing(parser_info *const state);
 Node* parse_statement(parser_info *const state);
 
 #endif

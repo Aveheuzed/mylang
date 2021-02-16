@@ -20,6 +20,7 @@ int main(int argc, char* argv[]) {
         parser_info psinfo = mk_parser_info(source_code);
         init_lexing();
         Namespace* ns = allocateNamespace();
+        start_parsing(&psinfo);
         while (interpretStatement(&psinfo, &ns));
         fclose(source_code);
         return EXIT_SUCCESS;
