@@ -5,7 +5,6 @@
 
 #include "headers/pipeline/parser.h"
 
-#define PEEK_TYPE(prsinfo) ((prsinfo)->last_produced.type)
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 
 typedef Node* (*UnaryParseFn)(parser_info *const state);
@@ -59,8 +58,21 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_IFELSE] = 3, // predicate, if_stmt, else_stmt
 }; // set to UINTPTR_MAX for a variable number of operands
 
-static inline void produce(parser_info *const prsinfo) {
-        prsinfo->last_produced=lex(&(prsinfo->lxinfo));
+static inline void refresh(parser_info *const prsinfo) {
+        // call to guarantee the last produced token is not stale
+        if (prsinfo->stale) {
+                prsinfo->last_produced=lex(&(prsinfo->lxinfo));
+                prsinfo->stale = 0;
+        }
+}
+static inline Token consume(parser_info *const prsinfo) {
+        refresh(prsinfo);
+        prsinfo->stale = 1;
+        return prsinfo->last_produced;
+}
+static inline TokenType getTtype(parser_info *const prsinfo) {
+        refresh(prsinfo);
+        return prsinfo->last_produced.type;
 }
 static Node* allocateNode(const uintptr_t nb_children) {
         return malloc(offsetof(Node, operands) + sizeof(Node*)*nb_children);
@@ -80,7 +92,7 @@ void freeNode(Node* node) {
         free(node);
 }
 inline parser_info mk_parser_info(FILE* file) {
-        return (parser_info) {.lxinfo=mk_lexer_info(file)};
+        return (parser_info) {.lxinfo=mk_lexer_info(file), .stale=1};
 }
 inline void del_parser_info(parser_info prsinfo) {
         del_lexer_info(prsinfo.lxinfo);
@@ -94,8 +106,7 @@ static Node* prefixParseError(parser_info *const state) {
         return NULL;
 }
 static Node* unary_plus(parser_info *const state) {
-        const Token operator = state->last_produced;
-        produce(state);
+        const Token operator = consume(state);
         Node* operand = parseExpression(state, PREC_UNARY);
         if (operand == NULL) return NULL;
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_UNARY_PLUS);
@@ -104,8 +115,7 @@ static Node* unary_plus(parser_info *const state) {
         return new;
 }
 static Node* unary_minus(parser_info *const state) {
-        const Token operator = state->last_produced;
-        produce(state);
+        const Token operator = consume(state);
         Node* operand = parseExpression(state, PREC_UNARY);
         if (operand == NULL) return NULL;
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_UNARY_MINUS);
@@ -115,42 +125,36 @@ static Node* unary_minus(parser_info *const state) {
 }
 static Node* integer(parser_info *const state) {
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INT);
-        *new = (Node) {.token=state->last_produced, .operator=OP_INT};
-        produce(state);
+        *new = (Node) {.token=consume(state), .operator=OP_INT};
         return new;
 }
 static Node* boolean(parser_info *const state) {
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_BOOL);
-        *new = (Node) {.token=state->last_produced, .operator=OP_BOOL};
-        produce(state);
+        *new = (Node) {.token=consume(state), .operator=OP_BOOL};
         return new;
 }
 static Node* fpval(parser_info *const state) {
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_FLOAT);
-        *new = (Node) {.token=state->last_produced, .operator=OP_FLOAT};
-        produce(state);
+        *new = (Node) {.token=consume(state), .operator=OP_FLOAT};
         return new;
 }
 static Node* string(parser_info *const state) {
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_STR);
-        *new = (Node) {.token=state->last_produced, .operator=OP_STR};
-        produce(state);
+        *new = (Node) {.token=consume(state), .operator=OP_STR};
         return new;
 }
 static Node* grouping(parser_info *const state) {
-        const Token operator = state->last_produced;
-        produce(state);
+        const Token operator = consume(state);
         Node* operand = parseExpression(state, PREC_NONE);
         if (operand == NULL) return NULL;
 
-        if (PEEK_TYPE(state) == TOKEN_PCLOSE) produce(state);
+        if (getTtype(state) == TOKEN_PCLOSE) consume(state);
         else return infixParseError(state, operand);
 
         return operand;
 }
 static Node* invert(parser_info *const state) {
-        const Token operator = state->last_produced;
-        produce(state);
+        const Token operator = consume(state);
         Node* operand = parseExpression(state, PREC_UNARY);
         if (operand == NULL) return NULL;
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INVERT);
@@ -160,14 +164,12 @@ static Node* invert(parser_info *const state) {
 }
 static Node* none(parser_info *const state) {
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_NONE);
-        *new = (Node) {.token=state->last_produced, .operator=OP_NONE};
-        produce(state);
+        *new = (Node) {.token=consume(state), .operator=OP_NONE};
         return new;
 }
 static Node* identifier(parser_info *const state) {
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_VARIABLE);
-        *new = (Node) {.token=state->last_produced, .operator=OP_VARIABLE};
-        produce(state);
+        *new = (Node) {.token=consume(state), .operator=OP_VARIABLE};
         return new;
 }
 
@@ -180,8 +182,7 @@ static Node* infixParseError(parser_info *const state, Node *const root) {
         return NULL;
 }
 static Node* binary_plus(parser_info *const state, Node *const root) {
-        const Token operator = state->last_produced;
-        produce(state);
+        const Token operator = consume(state);
         Node* operand = parseExpression(state, PREC_ADD);
         if (operand == NULL) {
                 freeNode(root);
@@ -194,8 +195,7 @@ static Node* binary_plus(parser_info *const state, Node *const root) {
         return new;
 }
 static Node* binary_minus(parser_info *const state, Node *const root) {
-        const Token operator = state->last_produced;
-        produce(state);
+        const Token operator = consume(state);
         Node* operand = parseExpression(state, PREC_ADD);
         if (operand == NULL) {
                 freeNode(root);
@@ -208,8 +208,7 @@ static Node* binary_minus(parser_info *const state, Node *const root) {
         return new;
 }
 static Node* binary_star(parser_info *const state, Node *const root) {
-        const Token operator = state->last_produced;
-        produce(state);
+        const Token operator = consume(state);
         Node* operand = parseExpression(state, PREC_MUL);
         if (operand == NULL) {
                 freeNode(root);
@@ -222,8 +221,7 @@ static Node* binary_star(parser_info *const state, Node *const root) {
         return new;
 }
 static Node* binary_slash(parser_info *const state, Node *const root) {
-        const Token operator = state->last_produced;
-        produce(state);
+        const Token operator = consume(state);
         Node* operand = parseExpression(state, PREC_MUL);
         if (operand == NULL) {
                 freeNode(root);
@@ -236,8 +234,7 @@ static Node* binary_slash(parser_info *const state, Node *const root) {
         return new;
 }
 static Node* binary_and(parser_info *const state, Node *const root) {
-        const Token operator = state->last_produced;
-        produce(state);
+        const Token operator = consume(state);
         Node* operand = parseExpression(state, PREC_AND);
         if (operand == NULL) {
                 freeNode(root);
@@ -250,8 +247,7 @@ static Node* binary_and(parser_info *const state, Node *const root) {
         return new;
 }
 static Node* binary_or(parser_info *const state, Node *const root) {
-        const Token operator = state->last_produced;
-        produce(state);
+        const Token operator = consume(state);
         Node* operand = parseExpression(state, PREC_OR);
         if (operand == NULL) {
                 freeNode(root);
@@ -264,8 +260,7 @@ static Node* binary_or(parser_info *const state, Node *const root) {
         return new;
 }
 static Node* lt(parser_info *const state, Node *const root) {
-        const Token operator = state->last_produced;
-        produce(state);
+        const Token operator = consume(state);
         Node* operand = parseExpression(state, PREC_COMPARISON);
         if (operand == NULL) {
                 freeNode(root);
@@ -278,8 +273,7 @@ static Node* lt(parser_info *const state, Node *const root) {
         return new;
 }
 static Node* le(parser_info *const state, Node *const root) {
-        const Token operator = state->last_produced;
-        produce(state);
+        const Token operator = consume(state);
         Node* operand = parseExpression(state, PREC_COMPARISON);
         if (operand == NULL) {
                 freeNode(root);
@@ -293,6 +287,8 @@ static Node* le(parser_info *const state, Node *const root) {
 }
 static Node* gt(parser_info *const state, Node *const root) {
         // > is implemented as !(<=)
+        refresh(state);
+        // not how we DON'T consume the token; `le` will do it
         const Token operator = state->last_produced;
         Node* operand = le(state, root);
         if (operand == NULL) return NULL;
@@ -304,6 +300,8 @@ static Node* gt(parser_info *const state, Node *const root) {
 }
 static Node* ge(parser_info *const state, Node *const root) {
         // >= is implemented as !(<)
+        refresh(state);
+        // not how we DON'T consume the token; `lt` will do it
         const Token operator = state->last_produced;
         Node* operand = lt(state, root);
         if (operand == NULL) return NULL;
@@ -314,8 +312,7 @@ static Node* ge(parser_info *const state, Node *const root) {
         return new;
 }
 static Node* eq(parser_info *const state, Node *const root) {
-        const Token operator = state->last_produced;
-        produce(state);
+        const Token operator = consume(state);
         Node* operand = parseExpression(state, PREC_COMPARISON);
         if (operand == NULL) {
                 freeNode(root);
@@ -329,6 +326,8 @@ static Node* eq(parser_info *const state, Node *const root) {
 }
 static Node* ne(parser_info *const state, Node *const root) {
         // != is implemented as !(==)
+        refresh(state);
+        // not how we DON'T consume the token; `eq` will do it
         const Token operator = state->last_produced;
         Node* operand = eq(state, root);
         if (operand == NULL) return NULL;
@@ -341,8 +340,7 @@ static Node* ne(parser_info *const state, Node *const root) {
 static Node* affect(parser_info *const state, Node *const root) {
         if (root->operator != OP_VARIABLE) return infixParseError(state, root);
 
-        const Token operator = state->last_produced;
-        produce(state);
+        const Token operator = consume(state);
         Node* operand = parseExpression(state, PREC_AFFECT-1);
         if (operand == NULL) {
                 freeNode(root);
@@ -360,12 +358,11 @@ static Node* call(parser_info *const state, Node *const root) {
         uintptr_t count = 1; // function node
         Node* new = allocateNode(count + 1);
 
-        new->token = state->last_produced;
+        new->token = consume(state);
         new->operator = OP_CALL;
         new->operands[1] = root;
-        produce(state);
 
-        while (state->last_produced.type != TOKEN_PCLOSE) {
+        while (getTtype(state) != TOKEN_PCLOSE) {
                 Node* arg = parseExpression(state, PREC_NONE);
                 if (arg == NULL) {
                         new->operands[0] = (void*) count;
@@ -375,10 +372,10 @@ static Node* call(parser_info *const state, Node *const root) {
                 new = reallocateNode(new, ++count+1);
                 new->operands[count] = arg;
 
-                if (state->last_produced.type == TOKEN_COMMA) produce(state);
-                else if (state->last_produced.type != TOKEN_PCLOSE) return infixParseError(state, new);
+                if (getTtype(state) == TOKEN_COMMA) consume(state);
+                else if (getTtype(state) != TOKEN_PCLOSE) return infixParseError(state, new);
         }
-        produce(state);
+        consume(state);
         new->operands[0] = (void*) count;
         return new;
 
@@ -426,11 +423,11 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
 
         Node* root;
 
-        root = rules[PEEK_TYPE(state)].prefix(state);
+        root = rules[getTtype(state)].prefix(state);
         if (root == NULL) return root;
 
-        while (precedence < rules[PEEK_TYPE(state)].precedence) {
-                root = rules[PEEK_TYPE(state)].infix(state, root);
+        while (precedence < rules[getTtype(state)].precedence) {
+                root = rules[getTtype(state)].infix(state, root);
                 if (root == NULL) break;
         }
 
@@ -442,13 +439,13 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
 static Node* simple_statement(parser_info *const state) {
         Node* stmt = parseExpression(state, PREC_NONE);
         if (stmt == NULL) return NULL;
-        if (PEEK_TYPE(state) != TOKEN_SEMICOLON) {
+        if (getTtype(state) != TOKEN_SEMICOLON) {
                 Token tk = state->last_produced;
                 fprintf(stderr, "line %u, column %u, at \"%.*s\": expected ';'.\n", tk.line, tk.column, tk.length, tk.source);
                 freeNode(stmt);
                 stmt = NULL;
         } else {
-                produce(state);
+                consume(state);
         }
         return stmt;
 }
@@ -456,10 +453,9 @@ static Node* simple_statement(parser_info *const state) {
 static Node* block_statement(parser_info *const state) {
         uintptr_t nb_children = 0;
         Node* stmt = allocateNode(nb_children + 1); // add one, for the length of the array
-        stmt->token = state->last_produced;
-        produce(state);
+        stmt->token = consume(state);
         stmt->operator = OP_BLOCK;
-        while (PEEK_TYPE(state) != TOKEN_BCLOSE) {
+        while (getTtype(state) != TOKEN_BCLOSE) {
                 Node* substmt = parse_statement(state);
                 if (substmt == NULL) {
                         stmt->operands[0] = (void*) nb_children;
@@ -470,14 +466,14 @@ static Node* block_statement(parser_info *const state) {
                 stmt->operands[nb_children] = substmt;
         }
         stmt->operands[0] = (void*) nb_children;
-        produce(state);
+        consume(state);
         return stmt;
 }
 
 static Node* ifelse_statement(parser_info *const state) {
         Node* new = ALLOCATE_SIMPLE_NODE(OP_IFELSE);
         *new = (Node) {.token=state->last_produced, .operator=OP_IFELSE};
-        produce(state);
+        consume(state);
         if ((new->operands[0] = parseExpression(state, PREC_NONE)) == NULL) {
                 freeNode(new);
                 return NULL;
@@ -486,8 +482,8 @@ static Node* ifelse_statement(parser_info *const state) {
                 freeNode(new);
                 return NULL;
         }
-        if (PEEK_TYPE(state) == TOKEN_ELSE) {
-                produce(state);
+        if (getTtype(state) == TOKEN_ELSE) {
+                consume(state);
                 if ((new->operands[2] = parse_statement(state)) == NULL) {
                         freeNode(new);
                         return NULL;
@@ -499,10 +495,6 @@ static Node* ifelse_statement(parser_info *const state) {
 
 // ------------------ end statement handlers -----------------------------------
 
-void start_parsing(parser_info *const state) {
-        produce(state);
-}
-
 Node* parse_statement(parser_info *const state) {
         static const StatementHandler handlers[TOKEN_EOF] = {
                 [TOKEN_BOPEN] = block_statement,
@@ -511,12 +503,12 @@ Node* parse_statement(parser_info *const state) {
 
         LOG("Building a new statement");
 
-        if (PEEK_TYPE(state) == TOKEN_EOF || PEEK_TYPE(state) == TOKEN_ERROR) return NULL;
+        if (getTtype(state) == TOKEN_EOF || getTtype(state) == TOKEN_ERROR) return NULL;
 
-        StatementHandler handler = handlers[PEEK_TYPE(state)];
+        StatementHandler handler = handlers[getTtype(state)];
         if (handler == NULL) return simple_statement(state);
         else return handler(state);
 }
 
 #undef ALLOCATE_SIMPLE_NODE
-#undef PEEK_TYPE
+#undef getTtype

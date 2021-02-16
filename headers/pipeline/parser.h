@@ -9,12 +9,12 @@
 typedef struct parser_info {
         lexer_info lxinfo;
         Token last_produced;
+        char stale; // state of the token, 1 if it needs to be refreshed
 } parser_info;
 
 parser_info mk_parser_info(FILE* file);
 void del_parser_info(parser_info prsinfo);
 
-void start_parsing(parser_info *const state);
 Node* parse_statement(parser_info *const state);
 
 #endif
