@@ -34,6 +34,7 @@ int main(int argc, char* argv[]) {
         declare_variable(&psinfo, &ns, "print", (Object){.type=TYPE_NATIVEF, .natfunval=&print_value});
         declare_variable(&psinfo, &ns, "clock", (Object){.type=TYPE_NATIVEF, .natfunval=&native_clock});
 
+        start_parsing(&psinfo);
         while (interpretStatement(&psinfo, &ns));
 
         del_parser_info(psinfo);

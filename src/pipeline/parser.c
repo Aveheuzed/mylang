@@ -447,6 +447,8 @@ static Node* simple_statement(parser_info *const state) {
                 fprintf(stderr, "line %u, column %u, at \"%.*s\": expected ';'.\n", tk.line, tk.column, tk.length, tk.source);
                 freeNode(stmt);
                 stmt = NULL;
+        } else {
+                produce(state);
         }
         return stmt;
 }
@@ -468,6 +470,7 @@ static Node* block_statement(parser_info *const state) {
                 stmt->operands[nb_children] = substmt;
         }
         stmt->operands[0] = (void*) nb_children;
+        produce(state);
         return stmt;
 }
 
@@ -496,6 +499,10 @@ static Node* ifelse_statement(parser_info *const state) {
 
 // ------------------ end statement handlers -----------------------------------
 
+void start_parsing(parser_info *const state) {
+        produce(state);
+}
+
 Node* parse_statement(parser_info *const state) {
         static const StatementHandler handlers[TOKEN_EOF] = {
                 [TOKEN_BOPEN] = block_statement,
@@ -503,8 +510,6 @@ Node* parse_statement(parser_info *const state) {
         };
 
         LOG("Building a new statement");
-
-        produce(state);
 
         if (PEEK_TYPE(state) == TOKEN_EOF || PEEK_TYPE(state) == TOKEN_ERROR) return NULL;
 
