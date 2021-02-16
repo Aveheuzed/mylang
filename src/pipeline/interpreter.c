@@ -64,9 +64,6 @@ static Object interpretUnaryMinus(const Node* root, Namespace **const ns) {
                 default: TYPEERROR();
         }
 }
-static Object interpretGroup(const Node* root, Namespace **const ns) {
-        return interpretExpression(root->operands[0], ns);
-}
 static Object interpretSum(const Node* root, Namespace **const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
                 [TYPE_INT] = {
@@ -509,6 +506,7 @@ static int interpretIf(parser_info *const prsinfo, const Node* root, Namespace *
         }
         if (branch) return _interpretStatement(prsinfo, root->operands[1], ns);
         else if (root->operands[2] != NULL) return _interpretStatement(prsinfo, root->operands[2], ns);
+        return SUCCESS;
 }
 
 Object interpretExpression(const Node* root, Namespace **const ns) {

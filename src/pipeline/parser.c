@@ -144,7 +144,7 @@ static Node* string(parser_info *const state) {
         return new;
 }
 static Node* grouping(parser_info *const state) {
-        const Token operator = consume(state);
+        consume(state);
         Node* operand = parseExpression(state, PREC_NONE);
         if (operand == NULL) return NULL;
 
@@ -389,7 +389,7 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                 [TOKEN_MINUS] = {unary_minus, binary_minus, PREC_ADD},
                 [TOKEN_STAR] = {prefixParseError, binary_star, PREC_MUL},
                 [TOKEN_SLASH] = {prefixParseError, binary_slash, PREC_MUL},
-                [TOKEN_AND] {prefixParseError, binary_and, PREC_AND},
+                [TOKEN_AND] = {prefixParseError, binary_and, PREC_AND},
                 [TOKEN_OR] = {prefixParseError, binary_or, PREC_OR},
                 [TOKEN_EQ] = {prefixParseError, eq, PREC_COMPARISON},
                 [TOKEN_NE] = {prefixParseError, ne, PREC_COMPARISON},

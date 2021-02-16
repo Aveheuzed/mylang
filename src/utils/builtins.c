@@ -19,6 +19,8 @@ Object print_value(const uintptr_t argc, const Object* obj) {
                         printf("none\n"); break;
                 case TYPE_NATIVEF:
                         printf("<function>\n"); break;
+                default:
+                        printf("--unrecognized object!\n"); break;
         }
         return (Object) {.type=TYPE_NONE};
 }

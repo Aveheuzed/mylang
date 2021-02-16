@@ -54,7 +54,7 @@ struct token_buffer {
 };
 static void commit(struct token_buffer *const buffer, char c) {
         if (buffer->taken >= buffer->bufsize) {
-                buffer->bufsize = buffer->bufsize*2 || 1;
+                buffer->bufsize = buffer->bufsize ? (buffer->bufsize*2) : 1;
                 buffer->source = reallocarray(buffer->source, buffer->bufsize, sizeof(char));
         }
         buffer->source[buffer->taken++] = c;
