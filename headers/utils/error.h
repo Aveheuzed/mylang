@@ -2,10 +2,15 @@
 #define error_h
 
 #include <stdio.h>
+#include <stddef.h>
+#include <stdint.h>
 
-#define NOTIMPLEMENTED() (puts("Operation not implemented."), exit(-1))
-#define TYPEERROR() (puts("Attempt to perform an operation on incompatible types"), exit(-1))
-#define RUNTIMEERROR() (puts("Runtime error !"), exit(-1))
-#define ARITYERROR(expected, actual) (printf("Arity error : expected %u argument(s), got %lu.\n", expected, actual))
+#include "headers/pipeline/token.h"
+
+
+void TypeError(const Token t);
+void SyntaxError(const Token t);
+void RuntimeError(const Token t);
+void ArityError(const size_t expected, const size_t actual);
 
 #endif

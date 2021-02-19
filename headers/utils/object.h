@@ -30,4 +30,8 @@ struct Object {
         };
 };
 
+#define OBJ_NONE ((Object){.type=TYPE_NONE})
+#define OBJ_TRUE ((Object){.type=TYPE_BOOL, .intval=1})
+#define OBJ_FALSE ((Object){.type=TYPE_BOOL, .intval=0})
+
 #endif
