@@ -3,6 +3,7 @@
 
 #include "headers/pipeline/lexer.h"
 #include "headers/utils/identifiers_record.h"
+#include "headers/utils/error.h"
 
 inline lexer_info mk_lexer_info(FILE* file) {
         lexer_info lxinfo = (lexer_info) {.file=file, .line=1, .column=1};
@@ -214,6 +215,10 @@ Token _lex(lexer_info *const state) {
 
 Token lex(lexer_info *const state) {
         Token tk = _lex(state);
+        while (tk.type == TOKEN_ERROR) {
+                SyntaxError(tk);
+                tk = _lex(state);
+        }
         intern_token(state, &tk);
         if (tk.type == TOKEN_IDENTIFIER) {
                 detect_keywords(&tk);

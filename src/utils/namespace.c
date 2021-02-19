@@ -43,7 +43,7 @@ void freeNamespace(Namespace* pool) {
 }
 
 void ns_set_value(Namespace **const pool, char *const key, Object value) {
-        if ((*pool)->len * GROW_THRESHHOLD <= (*pool)->nb_entries)
+        if ((*pool)->len * GROW_THRESHHOLD <= ((*pool)->nb_entries+1))
                 *pool = growNamespace(*pool);
         raw_ns_set_value(*pool, (Variable){.key=key, .value=value});
 }

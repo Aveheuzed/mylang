@@ -19,7 +19,10 @@ typedef int (*StmtInterpretFn)(parser_info *const prsinfo, const Node* root, Nam
 
 static Object interpretVariable(const Node* root, Namespace **const ns) {
         Object* obj = ns_get_value(*ns, root->token.source);
-        if (obj == NULL) RUNTIMEERROR();
+        if (obj == NULL) {
+                RuntimeError(root->token);
+                return OBJ_NONE;
+        }
         else return *obj;
 }
 static Object interpretInt(const Node* root, Namespace **const ns) {
@@ -44,8 +47,8 @@ static Object interpretUnaryPlus(const Node* root, Namespace **const ns) {
                 case TYPE_FLOAT:
                         return operand;
                 case TYPE_STRING:
-                        TYPEERROR();
-                default: TYPEERROR();
+                        TypeError(root->token); return OBJ_NONE;
+                default: TypeError(root->token); return OBJ_NONE;
         }
 }
 static Object interpretUnaryMinus(const Node* root, Namespace **const ns) {
@@ -60,8 +63,8 @@ static Object interpretUnaryMinus(const Node* root, Namespace **const ns) {
                         operand.floatval *= -1;
                         return operand;
                 case TYPE_STRING:
-                        TYPEERROR();
-                default: TYPEERROR();
+                        TypeError(root->token); return OBJ_NONE;
+                default: TypeError(root->token); return OBJ_NONE;
         }
 }
 static Object interpretSum(const Node* root, Namespace **const ns) {
@@ -110,7 +113,7 @@ static Object interpretSum(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval+opB.floatval)};
 
         error:
-        TYPEERROR();
+        TypeError(root->token); return OBJ_NONE;
 }
 static Object interpretDifference(const Node* root, Namespace **const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
@@ -152,7 +155,7 @@ static Object interpretDifference(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval-opB.floatval)};
 
         error:
-        TYPEERROR();
+        TypeError(root->token); return OBJ_NONE;
 }
 static Object interpretProduct(const Node* root, Namespace **const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
@@ -208,7 +211,7 @@ static Object interpretProduct(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval*opB.floatval)};
 
         error:
-        TYPEERROR();
+        TypeError(root->token); return OBJ_NONE;
 }
 static Object interpretDivision(const Node* root, Namespace **const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
@@ -250,7 +253,7 @@ static Object interpretDivision(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval/opB.floatval)};
 
         error:
-        TYPEERROR();
+        TypeError(root->token); return OBJ_NONE;
 }
 static Object interpretAffect(const Node* root, Namespace **const ns) {
         Object obj = interpretExpression(root->operands[1], ns);
@@ -266,10 +269,10 @@ static Object interpretInvert(const Node* root, Namespace **const ns) {
                         operand.intval = !operand.intval;
                         return operand;
                 case TYPE_FLOAT:
-                        TYPEERROR();
+                        TypeError(root->token); return OBJ_NONE;
                 case TYPE_STRING:
-                        TYPEERROR();
-                default: TYPEERROR();
+                        TypeError(root->token); return OBJ_NONE;
+                default: TypeError(root->token); return OBJ_NONE;
         }
 }
 static Object interpretAnd(const Node* root, Namespace **const ns) {
@@ -280,13 +283,13 @@ static Object interpretAnd(const Node* root, Namespace **const ns) {
                         if (!operand.intval) return operand;
                         break;
                 case TYPE_FLOAT:
-                        TYPEERROR();
+                        TypeError(root->token); return OBJ_NONE;
                 case TYPE_STRING:
                         if (!operand.strval->len) return operand;
                         break;
                 case TYPE_NONE:
                         return operand;
-                default: TYPEERROR();
+                default: TypeError(root->token); return OBJ_NONE;
         }
         operand = interpretExpression(root->operands[1], ns);
         switch (operand.type) {
@@ -296,8 +299,8 @@ static Object interpretAnd(const Node* root, Namespace **const ns) {
                 case TYPE_NONE:
                         return operand;
                 case TYPE_FLOAT:
-                        TYPEERROR();
-                default: TYPEERROR();
+                        TypeError(root->token); return OBJ_NONE;
+                default: TypeError(root->token); return OBJ_NONE;
         }
 }
 static Object interpretOr(const Node* root, Namespace **const ns) {
@@ -308,13 +311,13 @@ static Object interpretOr(const Node* root, Namespace **const ns) {
                         if (operand.intval) return operand;
                         break;
                 case TYPE_FLOAT:
-                        TYPEERROR();
+                        TypeError(root->token); return OBJ_NONE;
                 case TYPE_STRING:
                         if (operand.strval->len) return operand;
                         break;
                 case TYPE_NONE:
                         break;
-                default: TYPEERROR();
+                default: TypeError(root->token); return OBJ_NONE;
         }
         operand = interpretExpression(root->operands[1], ns);
         switch (operand.type) {
@@ -324,8 +327,8 @@ static Object interpretOr(const Node* root, Namespace **const ns) {
                 case TYPE_NONE:
                         return operand;
                 case TYPE_FLOAT:
-                        TYPEERROR();
-                default: TYPEERROR();
+                        TypeError(root->token); return OBJ_NONE;
+                default: TypeError(root->token); return OBJ_NONE;
         }
 }
 static Object interpretEq(const Node* root, Namespace **const ns) {
@@ -358,15 +361,15 @@ static Object interpretEq(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_BOOL, .intval=(opA.intval==opB.intval)};
 
         eq_string_string:
-        if (opA.strval->len != opB.strval->len) return (Object) {.type=TYPE_BOOL, .intval=0};
+        if (opA.strval->len != opB.strval->len) return OBJ_FALSE;
         return (Object) {.type=TYPE_BOOL, .intval=!strcmp(opA.strval->value, opB.strval->value)};
 
         eq_none_none:
-        return (Object) {.type=TYPE_BOOL, .intval=1};
+        return OBJ_TRUE;
 
         error:
         // two objects of incompatible types are different
-        return (Object) {.type=TYPE_BOOL, .intval=0};
+        return OBJ_FALSE;
 }
 static Object interpretLt(const Node* root, Namespace **const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] = {
@@ -408,7 +411,7 @@ static Object interpretLt(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_BOOL, .intval=(opA.floatval<opB.floatval)};
 
         error:
-        TYPEERROR();
+        TypeError(root->token); return OBJ_NONE;
 }
 static Object interpretLe(const Node* root, Namespace **const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] = {
@@ -450,14 +453,17 @@ static Object interpretLe(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_BOOL, .intval=(opA.floatval<=opB.floatval)};
 
         error:
-        TYPEERROR();
+        TypeError(root->token); return OBJ_NONE;
 }
 static Object interpretNone(const Node* root, Namespace **const ns) {
-        return (Object) {.type=TYPE_NONE};
+        return OBJ_NONE;
 }
 static Object interpretCall(const Node* root, Namespace **const ns) {
         Object funcnode = interpretExpression(root->operands[1], ns);
-        if (funcnode.type != TYPE_NATIVEF) TYPEERROR();
+        if (funcnode.type != TYPE_NATIVEF) {
+                TypeError(root->token);
+                return OBJ_NONE;
+        }
 
 
         const uintptr_t argc = (uintptr_t) root->operands[0]-1;
@@ -497,11 +503,11 @@ static int interpretIf(parser_info *const prsinfo, const Node* root, Namespace *
                 case TYPE_NONE:
                         branch = false; break;
                 case TYPE_FLOAT:
-                        TYPEERROR(); break;
+                        TypeError(root->token); return FAILURE;
                 case TYPE_STRING:
                         branch = (predicate.strval->len > 0); break;
                 default:
-                        TYPEERROR();
+                        TypeError(root->token); return FAILURE;
 
         }
         if (branch) return _interpretStatement(prsinfo, root->operands[1], ns);
@@ -563,7 +569,3 @@ int interpretStatement(parser_info *const prsinfo, Namespace **const ns) {
 
 #undef SUCCESS
 #undef FAILURE
-
-#undef TYPEERROR
-#undef NOTIMPLEMENTED
-#undef RUNTIMEERROR

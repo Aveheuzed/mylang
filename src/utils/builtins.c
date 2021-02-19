@@ -5,7 +5,10 @@
 #include "headers/utils/error.h"
 
 Object print_value(const uintptr_t argc, const Object* obj) {
-        if (argc != 1) ARITYERROR(1, argc);
+        if (argc != 1) {
+                ArityError(1, argc);
+                return OBJ_NONE;
+        }
         switch (obj[0].type) {
                 case TYPE_INT:
                         printf("%ld\n", obj[0].intval); break;
@@ -22,10 +25,13 @@ Object print_value(const uintptr_t argc, const Object* obj) {
                 default:
                         printf("--unrecognized object!\n"); break;
         }
-        return (Object) {.type=TYPE_NONE};
+        return OBJ_NONE;
 }
 
 Object native_clock(const uintptr_t argc, const Object* obj) {
-        if (argc) ARITYERROR(0, argc);
+        if (argc) {
+                ArityError(0, argc);
+                return OBJ_NONE;
+        }
         return (Object) {.type=TYPE_FLOAT, .floatval=((double)clock())/(CLOCKS_PER_SEC)};
 }
