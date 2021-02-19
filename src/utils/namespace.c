@@ -25,6 +25,7 @@ static Namespace* growNamespace(Namespace* pool) {
 
         Namespace *new_pool = calloc(offsetof(Namespace, pool) + sizeof(Variable)*new_size, 1);
         new_pool->len = new_size;
+        new_pool->enclosing = pool->enclosing;
         for (size_t i=0; i<pool->len; i++) {
                 Variable v = pool->pool[i];
                 if (v.key != NULL) raw_ns_set_value(new_pool, v);
