@@ -415,6 +415,9 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                 [TOKEN_FALSE] = {boolean, infixParseError, PREC_NONE},
                 [TOKEN_NONE] = {none, infixParseError, PREC_NONE},
 
+                [TOKEN_IF] = {prefixParseError, infixParseError, PREC_NONE},
+                [TOKEN_ELSE] = {prefixParseError, infixParseError, PREC_NONE},
+
                 [TOKEN_ERROR] = {prefixParseError, infixParseError, PREC_BAILOUT},
                 [TOKEN_EOF] = {prefixParseError, infixParseError, PREC_BAILOUT},
         };
