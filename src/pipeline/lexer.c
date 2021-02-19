@@ -39,7 +39,10 @@ static inline void detect_keywords(Token *const token) {
         };
 
         for (unsigned int i=0; keywords[i].source != NULL; i++) {
-                if (!strncmp(token->source, keywords[i].source, token->length)) {
+                if (
+                        strlen(keywords[i].source) == token->length &&
+                        !strncmp(token->source, keywords[i].source, token->length)
+                ) {
                         token->type = keywords[i].type;
                         break;
                 }
