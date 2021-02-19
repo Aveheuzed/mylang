@@ -21,7 +21,7 @@ static void raw_ns_set_value(Namespace *const pool, Variable v) {
 static Namespace* growNamespace(Namespace* pool) {
         const size_t new_size = pool->len * 2;
 
-        LOG("Namespace grows from %lu to %lu entries", pool->len, new_size);
+        LOG("Namespace grows from %lu to %lu entries, because it contains %lu variables", pool->len, new_size, pool->nb_entries);
 
         Namespace *new_pool = calloc(offsetof(Namespace, pool) + sizeof(Variable)*new_size, 1);
         new_pool->len = new_size;
@@ -43,7 +43,7 @@ void freeNamespace(Namespace* pool) {
 }
 
 void ns_set_value(Namespace **const pool, char *const key, Object value) {
-        if ((*pool)->len * GROW_THRESHHOLD <= (*pool)->nb_entries)
+        if ((*pool)->len * GROW_THRESHHOLD <= ((*pool)->nb_entries+1))
                 *pool = growNamespace(*pool);
         raw_ns_set_value(*pool, (Variable){.key=key, .value=value});
 }

@@ -58,7 +58,7 @@ char* internalize(IdentifiersRecord **const record, char *const string, unsigned
         #define ADVANCE() (index = (index+1) & mask, (*record)->pool[index]) // careful, modifies local var `index`
 
         // I'd rather the pool doesn't change size in the middle of the function
-        if ((*record)->len * GROW_THRESHHOLD <= (*record)->nb_entries)
+        if ((*record)->len * GROW_THRESHHOLD <= ((*record)->nb_entries+1))
                 *record = growRecord(*record);
 
         const size_t mask = (*record)->len-1;
