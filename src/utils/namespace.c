@@ -33,9 +33,10 @@ static Namespace* growNamespace(Namespace* pool) {
         return new_pool;
 }
 
-Namespace* allocateNamespace(void) {
+Namespace* allocateNamespace(Namespace **const enclosing) {
         Namespace *const pool = calloc(offsetof(Namespace, pool) + sizeof(Variable)*1, 1);
         pool->len = 1;
+        pool->enclosing = enclosing;
         return pool;
 }
 void freeNamespace(Namespace* pool) {
@@ -49,13 +50,26 @@ void ns_set_value(Namespace **const pool, char *const key, Object value) {
 }
 
 Object* ns_get_value(Namespace *const pool, const char* key) {
+        LOG("Trying to get value %s", key);
         const hash_t mask = pool->len - 1;
         hash_t index = mask & (hash_t) key;
         Variable* v;
         do {
                 v = &(pool->pool[(index++)&mask]);
-                if (v->key == key) return &(v->value);
-                if (!BUCKET_FULL(*v)) return NULL;
+                if (v->key == key) {
+                        LOG("Found");
+                        return &(v->value);
+                }
+                if (!BUCKET_FULL(*v)) {
+                        if (pool->enclosing != NULL) {
+                                LOG("Recursing");
+                                return ns_get_value(*(pool->enclosing), key);
+                        }
+                        else {
+                                LOG("Not found");
+                                return NULL;
+                        }
+                }
         } while (1);
 }
 

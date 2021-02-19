@@ -478,7 +478,7 @@ static Object interpretCall(const Node* root, Namespace **const ns) {
 static int interpretBlock(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
         const uintptr_t nb_children = (uintptr_t) root->operands[0];
 
-        Namespace * new_ns = allocateNamespace();
+        Namespace * new_ns = allocateNamespace(ns);
 
         int exit_code = SUCCESS;
 

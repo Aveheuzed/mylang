@@ -21,10 +21,11 @@ typedef struct Variable {
 typedef struct Namespace {
         size_t len; // guaranteed to be a power of 2
         size_t nb_entries;
+        struct Namespace** enclosing;
         Variable pool[];
 } Namespace;
 
-Namespace* allocateNamespace(void);
+Namespace* allocateNamespace(Namespace **const enclosing);
 void freeNamespace(Namespace* pool);
 
 void ns_set_value(Namespace **const pool, char *const key, Object value);
