@@ -7,7 +7,7 @@
 Object print_value(const uintptr_t argc, const Object* obj) {
         if (argc != 1) {
                 ArityError(1, argc);
-                return OBJ_NONE;
+                return ERROR;
         }
         switch (obj[0].type) {
                 case TYPE_INT:
@@ -31,7 +31,7 @@ Object print_value(const uintptr_t argc, const Object* obj) {
 Object native_clock(const uintptr_t argc, const Object* obj) {
         if (argc) {
                 ArityError(0, argc);
-                return OBJ_NONE;
+                return ERROR;
         }
         return (Object) {.type=TYPE_FLOAT, .floatval=((double)clock())/(CLOCKS_PER_SEC)};
 }
