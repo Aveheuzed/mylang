@@ -528,7 +528,13 @@ Object interpretExpression(const Node* root, Namespace **const ns) {
 
                 [OP_CALL] = interpretCall,
         };
-        return interpreters[root->operator](root, ns);
+
+        const ExprInterpretFn handler = interpreters[root->operator];
+        if (handler == NULL) {
+                RuntimeError(root->token);
+                return ERROR;
+        }
+        return handler(root, ns);
 }
 int _interpretStatement(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
         static const StmtInterpretFn interpreters[LEN_OPERATORS] = {
