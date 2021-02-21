@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 #include <alloca.h>
 
 #include "headers/pipeline/interpreter.h"
 #include "headers/pipeline/node.h"
 #include "headers/utils/error.h"
+#include "headers/utils/builtins.h"
 
 #define SUCCESS 1
 #define FAILURE 0
@@ -290,61 +290,35 @@ static Object interpretInvert(const Node* root, Namespace **const ns) {
 static Object interpretAnd(const Node* root, Namespace **const ns) {
         Object operand = interpretExpression(root->operands[0], ns);
         ERROR_GUARD(operand);
-        switch (operand.type) {
-                case TYPE_INT:
-                case TYPE_BOOL:
-                        if (!operand.intval) return operand;
-                        break;
-                case TYPE_FLOAT:
-                        TypeError(root->token); return ERROR;
-                case TYPE_STRING:
-                        if (!operand.strval->len) return operand;
-                        break;
-                case TYPE_NONE:
-                        return operand;
-                default: TypeError(root->token); return ERROR;
+        Object op_is_true = tobool(1, &operand);
+        if (op_is_true.type == TYPE_ERROR) {
+                TypeError(root->token); return ERROR;
         }
-        operand = interpretExpression(root->operands[1], ns);
-        ERROR_GUARD(operand);
-        switch (operand.type) {
-                case TYPE_INT:
-                case TYPE_BOOL:
-                case TYPE_STRING:
-                case TYPE_NONE:
-                        return operand;
-                case TYPE_FLOAT:
+        else if (!op_is_true.intval) return operand;
+        else {
+                operand = interpretExpression(root->operands[1], ns);
+                ERROR_GUARD(operand);
+                if (tobool(1, &operand).type == TYPE_ERROR) {
                         TypeError(root->token); return ERROR;
-                default: TypeError(root->token); return ERROR;
+                }
+                return operand;
         }
 }
 static Object interpretOr(const Node* root, Namespace **const ns) {
         Object operand = interpretExpression(root->operands[0], ns);
         ERROR_GUARD(operand);
-        switch (operand.type) {
-                case TYPE_INT:
-                case TYPE_BOOL:
-                        if (operand.intval) return operand;
-                        break;
-                case TYPE_FLOAT:
-                        TypeError(root->token); return ERROR;
-                case TYPE_STRING:
-                        if (operand.strval->len) return operand;
-                        break;
-                case TYPE_NONE:
-                        break;
-                default: TypeError(root->token); return ERROR;
+        Object op_is_true = tobool(1, &operand);
+        if (op_is_true.type == TYPE_ERROR) {
+                TypeError(root->token); return ERROR;
         }
-        operand = interpretExpression(root->operands[1], ns);
-        ERROR_GUARD(operand);
-        switch (operand.type) {
-                case TYPE_INT:
-                case TYPE_BOOL:
-                case TYPE_STRING:
-                case TYPE_NONE:
-                        return operand;
-                case TYPE_FLOAT:
+        else if (op_is_true.intval) return operand;
+        else {
+                operand = interpretExpression(root->operands[1], ns);
+                ERROR_GUARD(operand);
+                if (tobool(1, &operand).type == TYPE_ERROR) {
                         TypeError(root->token); return ERROR;
-                default: TypeError(root->token); return ERROR;
+                }
+                return operand;
         }
 }
 static Object interpretEq(const Node* root, Namespace **const ns) {
@@ -496,7 +470,9 @@ static Object interpretCall(const Node* root, Namespace **const ns) {
                 argv[iarg] = interpretExpression(root->operands[iarg+2], ns);
                 ERROR_GUARD(argv[iarg]);
         }
-        return funcnode.natfunval(argc, argv);
+        Object result = funcnode.natfunval(argc, argv);
+        if (result.type == TYPE_ERROR) RuntimeError(root->token);
+        return result;
 }
 
 static int interpretBlock(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
@@ -518,24 +494,9 @@ static int interpretBlock(parser_info *const prsinfo, const Node* root, Namespac
 }
 static int interpretIf(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
         Object predicate = interpretExpression(root->operands[0], ns);
+        predicate = tobool(1, &predicate);
         if (predicate.type == TYPE_ERROR) return FAILURE;
-        bool branch;
-        switch (predicate.type) {
-                case TYPE_INT:
-                        branch = (predicate.intval != 0); break;
-                case TYPE_BOOL:
-                        branch = (predicate.intval != 0); break;
-                case TYPE_NONE:
-                        branch = false; break;
-                case TYPE_FLOAT:
-                        TypeError(root->token); return FAILURE;
-                case TYPE_STRING:
-                        branch = (predicate.strval->len > 0); break;
-                default:
-                        TypeError(root->token); return FAILURE;
-
-        }
-        if (branch) return _interpretStatement(prsinfo, root->operands[1], ns);
+        if (predicate.intval) return _interpretStatement(prsinfo, root->operands[1], ns);
         else if (root->operands[2] != NULL) return _interpretStatement(prsinfo, root->operands[2], ns);
         return SUCCESS;
 }
@@ -579,7 +540,7 @@ int _interpretStatement(parser_info *const prsinfo, const Node* root, Namespace 
 
         StmtInterpretFn interpreter = interpreters[root->operator];
 
-        
+
         if (interpreter == NULL) {
                 Object result = interpretExpression(root, ns);
                 return result.type != TYPE_ERROR;

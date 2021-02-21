@@ -34,6 +34,14 @@ int main(int argc, char* argv[]) {
         declare_variable(&psinfo, &ns, "print", (Object){.type=TYPE_NATIVEF, .natfunval=&print_value});
         declare_variable(&psinfo, &ns, "clock", (Object){.type=TYPE_NATIVEF, .natfunval=&native_clock});
 
+        declare_variable(&psinfo, &ns, "str", (Object){.type=TYPE_NATIVEF, .natfunval=&tostring});
+        declare_variable(&psinfo, &ns, "bool", (Object){.type=TYPE_NATIVEF, .natfunval=&tobool});
+        declare_variable(&psinfo, &ns, "int", (Object){.type=TYPE_NATIVEF, .natfunval=&toint});
+        declare_variable(&psinfo, &ns, "float", (Object){.type=TYPE_NATIVEF, .natfunval=&tofloat});
+
+        // no input in REPL, because reading tokens and input from the same source cases havroc
+        if (argc == 2) declare_variable(&psinfo, &ns, "input", (Object){.type=TYPE_NATIVEF, .natfunval=&input});
+
         while (interpretStatement(&psinfo, &ns));
 
         del_parser_info(psinfo);
