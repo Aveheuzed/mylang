@@ -98,11 +98,11 @@ Object tobool(const uintptr_t argc, const Object* obj) {
                 case TYPE_FLOAT:
                         return ERROR;
                 case TYPE_NONE:
-                        return ERROR;
+                        return OBJ_FALSE;
                 case TYPE_STRING:
                         return obj->strval->len ? OBJ_TRUE : OBJ_FALSE;
                 case TYPE_NATIVEF:
-                        return ERROR;
+                        return OBJ_TRUE;
                 default:
                         return ERROR;
         }
