@@ -353,7 +353,6 @@ static Node* affect(parser_info *const state, Node *const root) {
 }
 static Node* call(parser_info *const state, Node *const root) {
         // [count, fnode, argnode...]
-        if (root->operator != OP_VARIABLE) return infixParseError(state, root);
         uintptr_t count = 1; // function node
         Node* new = allocateNode(count + 1);
 
