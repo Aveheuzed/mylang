@@ -8,13 +8,9 @@
 
 typedef struct Variable {
         /* Since identifiers are internalized, we use the pointer to the string
-        as hash digest for the identifier.
-        We can therefore guarantee no collisions.
-        Furthermore, the hashing is free! */
-        union {
-                char* key;
-                hash_t hash;
-        };
+        to compute the hash digest for the identifier.
+        This way, we don't need to iterate over the string.*/
+        char* key;
         Object value;
 } Variable;
 

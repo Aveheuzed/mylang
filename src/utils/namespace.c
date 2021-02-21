@@ -7,13 +7,23 @@
 
 #define BUCKET_FULL(bucket) ((bucket).key != NULL)
 
+static inline hash_t hash(const char* key) {
+        /* we have to remove the least significant bits, because that pointer
+        was returned by `malloc`, and is therefore aligned for the largest types
+        available. We take 16 bytes for "largest type available", to be safe.
+        */
+        return ((hash_t) key) >> 4;
+}
+
 static void raw_ns_set_value(Namespace *const pool, Variable v) {
         const size_t mask = pool->len-1;
-        hash_t index = v.hash & mask;
+        hash_t index = hash(v.key) & mask;
+        LOG("%s expects to be put at %lu", v.key, index);
         for (;
                 BUCKET_FULL(pool->pool[mask&index]) &&
                 (pool->pool[mask&index].key != v.key);
                 index++);
+        LOG("Putting %s at index %lu", v.key, index&mask);
         pool->pool[mask&index] = v;
         pool->nb_entries++;
 }
@@ -53,7 +63,7 @@ void ns_set_value(Namespace **const pool, char *const key, Object value) {
 Object* ns_get_value(Namespace *const pool, const char* key) {
         LOG("Trying to get value %s", key);
         const hash_t mask = pool->len - 1;
-        hash_t index = mask & (hash_t) key;
+        hash_t index = mask & hash(key);
         Variable* v;
         do {
                 v = &(pool->pool[(index++)&mask]);

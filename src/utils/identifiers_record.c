@@ -83,8 +83,6 @@ char* internalize(IdentifiersRecord **const record, char *const string, unsigned
         // Step 2: it's not there, put it in.
         while (BUCKET_FULL(id)) id = ADVANCE();
 
-        LOG("Putting it in at %lu", index);
-
         (*record)->pool[mask&index] = (Identifier) {.source=string, .hash=hash};
         (*record)->nb_entries++;
 
