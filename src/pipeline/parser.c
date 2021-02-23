@@ -7,11 +7,6 @@
 
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 
-typedef Node* (*UnaryParseFn)(parser_info *const state);
-typedef Node* (*BinaryParseFn)(parser_info *const state, Node *const root);
-
-typedef Node* (*StatementHandler)(parser_info *const state);
-
 typedef enum Precedence {
         PREC_NONE = 1,
         PREC_OR,
@@ -23,6 +18,13 @@ typedef enum Precedence {
         PREC_UNARY,
         PREC_CALL,
 } Precedence;
+
+typedef Node* (*StatementHandler)(parser_info *const state);
+typedef Node* (*UnaryParseFn)(parser_info *const state);
+typedef struct BinaryParseRule {
+        Node* (*parse_fn)(parser_info *const state, Node *const root);
+        Precedence precedence;
+} BinaryParseRule;
 
 static Node* parseExpression(parser_info *const state, const Precedence precedence);
 static Node* prefixParseError(parser_info *const state);
@@ -382,7 +384,7 @@ static Node* call(parser_info *const state, Node *const root) {
 // ------------------ end parse functions --------------------------------------
 
 static Node* parseExpression(parser_info *const state, const Precedence precedence) {
-        static const UnaryParseFn prefixRules[TOKEN_EOF] = {
+        static const UnaryParseFn prefixRules[TOKEN_EOF+1] = {
                 [TOKEN_PLUS] = unary_plus,
                 [TOKEN_MINUS] = unary_minus,
                 [TOKEN_POPEN] = grouping,
@@ -395,37 +397,21 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                 [TOKEN_FALSE] = boolean,
                 [TOKEN_NONE] = none,
         };
-        static const BinaryParseFn infixRules[TOKEN_EOF] = {
-                [TOKEN_PLUS] = binary_plus,
-                [TOKEN_MINUS] = binary_minus,
-                [TOKEN_STAR] = binary_star,
-                [TOKEN_SLASH] = binary_slash,
-                [TOKEN_AND] = binary_and,
-                [TOKEN_OR] = binary_or,
-                [TOKEN_EQ] = eq,
-                [TOKEN_NE] = ne,
-                [TOKEN_GE] = ge,
-                [TOKEN_LE] = le,
-                [TOKEN_GT] = gt,
-                [TOKEN_LT] = lt,
-                [TOKEN_POPEN] = call,
-                [TOKEN_EQUAL] = affect,
-        };
-        static const Precedence precedences[TOKEN_EOF] = {
-                [TOKEN_PLUS] = PREC_ADD,
-                [TOKEN_MINUS] = PREC_ADD,
-                [TOKEN_STAR] = PREC_MUL,
-                [TOKEN_SLASH] = PREC_MUL,
-                [TOKEN_AND] = PREC_AND,
-                [TOKEN_OR] = PREC_OR,
-                [TOKEN_EQ] = PREC_COMPARISON,
-                [TOKEN_NE] = PREC_COMPARISON,
-                [TOKEN_GE] = PREC_COMPARISON,
-                [TOKEN_LE] = PREC_COMPARISON,
-                [TOKEN_GT] = PREC_COMPARISON,
-                [TOKEN_LT] = PREC_COMPARISON,
-                [TOKEN_POPEN] = PREC_CALL,
-                [TOKEN_EQUAL] = PREC_AFFECT,
+        static const BinaryParseRule infixRules[TOKEN_EOF+1] = {
+                [TOKEN_PLUS] = {.parse_fn=binary_plus, .precedence=PREC_ADD},
+                [TOKEN_MINUS] = {.parse_fn=binary_minus, .precedence=PREC_ADD},
+                [TOKEN_STAR] = {.parse_fn=binary_star, .precedence=PREC_MUL},
+                [TOKEN_SLASH] = {.parse_fn=binary_slash, .precedence=PREC_MUL},
+                [TOKEN_AND] = {.parse_fn=binary_and, .precedence=PREC_AND},
+                [TOKEN_OR] = {.parse_fn=binary_or, .precedence=PREC_OR},
+                [TOKEN_EQ] = {.parse_fn=eq, .precedence=PREC_COMPARISON},
+                [TOKEN_NE] = {.parse_fn=ne, .precedence=PREC_COMPARISON},
+                [TOKEN_GE] = {.parse_fn=ge, .precedence=PREC_COMPARISON},
+                [TOKEN_LE] = {.parse_fn=le, .precedence=PREC_COMPARISON},
+                [TOKEN_GT] = {.parse_fn=gt, .precedence=PREC_COMPARISON},
+                [TOKEN_LT] = {.parse_fn=lt, .precedence=PREC_COMPARISON},
+                [TOKEN_POPEN] = {.parse_fn=call, .precedence=PREC_CALL},
+                [TOKEN_EQUAL] = {.parse_fn=affect, .precedence=PREC_AFFECT},
         };
 
         LOG("Appel avec une précédence de %d", precedence);
@@ -438,11 +424,15 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                 else root = prefrule(state);
         }
 
-        while (root != NULL && precedence < precedences[getTtype(state)]) {
-                const BinaryParseFn infrule = infixRules[getTtype(state)];
-                if (infrule == NULL) return infixParseError(state, root); // should be unreachable?
-                root = infrule(state, root);
+        {
+                BinaryParseRule rule;
+                while (root != NULL
+                        && precedence < (rule=infixRules[getTtype(state)]).precedence
+                ) {
+                        if (rule.parse_fn == NULL) return infixParseError(state, root); // should be unreachable?
+                        root = rule.parse_fn(state, root);
         }
+}
 
         return root;
 }
