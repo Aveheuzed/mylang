@@ -29,7 +29,7 @@ static inline void intern_token(lexer_info *const lxinfo, Token *const token) {
 }
 
 static inline void detect_keywords(Token *const token) {
-        const static struct {char* source; TokenType type;} keywords[] = {
+        static const struct {char* source; TokenType type;} keywords[] = {
                 {"true", TOKEN_TRUE},
                 {"false", TOKEN_FALSE},
                 {"none", TOKEN_NONE},
