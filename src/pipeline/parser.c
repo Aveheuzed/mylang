@@ -514,4 +514,3 @@ Node* parse_statement(parser_info *const state) {
 }
 
 #undef ALLOCATE_SIMPLE_NODE
-#undef getTtype
