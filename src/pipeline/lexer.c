@@ -6,7 +6,7 @@
 #include "headers/utils/error.h"
 
 inline lexer_info mk_lexer_info(FILE* file) {
-        lexer_info lxinfo = (lexer_info) {.file=file, .line=1, .column=1};
+        lexer_info lxinfo = (lexer_info) {.file=file, .pos.line=1, .pos.column=1};
         lxinfo.record = allocateRecord();
         return lxinfo;
 }
@@ -66,10 +66,10 @@ static void commit(struct token_buffer *const buffer, char c) {
 static char pull_char(lexer_info *const state) {
         const char c = getc(state->file);
         if (c == '\n') {
-                state->line++;
-                state->column = 1;
+                state->pos.line++;
+                state->pos.column = 1;
         } else {
-                state->column++;
+                state->pos.column++;
         }
         return c;
 }
@@ -120,8 +120,6 @@ Token _lex(lexer_info *const state) {
 
         while (ISBLANK(PEEK())) pull_char(state);
 
-        target.line = state->line;
-        target.column = state->column;
 
         switch(staging = pull_char(state)) {
                 case EOF: target.type = TOKEN_EOF; break;
@@ -217,9 +215,10 @@ Token _lex(lexer_info *const state) {
 }
 
 Token lex(lexer_info *const state) {
+        Localization l = state->pos;
         Token tk = _lex(state);
         while (tk.type == TOKEN_ERROR) {
-                SyntaxError(tk);
+                SyntaxError((LocalizedToken){.pos=l, .tok=tk});
                 tk = _lex(state);
         }
         intern_token(state, &tk);
@@ -227,7 +226,7 @@ Token lex(lexer_info *const state) {
                 detect_keywords(&tk);
         }
 
-        LOG("Producing type-%.2d token: `%.*s`. (line %u[%u:%u])", tk.type, tk.length, tk.source, tk.line, tk.column, tk.column+tk.length-1);
+        LOG("Producing type-%.2d token: `%.*s`. (line %u[%u:%u])", tk.type, tk.length, tk.source, l.line, l.column, l.column+tk.length-1);
 
         return tk;
 }

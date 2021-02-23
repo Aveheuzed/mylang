@@ -38,7 +38,7 @@ typedef enum {
 } Operator;
 
 typedef struct Node {
-        Token token;
+        LocalizedToken token;
         Operator operator;
         /*note about the f.a.m.:
         For nodes that don't have a fixed number of children, the first element of this array MUST be cast to an uintptr_t that will indicate the number of children this array contains. In that case, the first child (if present) will be found at index 1.

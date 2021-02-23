@@ -8,7 +8,7 @@
 
 typedef struct parser_info {
         lexer_info lxinfo;
-        Token last_produced;
+        LocalizedToken last_produced;
         char stale; // state of the token, 1 if it needs to be refreshed
 } parser_info;
 

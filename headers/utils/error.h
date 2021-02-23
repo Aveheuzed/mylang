@@ -8,9 +8,9 @@
 #include "headers/pipeline/token.h"
 
 
-void TypeError(const Token t);
-void SyntaxError(const Token t);
-void RuntimeError(const Token t);
+void TypeError(const LocalizedToken t);
+void SyntaxError(const LocalizedToken t);
+void RuntimeError(const LocalizedToken t);
 void ArityError(const size_t expected, const size_t actual);
 
 #endif

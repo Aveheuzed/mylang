@@ -16,7 +16,7 @@ typedef Object (*ExprInterpretFn)(const Node* root, Namespace **const ns);
 typedef int (*StmtInterpretFn)(parser_info *const prsinfo, const Node* root, Namespace **const ns);
 
 static Object interpretVariable(const Node* root, Namespace **const ns) {
-        Object* obj = ns_get_value(*ns, root->token.source);
+        Object* obj = ns_get_value(*ns, root->token.tok.source);
         if (obj == NULL) {
                 RuntimeError(root->token);
                 return ERROR;
@@ -24,17 +24,17 @@ static Object interpretVariable(const Node* root, Namespace **const ns) {
         else return *obj;
 }
 static Object interpretInt(const Node* root, Namespace **const ns) {
-        return (Object) {.type=TYPE_INT, .intval=atoll(root->token.source)};
+        return (Object) {.type=TYPE_INT, .intval=atoll(root->token.tok.source)};
 }
 static Object interpretBool(const Node* root, Namespace **const ns) {
-        return (Object) {.type=TYPE_BOOL, .intval=(root->token.type == TOKEN_TRUE)};
+        return (Object) {.type=TYPE_BOOL, .intval=(root->token.tok.type == TOKEN_TRUE)};
 
 }
 static Object interpretFloat(const Node* root, Namespace **const ns) {
-        return (Object) {.type=TYPE_FLOAT, .floatval=atof(root->token.source)};
+        return (Object) {.type=TYPE_FLOAT, .floatval=atof(root->token.tok.source)};
 }
 static Object interpretStr(const Node* root, Namespace **const ns) {
-        return (Object) {.type=TYPE_STRING, .strval=makeString(root->token.source+1, root->token.length-2)};
+        return (Object) {.type=TYPE_STRING, .strval=makeString(root->token.tok.source+1, root->token.tok.length-2)};
 }
 static Object interpretUnaryPlus(const Node* root, Namespace **const ns) {
         Object operand = interpretExpression(root->operands[0], ns);
@@ -266,7 +266,7 @@ static Object interpretDivision(const Node* root, Namespace **const ns) {
 static Object interpretAffect(const Node* root, Namespace **const ns) {
         Object obj = interpretExpression(root->operands[1], ns);
         ERROR_GUARD(obj);
-        ns_set_value(ns, root->operands[0]->token.source, obj);
+        ns_set_value(ns, root->operands[0]->token.tok.source, obj);
         return obj;
 }
 static Object interpretInvert(const Node* root, Namespace **const ns) {

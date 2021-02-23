@@ -41,10 +41,18 @@ typedef enum {
 
 typedef struct Token {
         char* source;
-        unsigned int line;
-        unsigned int column;
         unsigned int length;
         TokenType type;
 } Token;
+
+typedef struct Localization {
+        unsigned int line;
+        unsigned int column;
+} Localization;
+
+typedef struct LocalizedToken {
+        Localization pos;
+        Token tok;
+} LocalizedToken;
 
 #endif
