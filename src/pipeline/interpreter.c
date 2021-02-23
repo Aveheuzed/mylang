@@ -8,11 +8,9 @@
 #include "headers/utils/error.h"
 #include "headers/utils/builtins.h"
 
-#define SUCCESS 1
-#define FAILURE 0
 
-Object interpretExpression(const Node* root, Namespace **const ns);
-int _interpretStatement(parser_info *const prsinfo, const Node* root, Namespace **const ns);
+static Object interpretExpression(const Node* root, Namespace **const ns);
+static int _interpretStatement(parser_info *const prsinfo, const Node* root, Namespace **const ns);
 
 typedef Object (*ExprInterpretFn)(const Node* root, Namespace **const ns);
 typedef int (*StmtInterpretFn)(parser_info *const prsinfo, const Node* root, Namespace **const ns);
@@ -480,11 +478,11 @@ static int interpretBlock(parser_info *const prsinfo, const Node* root, Namespac
 
         Namespace * new_ns = allocateNamespace(ns);
 
-        int exit_code = SUCCESS;
+        int exit_code = 1;
 
         for (uintptr_t i=1; i<=nb_children; i++) {
                 if (!_interpretStatement(prsinfo, root->operands[i], &new_ns)) {
-                        exit_code = FAILURE;
+                        exit_code = 0;
                         break;
                 }
         }
@@ -495,13 +493,13 @@ static int interpretBlock(parser_info *const prsinfo, const Node* root, Namespac
 static int interpretIf(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
         Object predicate = interpretExpression(root->operands[0], ns);
         predicate = tobool(1, &predicate);
-        if (predicate.type == TYPE_ERROR) return FAILURE;
+        if (predicate.type == TYPE_ERROR) return 0;
         if (predicate.intval) return _interpretStatement(prsinfo, root->operands[1], ns);
         else if (root->operands[2] != NULL) return _interpretStatement(prsinfo, root->operands[2], ns);
-        return SUCCESS;
+        return 1;
 }
 
-Object interpretExpression(const Node* root, Namespace **const ns) {
+static Object interpretExpression(const Node* root, Namespace **const ns) {
         static const ExprInterpretFn interpreters[LEN_OPERATORS] = {
                 [OP_VARIABLE] = interpretVariable,
 
@@ -536,13 +534,13 @@ Object interpretExpression(const Node* root, Namespace **const ns) {
         }
         return handler(root, ns);
 }
-int _interpretStatement(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
+static int _interpretStatement(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
         static const StmtInterpretFn interpreters[LEN_OPERATORS] = {
                 [OP_BLOCK] = interpretBlock,
                 [OP_IFELSE] = interpretIf,
         };
 
-        if (root == NULL) return FAILURE;
+        if (root == NULL) return 0;
 
         StmtInterpretFn interpreter = interpreters[root->operator];
 
@@ -561,6 +559,3 @@ int interpretStatement(parser_info *const prsinfo, Namespace **const ns) {
         Node* root = parse_statement(prsinfo);
         return _interpretStatement(prsinfo, root, ns);
 }
-
-#undef SUCCESS
-#undef FAILURE
