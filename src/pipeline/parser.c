@@ -57,6 +57,7 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
 
         [OP_BLOCK] = UINTPTR_MAX,
         [OP_IFELSE] = 3, // predicate, if_stmt, else_stmt
+        [OP_WHILE] = 2, // predicate, loop body
 }; // set to UINTPTR_MAX for a variable number of operands
 
 static inline void refresh(parser_info *const prsinfo) {
@@ -497,12 +498,28 @@ static Node* ifelse_statement(parser_info *const state) {
         return new;
 }
 
+static Node* while_statement(parser_info *const state) {
+        Node* new = ALLOCATE_SIMPLE_NODE(OP_WHILE);
+        *new = (Node) {.token=state->last_produced, .operator=OP_WHILE};
+        consume(state);
+        if ((new->operands[0] = parseExpression(state, PREC_NONE)) == NULL) {
+                freeNode(new);
+                return NULL;
+        }
+        if ((new->operands[1] = parse_statement(state)) == NULL) {
+                freeNode(new);
+                return NULL;
+        }
+        return new;
+}
+
 // ------------------ end statement handlers -----------------------------------
 
 Node* parse_statement(parser_info *const state) {
         static const StatementHandler handlers[TOKEN_EOF] = {
                 [TOKEN_BOPEN] = block_statement,
                 [TOKEN_IF] = ifelse_statement,
+                [TOKEN_WHILE] = while_statement,
         };
 
         LOG("Building a new statement");

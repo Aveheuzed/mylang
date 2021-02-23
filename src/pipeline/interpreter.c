@@ -496,7 +496,21 @@ static int interpretIf(parser_info *const prsinfo, const Node* root, Namespace *
         if (predicate.type == TYPE_ERROR) return 0;
         if (predicate.intval) return _interpretStatement(prsinfo, root->operands[1], ns);
         else if (root->operands[2] != NULL) return _interpretStatement(prsinfo, root->operands[2], ns);
-        return 1;
+        else return 1;
+}
+static int interpretWhile(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
+        Object predicate;
+        while (
+                predicate = interpretExpression(root->operands[0], ns),
+                predicate = tobool(1, &predicate),
+                predicate.type != TYPE_ERROR && predicate.intval
+        ) {
+                if (!_interpretStatement(prsinfo, root->operands[1], ns)) {
+                        return 0;
+                }
+        }
+        if (predicate.type == TYPE_ERROR) return 0;
+        else return 1;
 }
 
 static Object interpretExpression(const Node* root, Namespace **const ns) {
@@ -538,6 +552,7 @@ static int _interpretStatement(parser_info *const prsinfo, const Node* root, Nam
         static const StmtInterpretFn interpreters[LEN_OPERATORS] = {
                 [OP_BLOCK] = interpretBlock,
                 [OP_IFELSE] = interpretIf,
+                [OP_WHILE] = interpretWhile,
         };
 
         if (root == NULL) return 0;
