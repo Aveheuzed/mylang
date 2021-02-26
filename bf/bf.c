@@ -3,8 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
-typedef uint8_t Word;
-const Word LIM = UINT8_MAX;
+#include "bf.h"
 
 static inline Word* growBand(Word* ptr, const size_t oldlen, const size_t newlen) {
         ptr = reallocarray(ptr, newlen, sizeof(Word));
@@ -12,57 +11,98 @@ static inline Word* growBand(Word* ptr, const size_t oldlen, const size_t newlen
         return ptr;
 }
 
-static char* prepare_bytecode(FILE* file) {
+static CompressedBFOperator* prepare_bytecode(FILE* file) {
         size_t len = 1;
         size_t index = 0;
-        char* result = calloc(len, sizeof(char));
-        for (int byte = getc(file); byte != EOF; byte = getc(file)) {
-                if (index >= len) {
-                        result = reallocarray(result, len*=2, sizeof(char));
+        CompressedBFOperator* result = calloc(len, sizeof(CompressedBFOperator));
+
+        initialize:
+        {
+                BFOperator operator;
+                int byte = getc(file);
+                switch (byte) {
+                        case '+': operator = BF_PLUS; break;
+                        case '-': operator = BF_MINUS; break;
+                        case '.': operator = BF_OUTPUT; break;
+                        case ',': operator = BF_INPUT; break;
+                        case '<': operator = BF_LEFT; break;
+                        case '>': operator = BF_RIGHT; break;
+                        case '[': operator = BF_JUMP_FWD; break;
+                        case ']': operator = BF_JUMP_BWD; break;
+                        case EOF: return result; // correctly initialized thanks to calloc()
+                        default: goto initialize;
                 }
-                if (strchr("+-[]<>.,", byte) != NULL) {
-                        result[index++] = byte;
-                }
+                result[index++] = (CompressedBFOperator) {.operator=operator, .run=1};
         }
-        result[index] = '\0';
+
+        // actual loop
+        for (int byte = getc(file); byte != EOF; byte = getc(file)) {
+                BFOperator operator;
+                if (index >= len) {
+                        len *= 2;
+                        result = reallocarray(result, len, sizeof(CompressedBFOperator));
+                }
+                switch (byte) {
+                        case '+': operator = BF_PLUS; break;
+                        case '-': operator = BF_MINUS; break;
+                        case '.': operator = BF_OUTPUT; break;
+                        case ',': operator = BF_INPUT; break;
+                        case '<': operator = BF_LEFT; break;
+                        case '>': operator = BF_RIGHT; break;
+                        case '[': operator = BF_JUMP_FWD; break;
+                        case ']': operator = BF_JUMP_BWD; break;
+                        default : continue; // continue the `for` // break the `switch`
+                }
+                if (
+                        operator <= BF_CANCOMPRESS
+                        && operator == result[index-1].operator
+                        && result[index-1].run < BF_MAX_RUN
+                ) {
+                        result[index-1].run++;
+                }
+                else {
+                        result[index++] = (CompressedBFOperator) {.operator=operator, .run=1};
+                }
+
+        }
+        result[index].run = 0;
         return result;
 }
 
-void interpretBF(char const* text) {
+void interpretBF(CompressedBFOperator const* text) {
         static const void* labels[] = {
-                ['<'] = &&rsh,
-                ['>'] = &&lsh,
-                ['+'] = &&inc,
-                ['-'] = &&dec,
-                ['.'] = &&out,
-                [','] = &&in,
-                ['['] = &&lbracket,
-                [']'] = &&rbracket,
-                ['\0'] = &&end,
+                [BF_RIGHT] = &&rsh,
+                [BF_LEFT] = &&lsh,
+                [BF_PLUS] = &&inc,
+                [BF_MINUS] = &&dec,
+                [BF_OUTPUT] = &&out,
+                [BF_INPUT] = &&in,
+                [BF_JUMP_FWD] = &&lbracket,
+                [BF_JUMP_BWD] = &&rbracket,
         };
 
-        #define NEXT() goto *labels[*++text]
+        #define NEXT() goto *((++text)->run ? labels[text->operator] : &&end)
 
         size_t pos = 0;
         size_t len = 1;
         Word* data = growBand(NULL, 0, 1);
 
-        goto *labels[*text];
+        goto *(text->run ? labels[text->operator] : &&end);
 
         inc:
-                data[pos]++;
+                data[pos] += text->run;
                 NEXT();
         dec:
-                data[pos]--;
-                NEXT();
-        rsh:
-                pos--;
+                data[pos] -= text->run;
                 NEXT();
         lsh:
-                pos++;
+                pos -= text->run;
+                NEXT();
+        rsh:
+                pos += text->run;
                 if (pos>=len) {
-                        data = growBand(data, len, len*2);
-                        len*=2;
+                        data = growBand(data, len, pos*2);
+                        len = pos*2;
                 }
                 NEXT();
         in:
@@ -74,18 +114,18 @@ void interpretBF(char const* text) {
         lbracket:
                 if (!data[pos]) {
                         size_t stack = 0;
-                        for(text++; (*text != ']' || stack != 0); text++) {
-                                if (*text == '[') stack++;
-                                if (*text == ']') stack--;
+                        for(text++; (text->operator != BF_JUMP_BWD || stack != 0); text++) {
+                                if (text->operator == BF_JUMP_FWD) stack++;
+                                if (text->operator == BF_JUMP_BWD) stack--;
                         }
                 }
                 NEXT();
         rbracket:
                 if (data[pos]) {
                         size_t stack = 0;
-                        for(text--; (*text != '[' || stack != 0); text--) {
-                                if (*text == '[') stack--;
-                                if (*text == ']') stack++;
+                        for(text--; (text->operator != BF_JUMP_FWD || stack != 0); text--) {
+                                if (text->operator == BF_JUMP_FWD) stack--;
+                                if (text->operator == BF_JUMP_BWD) stack++;
                         }
                 }
                 NEXT();
@@ -103,7 +143,8 @@ void main(const int argc, const char* argv[]) {
                 exit(EXIT_FAILURE);
         }
         FILE* file = fopen(argv[1], "r");
-        char* code = prepare_bytecode(file);
+        CompressedBFOperator* code = prepare_bytecode(file);
+        fclose(file);
         interpretBF(code);
         free(code);
 }
