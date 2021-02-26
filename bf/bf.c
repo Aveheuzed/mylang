@@ -6,10 +6,26 @@
 typedef uint8_t Word;
 const Word LIM = UINT8_MAX;
 
-inline Word* growBand(Word* ptr, const size_t oldlen, const size_t newlen) {
+static inline Word* growBand(Word* ptr, const size_t oldlen, const size_t newlen) {
         ptr = reallocarray(ptr, newlen, sizeof(Word));
         memset(ptr+oldlen, 0, (newlen-oldlen)*sizeof(Word));
         return ptr;
+}
+
+static char* prepare_bytecode(FILE* file) {
+        size_t len = 1;
+        size_t index = 0;
+        char* result = calloc(len, sizeof(char));
+        for (int byte = getc(file); byte != EOF; byte = getc(file)) {
+                if (index >= len) {
+                        result = reallocarray(result, len*=2, sizeof(char));
+                }
+                if (strchr("+-[]<>.,", byte) != NULL) {
+                        result[index++] = byte;
+                }
+        }
+        result[index] = '\0';
+        return result;
 }
 
 void interpretBF(char const* text) {
@@ -81,11 +97,13 @@ void interpretBF(char const* text) {
 }
 
 
-int main(void) {
-        FILE* file = fopen("mandelbrot_cured.b", "r");
-        char* text = malloc(12000);
-        text[fread(text, 1, 12000, file)] = '\0';
-        fclose(file);
-
-        interpretBF(text);
+void main(const int argc, const char* argv[]) {
+        if (argc != 2) {
+                fprintf(stderr, "Bad usage: expected one argument: brainfuck file.\n");
+                exit(EXIT_FAILURE);
+        }
+        FILE* file = fopen(argv[1], "r");
+        char* code = prepare_bytecode(file);
+        interpretBF(code);
+        free(code);
 }
