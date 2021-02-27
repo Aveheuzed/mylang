@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <stddef.h>
 
 #include "bf.h"
 
@@ -11,8 +12,54 @@ static inline Word* growBand(Word* ptr, const size_t oldlen, const size_t newlen
         return ptr;
 }
 
+static CompressedBFOperator* computeJumps(CompressedBFOperator* bytecode) {
+        CompressedBFOperator* jump_forward_from;
+        CompressedBFOperator* jump_backward_from;
+        CompressedBFOperator const* jump_forward_to;
+        CompressedBFOperator const* jump_backward_to;
+
+        for (; bytecode->run && bytecode->operator != BF_JUMP_FWD; bytecode++) {
+                if (bytecode->operator == BF_JUMP_BWD) {
+                        return NULL;
+                }
+        }
+
+        if (!bytecode->run) return bytecode;
+        if (bytecode->run != 1) LOG("Error : compressed brackets detected");
+
+        bytecode++;
+        jump_forward_from = bytecode;
+        bytecode += sizeof(ptrdiff_t)/sizeof(CompressedBFOperator);
+        jump_backward_to = bytecode;
+
+
+        for (; bytecode->run && bytecode->operator != BF_JUMP_BWD; bytecode++) {
+                if (bytecode->operator == BF_JUMP_FWD) {
+                        bytecode = computeJumps(bytecode);
+                        if (bytecode == NULL) return NULL;
+                        else bytecode--;
+                }
+        }
+
+        if (!bytecode->run) return NULL;
+        if (bytecode->run != 1) LOG("Error : compressed brackets detected");
+
+        bytecode++;
+        jump_backward_from = bytecode;
+        bytecode += sizeof(ptrdiff_t)/sizeof(CompressedBFOperator);
+        jump_forward_to = bytecode;
+
+        ptrdiff_t forward_jump = jump_forward_to - jump_forward_from;
+        ptrdiff_t backward_jump = jump_backward_to - jump_backward_from;
+
+        memcpy(jump_forward_from, &forward_jump, sizeof(forward_jump));
+        memcpy(jump_backward_from, &backward_jump, sizeof(backward_jump));
+
+        return bytecode;
+}
+
 static CompressedBFOperator* prepare_bytecode(FILE* file) {
-        size_t len = 1;
+        size_t len = 16;
         size_t index = 0;
         CompressedBFOperator* result = calloc(len, sizeof(CompressedBFOperator));
 
@@ -62,10 +109,33 @@ static CompressedBFOperator* prepare_bytecode(FILE* file) {
                 }
                 else {
                         result[index++] = (CompressedBFOperator) {.operator=operator, .run=1};
+                        if (operator > BF_NOOPERAND) {
+                                index += sizeof(ptrdiff_t)/sizeof(*result);
+                                // to prevent the next operand to nest here (`+`)
+                                result[index-1].run = BF_MAX_RUN;
+                        }
                 }
 
         }
+
+        if (index >= len) {
+                len = index+1;
+                result = reallocarray(result, len, sizeof(CompressedBFOperator));
+        }
+
         result[index].run = 0;
+
+        for (
+                CompressedBFOperator* ptr=result;
+                ptr < (result + index);
+                ptr = computeJumps(ptr)
+        ) {
+                if (ptr == NULL) {
+                        free(result);
+                        return NULL;
+                }
+        }
+
         return result;
 }
 
@@ -113,21 +183,17 @@ void interpretBF(CompressedBFOperator const* text) {
                 NEXT();
         lbracket:
                 if (!data[pos]) {
-                        size_t stack = 0;
-                        for(text++; (text->operator != BF_JUMP_BWD || stack != 0); text++) {
-                                if (text->operator == BF_JUMP_FWD) stack++;
-                                if (text->operator == BF_JUMP_BWD) stack--;
-                        }
-                }
+                        ptrdiff_t increment;
+                        memcpy(&increment, text+1, sizeof(ptrdiff_t));
+                        text += increment;
+                } else text += sizeof(ptrdiff_t)/sizeof(*text);
                 NEXT();
         rbracket:
                 if (data[pos]) {
-                        size_t stack = 0;
-                        for(text--; (text->operator != BF_JUMP_FWD || stack != 0); text--) {
-                                if (text->operator == BF_JUMP_FWD) stack--;
-                                if (text->operator == BF_JUMP_BWD) stack++;
-                        }
-                }
+                        ptrdiff_t increment;
+                        memcpy(&increment, text+1, sizeof(ptrdiff_t));
+                        text += increment;
+                } else text += sizeof(ptrdiff_t)/sizeof(*text);
                 NEXT();
 
         end:
@@ -145,6 +211,6 @@ void main(const int argc, const char* argv[]) {
         FILE* file = fopen(argv[1], "r");
         CompressedBFOperator* code = prepare_bytecode(file);
         fclose(file);
-        interpretBF(code);
+        if (code != NULL) interpretBF(code);
         free(code);
 }

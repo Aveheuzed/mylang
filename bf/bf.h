@@ -14,6 +14,9 @@ typedef enum BFOperator {
         // these __must not__ be compressed
         BF_INPUT,
         BF_OUTPUT,
+
+        BF_NOOPERAND = BF_OUTPUT, // not an actual operator
+
         BF_JUMP_FWD,
         BF_JUMP_BWD,
 } BFOperator;
