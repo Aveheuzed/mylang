@@ -1,7 +1,5 @@
-#ifndef bf_h
-#define bf_h
-
-typedef uint8_t Word;
+#ifndef bytecode_h
+#define bytecode_h
 
 typedef enum BFOperator {
         BF_PLUS,
@@ -31,5 +29,13 @@ typedef struct CompressedBFOperator {
 } CompressedBFOperator;
 
 #define BF_MAX_RUN ((1<<5)-1)
+
+typedef struct CompiledProgram {
+        size_t len;
+        size_t maxlen;
+        CompressedBFOperator bytecode[];
+} CompiledProgram;
+
+
 
 #endif

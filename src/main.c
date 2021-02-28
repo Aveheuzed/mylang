@@ -5,17 +5,8 @@
 
 #include "headers/pipeline/lexer.h"
 #include "headers/pipeline/parser.h"
-#include "headers/pipeline/interpreter.h"
-#include "headers/utils/builtins.h"
-
-
-static inline void declare_variable(parser_info *const prsinfo, Namespace **const ns, const char* key, Object value) {
-        ns_set_value(
-                ns,
-                internalize(&(prsinfo->lxinfo.record), strdup(key), strlen(key)),
-                value
-        );
-}
+#include "headers/pipeline/compiler.h"
+#include "headers/pipeline/bf.h"
 
 int main(int argc, char* argv[]) {
         FILE* source_code;
@@ -28,23 +19,13 @@ int main(int argc, char* argv[]) {
                         puts("Invalid number of arguments.\nUsage : mylang [file]");
                         return EXIT_FAILURE;
         }
-        parser_info psinfo = mk_parser_info(source_code);
-        Namespace* ns = allocateNamespace(NULL);
+        compiler_info cmpinfo = mk_compiler_info(source_code);
 
-        declare_variable(&psinfo, &ns, "print", (Object){.type=TYPE_NATIVEF, .natfunval=&print_value});
-        declare_variable(&psinfo, &ns, "clock", (Object){.type=TYPE_NATIVEF, .natfunval=&native_clock});
+        while (compile_statement(&cmpinfo));
 
-        declare_variable(&psinfo, &ns, "str", (Object){.type=TYPE_NATIVEF, .natfunval=&tostring});
-        declare_variable(&psinfo, &ns, "bool", (Object){.type=TYPE_NATIVEF, .natfunval=&tobool});
-        declare_variable(&psinfo, &ns, "int", (Object){.type=TYPE_NATIVEF, .natfunval=&toint});
-        declare_variable(&psinfo, &ns, "float", (Object){.type=TYPE_NATIVEF, .natfunval=&tofloat});
+        interpretBF(cmpinfo.program);
 
-        // no input in REPL, because reading tokens and input from the same source cases havroc
-        if (argc == 2) declare_variable(&psinfo, &ns, "input", (Object){.type=TYPE_NATIVEF, .natfunval=&input});
-
-        while (interpretStatement(&psinfo, &ns));
-
-        del_parser_info(psinfo);
+        del_compiler_info(cmpinfo);
 
         return EXIT_SUCCESS;
 }
