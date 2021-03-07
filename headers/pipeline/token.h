@@ -26,15 +26,10 @@ typedef enum {
 
         TOKEN_IDENTIFIER,
         TOKEN_INT,
-        TOKEN_FLOAT,
         TOKEN_STR,
-        TOKEN_TRUE,
-        TOKEN_FALSE,
-        TOKEN_NONE,
 
-        TOKEN_IF,
-        TOKEN_ELSE,
-        TOKEN_WHILE,
+        TOKEN_KW_INT,
+        TOKEN_KW_STR,
 
         TOKEN_ERROR,
         TOKEN_EOF, // please don't put new token types below here

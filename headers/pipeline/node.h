@@ -7,10 +7,9 @@ typedef enum {
         // no operand
         OP_VARIABLE,
         OP_INT,
-        OP_BOOL,
-        OP_FLOAT,
         OP_STR,
-        OP_NONE,
+
+        OP_DECLARE,
 
         // one operand
         OP_UNARY_PLUS,
@@ -32,8 +31,6 @@ typedef enum {
         OP_CALL,
 
         OP_BLOCK,
-        OP_IFELSE,
-        OP_WHILE,
 
         LEN_OPERATORS // do NOT add anything below this line!
 } Operator;

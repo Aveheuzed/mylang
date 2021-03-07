@@ -33,10 +33,7 @@ static Node* infixParseError(parser_info *const state, Node *const root);
 static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_VARIABLE] = 0,
         [OP_INT] = 0,
-        [OP_BOOL] = 0,
-        [OP_FLOAT] = 0,
         [OP_STR] = 0,
-        [OP_NONE] = 0,
 
         [OP_UNARY_PLUS] = 1,
         [OP_UNARY_MINUS] = 1,
@@ -53,11 +50,11 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_LT] = 2,
         [OP_LE] = 2,
 
+        [OP_DECLARE] = 3, // type, variable, initializer
+
         [OP_CALL] = UINTPTR_MAX,
 
         [OP_BLOCK] = UINTPTR_MAX,
-        [OP_IFELSE] = 3, // predicate, if_stmt, else_stmt
-        [OP_WHILE] = 2, // predicate, loop body
 }; // set to UINTPTR_MAX for a variable number of operands
 
 static inline void refresh(parser_info *const prsinfo) {
@@ -131,16 +128,6 @@ static Node* integer(parser_info *const state) {
         *new = (Node) {.token=consume(state), .operator=OP_INT};
         return new;
 }
-static Node* boolean(parser_info *const state) {
-        Node *const new = ALLOCATE_SIMPLE_NODE(OP_BOOL);
-        *new = (Node) {.token=consume(state), .operator=OP_BOOL};
-        return new;
-}
-static Node* fpval(parser_info *const state) {
-        Node *const new = ALLOCATE_SIMPLE_NODE(OP_FLOAT);
-        *new = (Node) {.token=consume(state), .operator=OP_FLOAT};
-        return new;
-}
 static Node* string(parser_info *const state) {
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_STR);
         *new = (Node) {.token=consume(state), .operator=OP_STR};
@@ -163,11 +150,6 @@ static Node* invert(parser_info *const state) {
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INVERT);
         *new = (Node) {.token=operator, .operator=OP_INVERT};
         new->operands[0] = operand;
-        return new;
-}
-static Node* none(parser_info *const state) {
-        Node *const new = ALLOCATE_SIMPLE_NODE(OP_NONE);
-        *new = (Node) {.token=consume(state), .operator=OP_NONE};
         return new;
 }
 static Node* identifier(parser_info *const state) {
@@ -393,11 +375,7 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                 [TOKEN_NOT] = invert,
                 [TOKEN_IDENTIFIER] = identifier,
                 [TOKEN_INT] = integer,
-                [TOKEN_FLOAT] = fpval,
                 [TOKEN_STR] = string,
-                [TOKEN_TRUE] = boolean,
-                [TOKEN_FALSE] = boolean,
-                [TOKEN_NONE] = none,
         };
         static const BinaryParseRule infixRules[TOKEN_EOF+1] = {
                 [TOKEN_PLUS] = {.parse_fn=binary_plus, .precedence=PREC_ADD},
@@ -455,6 +433,8 @@ static Node* simple_statement(parser_info *const state) {
         return stmt;
 }
 
+static Node* declare_statement(parser_info *const state);
+
 static Node* block_statement(parser_info *const state) {
         uintptr_t nb_children = 0;
         Node* stmt = allocateNode(nb_children + 1); // add one, for the length of the array
@@ -475,51 +455,13 @@ static Node* block_statement(parser_info *const state) {
         return stmt;
 }
 
-static Node* ifelse_statement(parser_info *const state) {
-        Node* new = ALLOCATE_SIMPLE_NODE(OP_IFELSE);
-        *new = (Node) {.token=state->last_produced, .operator=OP_IFELSE};
-        consume(state);
-        if ((new->operands[0] = parseExpression(state, PREC_NONE)) == NULL) {
-                freeNode(new);
-                return NULL;
-        }
-        if ((new->operands[1] = parse_statement(state)) == NULL) {
-                freeNode(new);
-                return NULL;
-        }
-        if (getTtype(state) == TOKEN_ELSE) {
-                consume(state);
-                if ((new->operands[2] = parse_statement(state)) == NULL) {
-                        freeNode(new);
-                        return NULL;
-                }
-        }
-        else new->operands[2] = NULL;
-        return new;
-}
-
-static Node* while_statement(parser_info *const state) {
-        Node* new = ALLOCATE_SIMPLE_NODE(OP_WHILE);
-        *new = (Node) {.token=state->last_produced, .operator=OP_WHILE};
-        consume(state);
-        if ((new->operands[0] = parseExpression(state, PREC_NONE)) == NULL) {
-                freeNode(new);
-                return NULL;
-        }
-        if ((new->operands[1] = parse_statement(state)) == NULL) {
-                freeNode(new);
-                return NULL;
-        }
-        return new;
-}
-
 // ------------------ end statement handlers -----------------------------------
 
 Node* parse_statement(parser_info *const state) {
         static const StatementHandler handlers[TOKEN_EOF] = {
                 [TOKEN_BOPEN] = block_statement,
-                [TOKEN_IF] = ifelse_statement,
-                [TOKEN_WHILE] = while_statement,
+                [TOKEN_KW_INT] = declare_statement,
+                [TOKEN_KW_STR] = declare_statement,
         };
 
         LOG("Building a new statement");

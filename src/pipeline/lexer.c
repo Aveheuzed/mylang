@@ -30,12 +30,8 @@ static inline void intern_token(lexer_info *const lxinfo, Token *const token) {
 
 static inline void detect_keywords(Token *const token) {
         static const struct {char* source; TokenType type;} keywords[] = {
-                {"true", TOKEN_TRUE},
-                {"false", TOKEN_FALSE},
-                {"none", TOKEN_NONE},
-                {"if", TOKEN_IF},
-                {"else", TOKEN_ELSE},
-                {"while", TOKEN_WHILE},
+                {"int", TOKEN_KW_INT},
+                {"str", TOKEN_KW_STR},
 
                 {NULL, 0}
         };
@@ -162,13 +158,6 @@ Token _lex(lexer_info *const state) {
                                 target.type = TOKEN_INT;
                                 while (ISDIGIT(PEEK())) {
                                         COMMIT(pull_char(state));
-                                }
-                                if (PEEK() == '.') {
-                                        COMMIT(pull_char(state));
-                                        target.type = TOKEN_FLOAT;
-                                        while (ISDIGIT(PEEK())) {
-                                                COMMIT(pull_char(state));
-                                        }
                                 }
                                 break;
                         }
