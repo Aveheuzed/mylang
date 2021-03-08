@@ -789,6 +789,9 @@ static int interpretWhile(parser_info *const prsinfo, const Node* root, Namespac
         if (predicate.type == TYPE_ERROR) return 0;
         else return 1;
 }
+static int interpretNop(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
+        return 1;
+}
 
 static Object interpretExpression(const Node* root, Namespace **const ns) {
         static const ExprInterpretFn interpreters[LEN_OPERATORS] = {
@@ -834,6 +837,7 @@ static int _interpretStatement(parser_info *const prsinfo, const Node* root, Nam
                 [OP_BLOCK] = interpretBlock,
                 [OP_IFELSE] = interpretIf,
                 [OP_WHILE] = interpretWhile,
+                [OP_NOP] = interpretNop,
         };
 
         if (root == NULL) return 0;

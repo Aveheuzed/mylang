@@ -59,6 +59,8 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
 
         [OP_CALL] = UINTPTR_MAX,
 
+        [OP_NOP] = 0,
+
         [OP_BLOCK] = UINTPTR_MAX,
         [OP_IFELSE] = 3, // predicate, if_stmt, else_stmt
         [OP_WHILE] = 2, // predicate, loop body
@@ -581,6 +583,13 @@ static Node* while_statement(parser_info *const state) {
         return new;
 }
 
+static Node* empty_statement(parser_info *const state) {
+        Node* new = ALLOCATE_SIMPLE_NODE(OP_NOP);
+        new->token = consume(state);
+        new->operator = OP_NOP;
+        return new;
+}
+
 // ------------------ end statement handlers -----------------------------------
 
 Node* parse_statement(parser_info *const state) {
@@ -588,6 +597,7 @@ Node* parse_statement(parser_info *const state) {
                 [TOKEN_BOPEN] = block_statement,
                 [TOKEN_IF] = ifelse_statement,
                 [TOKEN_WHILE] = while_statement,
+                [TOKEN_SEMICOLON] = empty_statement,
         };
 
         LOG("Building a new statement");

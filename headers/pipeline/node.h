@@ -39,6 +39,8 @@ typedef enum {
         OP_IFELSE,
         OP_WHILE,
 
+        OP_NOP,
+
         LEN_OPERATORS // do NOT add anything below this line!
 } Operator;
 
