@@ -49,6 +49,10 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_EQ] = 2,
         [OP_LT] = 2,
         [OP_LE] = 2,
+        [OP_IADD] = 2,
+        [OP_ISUB] = 2,
+        [OP_IMUL] = 2,
+        [OP_IDIV] = 2,
 
         [OP_DECLARE] = 3, // type, variable, initializer
 
@@ -364,6 +368,10 @@ static Node* call(parser_info *const state, Node *const root) {
         return new;
 
 }
+static Node* iadd(parser_info *const state, Node *const root);
+static Node* isub(parser_info *const state, Node *const root);
+static Node* imul(parser_info *const state, Node *const root);
+static Node* idiv(parser_info *const state, Node *const root);
 
 // ------------------ end parse functions --------------------------------------
 
@@ -392,6 +400,10 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                 [TOKEN_LT] = {.parse_fn=lt, .precedence=PREC_COMPARISON},
                 [TOKEN_POPEN] = {.parse_fn=call, .precedence=PREC_CALL},
                 [TOKEN_EQUAL] = {.parse_fn=affect, .precedence=PREC_AFFECT},
+                [TOKEN_IADD] = {.parse_fn=iadd, .precedence=PREC_AFFECT},
+                [TOKEN_ISUB] = {.parse_fn=isub, .precedence=PREC_AFFECT},
+                [TOKEN_IMUL] = {.parse_fn=imul, .precedence=PREC_AFFECT},
+                [TOKEN_IDIV] = {.parse_fn=idiv, .precedence=PREC_AFFECT},
         };
 
         LOG("Appel avec une précédence de %d", precedence);

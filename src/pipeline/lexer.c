@@ -121,16 +121,25 @@ Token _lex(lexer_info *const state) {
         switch(staging = pull_char(state)) {
                 case EOF: target.type = TOKEN_EOF; break;
 
-                case '+': COMMIT(staging); target.type = TOKEN_PLUS; break;
-                case '-': COMMIT(staging); target.type = TOKEN_MINUS; break;
-                case '*': COMMIT(staging); target.type = TOKEN_STAR; break;
-                case '/': COMMIT(staging); target.type = TOKEN_SLASH; break;
                 case '(': COMMIT(staging); target.type = TOKEN_POPEN; break;
                 case ')': COMMIT(staging); target.type = TOKEN_PCLOSE; break;
                 case ';': COMMIT(staging); target.type = TOKEN_SEMICOLON; break;
                 case ',': COMMIT(staging); target.type = TOKEN_COMMA; break;
                 case '{': COMMIT(staging); target.type = TOKEN_BOPEN; break;
                 case '}': COMMIT(staging); target.type = TOKEN_BCLOSE; break;
+
+                case '+':
+                        target.type = EQUAL_FOLLOWS(TOKEN_IADD, TOKEN_PLUS);
+                        break;
+                case '-':
+                        target.type = EQUAL_FOLLOWS(TOKEN_ISUB, TOKEN_MINUS);
+                        break;
+                case '*':
+                        target.type = EQUAL_FOLLOWS(TOKEN_IMUL, TOKEN_STAR);
+                        break;
+                case '/':
+                        target.type = EQUAL_FOLLOWS(TOKEN_IDIV, TOKEN_SLASH);
+                        break;
 
                 case '=':
                         target.type = EQUAL_FOLLOWS(TOKEN_EQ, TOKEN_EQUAL);
