@@ -24,8 +24,8 @@ static void raw_ns_set_value(Namespace *const pool, Variable v) {
                 (pool->pool[mask&index].key != v.key);
                 index++);
         LOG("Putting %s at index %lu", v.key, index&mask);
+        if (pool->pool[mask&index].key != v.key) pool->nb_entries++;
         pool->pool[mask&index] = v;
-        pool->nb_entries++;
 }
 
 static Namespace* growNamespace(Namespace* pool) {
