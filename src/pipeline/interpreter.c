@@ -472,6 +472,267 @@ static Object interpretCall(const Node* root, Namespace **const ns) {
         if (result.type == TYPE_ERROR) RuntimeError(root->token);
         return result;
 }
+static Object interpret_iadd(const Node* root, Namespace **const ns) {
+        static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
+                [TYPE_INT] = {
+                        [TYPE_INT] = &&add_int_int,
+                        [TYPE_BOOL] = &&add_int_int,
+                        [TYPE_FLOAT] = &&add_int_float,
+                },
+                [TYPE_BOOL] = {
+                        [TYPE_INT] = &&add_int_int,
+                        [TYPE_BOOL] = &&add_int_int,
+                        [TYPE_FLOAT] = &&add_int_float,
+                },
+                [TYPE_FLOAT] = {
+                        [TYPE_INT] = &&add_float_int,
+                        [TYPE_BOOL] = &&add_float_int,
+                        [TYPE_FLOAT] = &&add_float_float,
+                },
+                [TYPE_STRING] = {
+                        [TYPE_STRING] = &&add_string_string,
+                },
+        };
+
+
+        Object* target = ns_get_value(*ns, root->operands[0]->token.tok.source);
+        if (target == NULL) {
+                RuntimeError(root->token);
+                return ERROR;
+        }
+
+        Object increment = interpretExpression(root->operands[1], ns);
+        ERROR_GUARD(increment);
+
+        {
+                const void* handler = dispatcher[target->type][increment.type];
+                if (handler == NULL) goto error; // undefined array members are initialized to NULL (C99)
+                else goto *handler;
+        }
+
+        add_int_int:
+        target->intval += increment.intval;
+        return *target;
+
+        add_int_float:
+        target->floatval = target->intval + increment.floatval;
+        target->type = TYPE_FLOAT;
+        return *target;
+
+        add_string_string:
+        target->strval = concatenateStrings(target->strval, increment.strval);
+        return *target;
+
+        add_float_int:
+        target->floatval += increment.intval;
+        return *target;
+
+        add_float_float:
+        target->floatval += increment.floatval;
+        return *target;
+
+
+        // actually already done thanks to *pointers*
+        // success:
+        // ns_set_value(ns, root->operands[0]->token.tok.source, *target);
+
+        error:
+        TypeError(root->token); return ERROR;
+}
+static Object interpret_isub(const Node* root, Namespace **const ns) {
+        static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
+                [TYPE_INT] = {
+                        [TYPE_INT] = &&sub_int_int,
+                        [TYPE_BOOL] = &&sub_int_int,
+                        [TYPE_FLOAT] = &&sub_int_float,
+                },
+                [TYPE_BOOL] = {
+                        [TYPE_INT] = &&sub_int_int,
+                        [TYPE_BOOL] = &&sub_int_int,
+                        [TYPE_FLOAT] = &&sub_int_float,
+                },
+                [TYPE_FLOAT] = {
+                        [TYPE_INT] = &&sub_float_int,
+                        [TYPE_BOOL] = &&sub_float_int,
+                        [TYPE_FLOAT] = &&sub_float_float,
+                },
+        };
+
+        Object* target = ns_get_value(*ns, root->operands[0]->token.tok.source);
+        if (target == NULL) {
+                RuntimeError(root->token);
+                return ERROR;
+        }
+
+        Object increment = interpretExpression(root->operands[1], ns);
+        ERROR_GUARD(increment);
+
+        {
+                const void* handler = dispatcher[target->type][increment.type];
+                if (handler == NULL) goto error; // undefined array members are initialized to NULL (C99)
+                else goto *handler;
+        }
+
+        sub_int_int:
+        target->intval -= increment.intval;
+        return *target;
+
+        sub_int_float:
+        target->floatval = target->intval - increment.floatval;
+        target->type = TYPE_FLOAT;
+        return *target;
+
+        sub_float_int:
+        target->floatval -= increment.intval;
+        return *target;
+
+        sub_float_float:
+        target->floatval -= increment.floatval;
+        return *target;
+
+
+        // actually already done thanks to *pointers*
+        // success:
+        // ns_set_value(ns, root->operands[0]->token.tok.source, *target);
+
+        error:
+        TypeError(root->token); return ERROR;
+}
+static Object interpret_imul(const Node* root, Namespace **const ns) {
+        static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
+                [TYPE_INT] = {
+                        [TYPE_INT] = &&mul_int_int,
+                        [TYPE_BOOL] = &&mul_int_int,
+                        [TYPE_FLOAT] = &&mul_int_float,
+                        [TYPE_STRING] = &&mul_int_string,
+                },
+                [TYPE_BOOL] = {
+                        [TYPE_INT] = &&mul_int_int,
+                        [TYPE_BOOL] = &&mul_int_int,
+                        [TYPE_FLOAT] = &&mul_int_float,
+                        [TYPE_STRING] = &&mul_int_string,
+                },
+                [TYPE_FLOAT] = {
+                        [TYPE_INT] = &&mul_float_int,
+                        [TYPE_BOOL] = &&mul_float_int,
+                        [TYPE_FLOAT] = &&mul_float_float,
+                },
+                [TYPE_STRING] = {
+                        [TYPE_INT] = &&mul_string_int,
+                        [TYPE_BOOL] = &&mul_string_int,
+                },
+        };
+
+        Object* target = ns_get_value(*ns, root->operands[0]->token.tok.source);
+        if (target == NULL) {
+                RuntimeError(root->token);
+                return ERROR;
+        }
+
+        Object increment = interpretExpression(root->operands[1], ns);
+        ERROR_GUARD(increment);
+
+        {
+                const void* handler = dispatcher[target->type][increment.type];
+                if (handler == NULL) goto error; // undefined array members are initialized to NULL (C99)
+                else goto *handler;
+        }
+
+        mul_int_string:
+        if (target->intval < 0) goto error;
+        target->strval = multiplyString(increment.strval, target->intval);
+        target->type = TYPE_STRING;
+        return *target;
+
+        mul_string_int:
+        if (increment.intval < 0) goto error;
+        target->strval = multiplyString(target->strval, increment.intval);
+        return *target;
+
+        mul_int_int:
+        target->intval *= increment.intval;
+        return *target;
+
+        mul_int_float:
+        target->floatval = target->intval * increment.floatval;
+        target->type = TYPE_FLOAT;
+        return *target;
+
+        mul_float_int:
+        target->floatval *= increment.intval;
+        return *target;
+
+        mul_float_float:
+        target->floatval *= increment.floatval;
+        return *target;
+
+
+        // actually already done thanks to *pointers*
+        // success:
+        // ns_set_value(ns, root->operands[0]->token.tok.source, *target);
+
+        error:
+        TypeError(root->token); return ERROR;
+}
+static Object interpret_idiv(const Node* root, Namespace **const ns) {
+        static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
+                [TYPE_INT] = {
+                        [TYPE_INT] = &&div_int_int,
+                        [TYPE_BOOL] = &&div_int_int,
+                        [TYPE_FLOAT] = &&div_int_float,
+                },
+                [TYPE_BOOL] = {
+                        [TYPE_INT] = &&div_int_int,
+                        [TYPE_BOOL] = &&div_int_int,
+                        [TYPE_FLOAT] = &&div_int_float,
+                },
+                [TYPE_FLOAT] = {
+                        [TYPE_INT] = &&div_float_int,
+                        [TYPE_BOOL] = &&div_float_int,
+                        [TYPE_FLOAT] = &&div_float_float,
+                },
+        };
+
+        Object* target = ns_get_value(*ns, root->operands[0]->token.tok.source);
+        if (target == NULL) {
+                RuntimeError(root->token);
+                return ERROR;
+        }
+
+        Object increment = interpretExpression(root->operands[1], ns);
+        ERROR_GUARD(increment);
+
+        {
+                const void* handler = dispatcher[target->type][increment.type];
+                if (handler == NULL) goto error; // undefined array members are initialized to NULL (C99)
+                else goto *handler;
+        }
+
+        div_int_int:
+        target->intval /= increment.intval;
+        return *target;
+
+        div_int_float:
+        target->floatval = target->intval / increment.floatval;
+        target->type = TYPE_FLOAT;
+        return *target;
+
+        div_float_int:
+        target->floatval /= increment.intval;
+        return *target;
+
+        div_float_float:
+        target->floatval /= increment.floatval;
+        return *target;
+
+
+        // actually already done thanks to *pointers*
+        // success:
+        // ns_set_value(ns, root->operands[0]->token.tok.source, *target);
+
+        error:
+        TypeError(root->token); return ERROR;
+}
 
 static int interpretBlock(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
         const uintptr_t nb_children = (uintptr_t) root->operands[0];
@@ -537,6 +798,10 @@ static Object interpretExpression(const Node* root, Namespace **const ns) {
                 [OP_EQ] = interpretEq,
                 [OP_LT] = interpretLt,
                 [OP_LE] = interpretLe,
+                [OP_IADD] = interpret_iadd,
+                [OP_ISUB] = interpret_isub,
+                [OP_IMUL] = interpret_imul,
+                [OP_IDIV] = interpret_idiv,
 
                 [OP_CALL] = interpretCall,
         };
