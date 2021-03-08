@@ -386,10 +386,66 @@ static Node* call(parser_info *const state, Node *const root) {
         return new;
 
 }
-static Node* iadd(parser_info *const state, Node *const root);
-static Node* isub(parser_info *const state, Node *const root);
-static Node* imul(parser_info *const state, Node *const root);
-static Node* idiv(parser_info *const state, Node *const root);
+static Node* iadd(parser_info *const state, Node *const root) {
+        if (root->operator != OP_VARIABLE) return infixParseError(state, root);
+
+        const LocalizedToken operator = consume(state);
+        Node* operand = parseExpression(state, PREC_ADD);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_IADD);
+        *new = (Node) {.token=operator, .operator=OP_IADD};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
+}
+static Node* isub(parser_info *const state, Node *const root) {
+        if (root->operator != OP_VARIABLE) return infixParseError(state, root);
+
+        const LocalizedToken operator = consume(state);
+        Node* operand = parseExpression(state, PREC_ADD);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_ISUB);
+        *new = (Node) {.token=operator, .operator=OP_ISUB};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
+}
+static Node* imul(parser_info *const state, Node *const root) {
+        if (root->operator != OP_VARIABLE) return infixParseError(state, root);
+
+        const LocalizedToken operator = consume(state);
+        Node* operand = parseExpression(state, PREC_MUL);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_IMUL);
+        *new = (Node) {.token=operator, .operator=OP_IMUL};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
+}
+static Node* idiv(parser_info *const state, Node *const root) {
+        if (root->operator != OP_VARIABLE) return infixParseError(state, root);
+
+        const LocalizedToken operator = consume(state);
+        Node* operand = parseExpression(state, PREC_MUL);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_IDIV);
+        *new = (Node) {.token=operator, .operator=OP_IDIV};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
+}
 
 // ------------------ end parse functions --------------------------------------
 
