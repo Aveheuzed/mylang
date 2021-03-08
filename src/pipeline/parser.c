@@ -58,6 +58,8 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
 
         [OP_CALL] = UINTPTR_MAX,
 
+        [OP_NOP] = 0,
+
         [OP_BLOCK] = UINTPTR_MAX,
 }; // set to UINTPTR_MAX for a variable number of operands
 
@@ -562,6 +564,13 @@ static Node* block_statement(parser_info *const state) {
         return stmt;
 }
 
+static Node* empty_statement(parser_info *const state) {
+        Node* new = ALLOCATE_SIMPLE_NODE(OP_NOP);
+        new->token = consume(state);
+        new->operator = OP_NOP;
+        return new;
+}
+
 // ------------------ end statement handlers -----------------------------------
 
 Node* parse_statement(parser_info *const state) {
@@ -569,6 +578,7 @@ Node* parse_statement(parser_info *const state) {
                 [TOKEN_BOPEN] = block_statement,
                 [TOKEN_KW_INT] = declare_statement,
                 [TOKEN_KW_STR] = declare_statement,
+                [TOKEN_SEMICOLON] = empty_statement,
         };
 
         LOG("Building a new statement");
