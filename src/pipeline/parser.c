@@ -54,7 +54,7 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_IMUL] = 2,
         [OP_IDIV] = 2,
 
-        [OP_DECLARE] = 3, // type, variable, initializer
+        [OP_DECLARE] = 2, // variable, initializer (type as operator)
 
         [OP_CALL] = UINTPTR_MAX,
 
@@ -368,10 +368,66 @@ static Node* call(parser_info *const state, Node *const root) {
         return new;
 
 }
-static Node* iadd(parser_info *const state, Node *const root);
-static Node* isub(parser_info *const state, Node *const root);
-static Node* imul(parser_info *const state, Node *const root);
-static Node* idiv(parser_info *const state, Node *const root);
+static Node* iadd(parser_info *const state, Node *const root) {
+        if (root->operator != OP_VARIABLE) return infixParseError(state, root);
+
+        const LocalizedToken operator = consume(state);
+        Node* operand = parseExpression(state, PREC_ADD);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_IADD);
+        *new = (Node) {.token=operator, .operator=OP_IADD};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
+}
+static Node* isub(parser_info *const state, Node *const root) {
+        if (root->operator != OP_VARIABLE) return infixParseError(state, root);
+
+        const LocalizedToken operator = consume(state);
+        Node* operand = parseExpression(state, PREC_ADD);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_ISUB);
+        *new = (Node) {.token=operator, .operator=OP_ISUB};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
+}
+static Node* imul(parser_info *const state, Node *const root) {
+        if (root->operator != OP_VARIABLE) return infixParseError(state, root);
+
+        const LocalizedToken operator = consume(state);
+        Node* operand = parseExpression(state, PREC_MUL);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_IMUL);
+        *new = (Node) {.token=operator, .operator=OP_IMUL};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
+}
+static Node* idiv(parser_info *const state, Node *const root) {
+        if (root->operator != OP_VARIABLE) return infixParseError(state, root);
+
+        const LocalizedToken operator = consume(state);
+        Node* operand = parseExpression(state, PREC_MUL);
+        if (operand == NULL) {
+                freeNode(root);
+                return NULL;
+        }
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_IDIV);
+        *new = (Node) {.token=operator, .operator=OP_IDIV};
+        new->operands[0] = root;
+        new->operands[1] = operand;
+        return new;
+}
 
 // ------------------ end parse functions --------------------------------------
 
@@ -445,7 +501,46 @@ static Node* simple_statement(parser_info *const state) {
         return stmt;
 }
 
-static Node* declare_statement(parser_info *const state);
+static Node* declare_statement(parser_info *const state) {
+        Node* new = NULL;
+        switch (getTtype(state)) {
+                case TOKEN_KW_INT:
+                case TOKEN_KW_STR:
+                        new = ALLOCATE_SIMPLE_NODE(OP_DECLARE);
+                        new->token = consume(state);
+                        new->operator = OP_DECLARE;
+                        break;
+                default:
+                        return prefixParseError(state);
+        }
+
+        new->operands[0] = parseExpression(state, PREC_NONE);
+        if ( new->operands[0] == NULL) {
+                freeNode(new);
+                return NULL;
+        }
+        if (new->operands[0]->operator != OP_VARIABLE) {
+                return infixParseError(state, new);
+        }
+
+        if (getTtype(state) == TOKEN_EQUAL) {
+                consume(state);
+                new->operands[1] = parseExpression(state, PREC_NONE);
+                if (new->operands[1] == NULL){
+                        freeNode(new);
+                        return NULL;
+                }
+        }
+
+        if (getTtype(state) != TOKEN_SEMICOLON) {
+                LocalizedToken tk = state->last_produced;
+                fprintf(stderr, "line %u, column %u, at \"%.*s\": expected ';'.\n", tk.pos.line, tk.pos.column, tk.tok.length, tk.tok.source);
+                freeNode(new);
+                return NULL;
+        }
+
+        return new;
+}
 
 static Node* block_statement(parser_info *const state) {
         uintptr_t nb_children = 0;
