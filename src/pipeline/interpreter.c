@@ -15,6 +15,9 @@ static int _interpretStatement(parser_info *const prsinfo, const Node* root, Nam
 typedef Object (*ExprInterpretFn)(const Node* root, Namespace **const ns);
 typedef int (*StmtInterpretFn)(parser_info *const prsinfo, const Node* root, Namespace **const ns);
 
+static Object interpretLiteral(const Node* root, Namespace **const ns) {
+        return *(root->operands[0].obj);
+}
 static Object interpretVariable(const Node* root, Namespace **const ns) {
         Object* obj = ns_get_value(*ns, root->token.tok.source);
         if (obj == NULL) {
@@ -23,21 +26,8 @@ static Object interpretVariable(const Node* root, Namespace **const ns) {
         }
         else return *obj;
 }
-static Object interpretInt(const Node* root, Namespace **const ns) {
-        return (Object) {.type=TYPE_INT, .intval=atoll(root->token.tok.source)};
-}
-static Object interpretBool(const Node* root, Namespace **const ns) {
-        return (Object) {.type=TYPE_BOOL, .intval=(root->token.tok.type == TOKEN_TRUE)};
-
-}
-static Object interpretFloat(const Node* root, Namespace **const ns) {
-        return (Object) {.type=TYPE_FLOAT, .floatval=atof(root->token.tok.source)};
-}
-static Object interpretStr(const Node* root, Namespace **const ns) {
-        return (Object) {.type=TYPE_STRING, .strval=makeString(root->token.tok.source+1, root->token.tok.length-2)};
-}
 static Object interpretUnaryPlus(const Node* root, Namespace **const ns) {
-        Object operand = interpretExpression(root->operands[0], ns);
+        Object operand = interpretExpression(root->operands[0].nd, ns);
         ERROR_GUARD(operand);
 
         switch (operand.type) {
@@ -51,7 +41,7 @@ static Object interpretUnaryPlus(const Node* root, Namespace **const ns) {
         }
 }
 static Object interpretUnaryMinus(const Node* root, Namespace **const ns) {
-        Object operand = interpretExpression(root->operands[0], ns);
+        Object operand = interpretExpression(root->operands[0].nd, ns);
         ERROR_GUARD(operand);
 
         switch (operand.type) {
@@ -89,9 +79,9 @@ static Object interpretSum(const Node* root, Namespace **const ns) {
                 },
         };
 
-        Object opA = interpretExpression(root->operands[0], ns);
+        Object opA = interpretExpression(root->operands[0].nd, ns);
         ERROR_GUARD(opA);
-        Object opB = interpretExpression(root->operands[1], ns);
+        Object opB = interpretExpression(root->operands[1].nd, ns);
         ERROR_GUARD(opB);
         {
                 const void* handler = dispatcher[opA.type][opB.type];
@@ -136,9 +126,9 @@ static Object interpretDifference(const Node* root, Namespace **const ns) {
                 },
         };
 
-        Object opA = interpretExpression(root->operands[0], ns);
+        Object opA = interpretExpression(root->operands[0].nd, ns);
         ERROR_GUARD(opA);
-        Object opB = interpretExpression(root->operands[1], ns);
+        Object opB = interpretExpression(root->operands[1].nd, ns);
         ERROR_GUARD(opB);
         {
                 const void* handler = dispatcher[opA.type][opB.type];
@@ -186,9 +176,9 @@ static Object interpretProduct(const Node* root, Namespace **const ns) {
                 },
         };
 
-        Object opA = interpretExpression(root->operands[0], ns);
+        Object opA = interpretExpression(root->operands[0].nd, ns);
         ERROR_GUARD(opA);
-        Object opB = interpretExpression(root->operands[1], ns);
+        Object opB = interpretExpression(root->operands[1].nd, ns);
         ERROR_GUARD(opB);
         {
                 const void* handler = dispatcher[opA.type][opB.type];
@@ -238,9 +228,9 @@ static Object interpretDivision(const Node* root, Namespace **const ns) {
                 },
         };
 
-        Object opA = interpretExpression(root->operands[0], ns);
+        Object opA = interpretExpression(root->operands[0].nd, ns);
         ERROR_GUARD(opA);
-        Object opB = interpretExpression(root->operands[1], ns);
+        Object opB = interpretExpression(root->operands[1].nd, ns);
         ERROR_GUARD(opB);
         {
                 const void* handler = dispatcher[opA.type][opB.type];
@@ -264,13 +254,13 @@ static Object interpretDivision(const Node* root, Namespace **const ns) {
         TypeError(root->token); return ERROR;
 }
 static Object interpretAffect(const Node* root, Namespace **const ns) {
-        Object obj = interpretExpression(root->operands[1], ns);
+        Object obj = interpretExpression(root->operands[1].nd, ns);
         ERROR_GUARD(obj);
-        ns_set_value(ns, root->operands[0]->token.tok.source, obj);
+        ns_set_value(ns, root->operands[0].nd->token.tok.source, obj);
         return obj;
 }
 static Object interpretInvert(const Node* root, Namespace **const ns) {
-        Object operand = interpretExpression(root->operands[0], ns);
+        Object operand = interpretExpression(root->operands[0].nd, ns);
         ERROR_GUARD(operand);
         switch (operand.type) {
                 case TYPE_INT:
@@ -286,7 +276,7 @@ static Object interpretInvert(const Node* root, Namespace **const ns) {
         }
 }
 static Object interpretAnd(const Node* root, Namespace **const ns) {
-        Object operand = interpretExpression(root->operands[0], ns);
+        Object operand = interpretExpression(root->operands[0].nd, ns);
         ERROR_GUARD(operand);
         Object op_is_true = tobool(1, &operand);
         if (op_is_true.type == TYPE_ERROR) {
@@ -294,7 +284,7 @@ static Object interpretAnd(const Node* root, Namespace **const ns) {
         }
         else if (!op_is_true.intval) return operand;
         else {
-                operand = interpretExpression(root->operands[1], ns);
+                operand = interpretExpression(root->operands[1].nd, ns);
                 ERROR_GUARD(operand);
                 if (tobool(1, &operand).type == TYPE_ERROR) {
                         TypeError(root->token); return ERROR;
@@ -303,7 +293,7 @@ static Object interpretAnd(const Node* root, Namespace **const ns) {
         }
 }
 static Object interpretOr(const Node* root, Namespace **const ns) {
-        Object operand = interpretExpression(root->operands[0], ns);
+        Object operand = interpretExpression(root->operands[0].nd, ns);
         ERROR_GUARD(operand);
         Object op_is_true = tobool(1, &operand);
         if (op_is_true.type == TYPE_ERROR) {
@@ -311,7 +301,7 @@ static Object interpretOr(const Node* root, Namespace **const ns) {
         }
         else if (op_is_true.intval) return operand;
         else {
-                operand = interpretExpression(root->operands[1], ns);
+                operand = interpretExpression(root->operands[1].nd, ns);
                 ERROR_GUARD(operand);
                 if (tobool(1, &operand).type == TYPE_ERROR) {
                         TypeError(root->token); return ERROR;
@@ -337,9 +327,9 @@ static Object interpretEq(const Node* root, Namespace **const ns) {
                 },
         };
 
-        Object opA = interpretExpression(root->operands[0], ns);
+        Object opA = interpretExpression(root->operands[0].nd, ns);
         ERROR_GUARD(opA);
-        Object opB = interpretExpression(root->operands[1], ns);
+        Object opB = interpretExpression(root->operands[1].nd, ns);
         ERROR_GUARD(opB);
         {
                 const void* handler = dispatcher[opA.type][opB.type];
@@ -380,9 +370,9 @@ static Object interpretLt(const Node* root, Namespace **const ns) {
                 },
         };
 
-        Object opA = interpretExpression(root->operands[0], ns);
+        Object opA = interpretExpression(root->operands[0].nd, ns);
         ERROR_GUARD(opA);
-        Object opB = interpretExpression(root->operands[1], ns);
+        Object opB = interpretExpression(root->operands[1].nd, ns);
         ERROR_GUARD(opB);
         {
                 const void* handler = dispatcher[opA.type][opB.type];
@@ -424,9 +414,9 @@ static Object interpretLe(const Node* root, Namespace **const ns) {
                 },
         };
 
-        Object opA = interpretExpression(root->operands[0], ns);
+        Object opA = interpretExpression(root->operands[0].nd, ns);
         ERROR_GUARD(opA);
-        Object opB = interpretExpression(root->operands[1], ns);
+        Object opB = interpretExpression(root->operands[1].nd, ns);
         ERROR_GUARD(opB);
         {
                 const void* handler = dispatcher[opA.type][opB.type];
@@ -449,11 +439,8 @@ static Object interpretLe(const Node* root, Namespace **const ns) {
         error:
         TypeError(root->token); return ERROR;
 }
-static Object interpretNone(const Node* root, Namespace **const ns) {
-        return OBJ_NONE;
-}
 static Object interpretCall(const Node* root, Namespace **const ns) {
-        Object funcnode = interpretExpression(root->operands[1], ns);
+        Object funcnode = interpretExpression(root->operands[1].nd, ns);
         ERROR_GUARD(funcnode);
         if (funcnode.type != TYPE_NATIVEF) {
                 TypeError(root->token);
@@ -461,11 +448,11 @@ static Object interpretCall(const Node* root, Namespace **const ns) {
         }
 
 
-        const uintptr_t argc = (uintptr_t) root->operands[0]-1;
+        const uintptr_t argc = root->operands[0].len-1;
 
         Object *const argv = alloca(argc*sizeof(Object));
         for (uintptr_t iarg=0; iarg<argc; iarg++) {
-                argv[iarg] = interpretExpression(root->operands[iarg+2], ns);
+                argv[iarg] = interpretExpression(root->operands[iarg+2].nd, ns);
                 ERROR_GUARD(argv[iarg]);
         }
         Object result = funcnode.natfunval(argc, argv);
@@ -498,14 +485,14 @@ static Object interpret_iadd(const Node* root, Namespace **const ns) {
         Namespace ** enclosing = (**ns).enclosing;
         (**ns).enclosing = NULL;
 
-        Object* target = ns_get_value(*ns, root->operands[0]->token.tok.source);
+        Object* target = ns_get_value(*ns, root->operands[0].nd->token.tok.source);
         (**ns).enclosing = enclosing;
         if (target == NULL) {
                 RuntimeError(root->token);
                 return ERROR;
         }
 
-        Object increment = interpretExpression(root->operands[1], ns);
+        Object increment = interpretExpression(root->operands[1].nd, ns);
         ERROR_GUARD(increment);
 
         {
@@ -538,7 +525,7 @@ static Object interpret_iadd(const Node* root, Namespace **const ns) {
 
         // actually already done thanks to *pointers*
         // success:
-        // ns_set_value(ns, root->operands[0]->token.tok.source, *target);
+        // ns_set_value(ns, root->operands[0].nd->token.tok.source, *target);
 
         error:
         TypeError(root->token); return ERROR;
@@ -565,14 +552,14 @@ static Object interpret_isub(const Node* root, Namespace **const ns) {
         Namespace ** enclosing = (**ns).enclosing;
         (**ns).enclosing = NULL;
 
-        Object* target = ns_get_value(*ns, root->operands[0]->token.tok.source);
+        Object* target = ns_get_value(*ns, root->operands[0].nd->token.tok.source);
         (**ns).enclosing = enclosing;
         if (target == NULL) {
                 RuntimeError(root->token);
                 return ERROR;
         }
 
-        Object increment = interpretExpression(root->operands[1], ns);
+        Object increment = interpretExpression(root->operands[1].nd, ns);
         ERROR_GUARD(increment);
 
         {
@@ -601,7 +588,7 @@ static Object interpret_isub(const Node* root, Namespace **const ns) {
 
         // actually already done thanks to *pointers*
         // success:
-        // ns_set_value(ns, root->operands[0]->token.tok.source, *target);
+        // ns_set_value(ns, root->operands[0].nd->token.tok.source, *target);
 
         error:
         TypeError(root->token); return ERROR;
@@ -634,14 +621,14 @@ static Object interpret_imul(const Node* root, Namespace **const ns) {
         Namespace ** enclosing = (**ns).enclosing;
         (**ns).enclosing = NULL;
 
-        Object* target = ns_get_value(*ns, root->operands[0]->token.tok.source);
+        Object* target = ns_get_value(*ns, root->operands[0].nd->token.tok.source);
         (**ns).enclosing = enclosing;
         if (target == NULL) {
                 RuntimeError(root->token);
                 return ERROR;
         }
 
-        Object increment = interpretExpression(root->operands[1], ns);
+        Object increment = interpretExpression(root->operands[1].nd, ns);
         ERROR_GUARD(increment);
 
         {
@@ -681,7 +668,7 @@ static Object interpret_imul(const Node* root, Namespace **const ns) {
 
         // actually already done thanks to *pointers*
         // success:
-        // ns_set_value(ns, root->operands[0]->token.tok.source, *target);
+        // ns_set_value(ns, root->operands[0].nd->token.tok.source, *target);
 
         error:
         TypeError(root->token); return ERROR;
@@ -708,14 +695,14 @@ static Object interpret_idiv(const Node* root, Namespace **const ns) {
         Namespace ** enclosing = (**ns).enclosing;
         (**ns).enclosing = NULL;
 
-        Object* target = ns_get_value(*ns, root->operands[0]->token.tok.source);
+        Object* target = ns_get_value(*ns, root->operands[0].nd->token.tok.source);
         (**ns).enclosing = enclosing;
         if (target == NULL) {
                 RuntimeError(root->token);
                 return ERROR;
         }
 
-        Object increment = interpretExpression(root->operands[1], ns);
+        Object increment = interpretExpression(root->operands[1].nd, ns);
         ERROR_GUARD(increment);
 
         {
@@ -744,21 +731,21 @@ static Object interpret_idiv(const Node* root, Namespace **const ns) {
 
         // actually already done thanks to *pointers*
         // success:
-        // ns_set_value(ns, root->operands[0]->token.tok.source, *target);
+        // ns_set_value(ns, root->operands[0].nd->token.tok.source, *target);
 
         error:
         TypeError(root->token); return ERROR;
 }
 
 static int interpretBlock(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
-        const uintptr_t nb_children = (uintptr_t) root->operands[0];
+        const uintptr_t nb_children = root->operands[0].len;
 
         Namespace * new_ns = allocateNamespace(ns);
 
         int exit_code = 1;
 
         for (uintptr_t i=1; i<=nb_children; i++) {
-                if (!_interpretStatement(prsinfo, root->operands[i], &new_ns)) {
+                if (!_interpretStatement(prsinfo, root->operands[i].nd, &new_ns)) {
                         exit_code = 0;
                         break;
                 }
@@ -768,21 +755,21 @@ static int interpretBlock(parser_info *const prsinfo, const Node* root, Namespac
         return exit_code;
 }
 static int interpretIf(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
-        Object predicate = interpretExpression(root->operands[0], ns);
+        Object predicate = interpretExpression(root->operands[0].nd, ns);
         predicate = tobool(1, &predicate);
         if (predicate.type == TYPE_ERROR) return 0;
-        if (predicate.intval) return _interpretStatement(prsinfo, root->operands[1], ns);
-        else if (root->operands[2] != NULL) return _interpretStatement(prsinfo, root->operands[2], ns);
+        if (predicate.intval) return _interpretStatement(prsinfo, root->operands[1].nd, ns);
+        else if (root->operands[2].nd != NULL) return _interpretStatement(prsinfo, root->operands[2].nd, ns);
         else return 1;
 }
 static int interpretWhile(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
         Object predicate;
         while (
-                predicate = interpretExpression(root->operands[0], ns),
+                predicate = interpretExpression(root->operands[0].nd, ns),
                 predicate = tobool(1, &predicate),
                 predicate.type != TYPE_ERROR && predicate.intval
         ) {
-                if (!_interpretStatement(prsinfo, root->operands[1], ns)) {
+                if (!_interpretStatement(prsinfo, root->operands[1].nd, ns)) {
                         return 0;
                 }
         }
@@ -797,11 +784,7 @@ static Object interpretExpression(const Node* root, Namespace **const ns) {
         static const ExprInterpretFn interpreters[LEN_OPERATORS] = {
                 [OP_VARIABLE] = interpretVariable,
 
-                [OP_INT] = interpretInt,
-                [OP_BOOL] = interpretBool,
-                [OP_FLOAT] = interpretFloat,
-                [OP_STR] = interpretStr,
-                [OP_NONE] = interpretNone,
+                [OP_LITERAL] = interpretLiteral,
 
                 [OP_UNARY_PLUS] = interpretUnaryPlus,
                 [OP_UNARY_MINUS] = interpretUnaryMinus,
