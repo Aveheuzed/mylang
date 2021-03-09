@@ -21,6 +21,13 @@ typedef enum ObjType {
         LEN_OBJTYPES // do NOT add anything below this line!
 } ObjType;
 
+typedef union ObjectCore {
+        intmax_t intval;
+        double floatval;
+        ObjString* strval;
+        native_function* natfunval;
+} ObjectCore;
+
 struct Object {
         ObjType type;
         union {

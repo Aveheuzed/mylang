@@ -15,9 +15,6 @@ static int _interpretStatement(parser_info *const prsinfo, const Node* root, Nam
 typedef Object (*ExprInterpretFn)(const Node* root, Namespace **const ns);
 typedef int (*StmtInterpretFn)(parser_info *const prsinfo, const Node* root, Namespace **const ns);
 
-static Object interpretLiteral(const Node* root, Namespace **const ns) {
-        return *(root->operands[0].obj);
-}
 static Object interpretVariable(const Node* root, Namespace **const ns) {
         Object* obj = ns_get_value(*ns, root->token.tok.source);
         if (obj == NULL) {
@@ -25,6 +22,24 @@ static Object interpretVariable(const Node* root, Namespace **const ns) {
                 return ERROR;
         }
         else return *obj;
+}
+static Object interpretInt(const Node* root, Namespace **const ns) {
+        return (Object) {.type=TYPE_INT, .intval=root->operands[0].obj.intval};
+}
+static Object interpretTrue(const Node* root, Namespace **const ns) {
+        return OBJ_TRUE;
+}
+static Object interpretFalse(const Node* root, Namespace **const ns) {
+        return OBJ_FALSE;
+}
+static Object interpretNone(const Node* root, Namespace **const ns) {
+        return OBJ_NONE;
+}
+static Object interpretFloat(const Node* root, Namespace **const ns) {
+        return (Object) {.type=TYPE_FLOAT, .floatval=root->operands[0].obj.floatval};
+}
+static Object interpretStr(const Node* root, Namespace **const ns) {
+        return (Object) {.type=TYPE_STRING, .strval=root->operands[0].obj.strval};
 }
 static Object interpretUnaryPlus(const Node* root, Namespace **const ns) {
         Object operand = interpretExpression(root->operands[0].nd, ns);
@@ -784,7 +799,12 @@ static Object interpretExpression(const Node* root, Namespace **const ns) {
         static const ExprInterpretFn interpreters[LEN_OPERATORS] = {
                 [OP_VARIABLE] = interpretVariable,
 
-                [OP_LITERAL] = interpretLiteral,
+                [OP_LITERAL_INT] = interpretInt,
+                [OP_LITERAL_FLOAT] = interpretFloat,
+                [OP_LITERAL_TRUE] = interpretTrue,
+                [OP_LITERAL_FALSE] = interpretFalse,
+                [OP_LITERAL_NONE] = interpretNone,
+                [OP_LITERAL_STR] = interpretStr,
 
                 [OP_UNARY_PLUS] = interpretUnaryPlus,
                 [OP_UNARY_MINUS] = interpretUnaryMinus,

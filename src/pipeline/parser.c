@@ -5,6 +5,7 @@
 
 #include "headers/pipeline/parser.h"
 #include "headers/utils/object.h"
+#include "headers/utils/container.h"
 
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 
@@ -33,7 +34,12 @@ static Node* infixParseError(parser_info *const state, Node *const root);
 
 static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_VARIABLE] = 0,
-        [OP_LITERAL] = 1,
+        [OP_LITERAL_INT] = 1,
+        [OP_LITERAL_FLOAT] = 1,
+        [OP_LITERAL_TRUE] = 0,
+        [OP_LITERAL_FALSE] = 0,
+        [OP_LITERAL_NONE] = 0,
+        [OP_LITERAL_STR] = 1,
 
         [OP_UNARY_PLUS] = 1,
         [OP_UNARY_MINUS] = 1,
@@ -89,16 +95,16 @@ static Node* reallocateNode(Node* nd, const uintptr_t nb_children) {
 void freeNode(Node* node) {
         if (node == NULL) return;
 
-        if (node->operator == OP_LITERAL) {
-                free(node->operands[0].obj);
-        }
-        else {
+        if (node->operator > LAST_OP_LITERAL) {
                 uintptr_t nb = nb_operands[node->operator];
                 uintptr_t index;
                 if (nb == UINTPTR_MAX) index = 1, nb = node->operands[0].len;
                 else index = 0;
 
                 for (; index<nb; index++) freeNode(node->operands[index].nd);
+        }
+        else if (node->operator == OP_LITERAL_STR) {
+                free_string(node->operands[0].obj.strval);
         }
         free(node);
 }
@@ -135,35 +141,34 @@ static Node* unary_minus(parser_info *const state) {
         return new;
 }
 static Node* integer(parser_info *const state) {
-        Node *const new = ALLOCATE_SIMPLE_NODE(OP_LITERAL);
-        Object* obj = malloc(sizeof *obj);
-        *new = (Node) {.token=consume(state), .operator=OP_LITERAL};
-        new->operands[0].obj = obj;
-        *obj = (Object) {.type=OP_LITERAL, .intval=atoll(new->token.tok.source)};
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_LITERAL_INT);
+        *new = (Node) {.token=consume(state), .operator=OP_LITERAL_INT};
+        new->operands[0].obj.intval = atoll(new->token.tok.source);
         return new;
 }
 static Node* boolean(parser_info *const state) {
-        Node *const new = ALLOCATE_SIMPLE_NODE(OP_LITERAL);
-        Object* obj = malloc(sizeof *obj);
-        *new = (Node) {.token=consume(state), .operator=OP_LITERAL};
-        new->operands[0].obj = obj;
-        *obj = (new->token.tok.type == TOKEN_TRUE) ? OBJ_TRUE : OBJ_FALSE;
-        return new;
+        LocalizedToken tk = consume(state);
+        if (tk.tok.type == TOKEN_TRUE) {
+                Node *const new = ALLOCATE_SIMPLE_NODE(OP_LITERAL_TRUE);
+                *new = (Node) {.token=tk, .operator=OP_LITERAL_TRUE};
+                return new;
+        }
+        else {
+                Node *const new = ALLOCATE_SIMPLE_NODE(OP_LITERAL_FALSE);
+                *new = (Node) {.token=tk, .operator=OP_LITERAL_FALSE};
+                return new;
+        }
 }
 static Node* fpval(parser_info *const state) {
-        Node *const new = ALLOCATE_SIMPLE_NODE(OP_LITERAL);
-        Object* obj = malloc(sizeof *obj);
-        *new = (Node) {.token=consume(state), .operator=OP_LITERAL};
-        new->operands[0].obj = obj;
-        *obj = (Object) {.type=TYPE_FLOAT, .floatval=atof(new->token.tok.source)};
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_LITERAL_FLOAT);
+        *new = (Node) {.token=consume(state), .operator=OP_LITERAL_FLOAT};
+        new->operands[0].obj.intval = atof(new->token.tok.source);
         return new;
 }
 static Node* string(parser_info *const state) {
-        Node *const new = ALLOCATE_SIMPLE_NODE(OP_LITERAL);
-        Object* obj = malloc(sizeof *obj);
-        *new = (Node) {.token=consume(state), .operator=OP_LITERAL};
-        new->operands[0].obj = obj;
-        *obj = (Object) {.type=TYPE_STRING, .strval=makeString(new->token.tok.source+1, new->token.tok.length-2)};
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_LITERAL_STR);
+        *new = (Node) {.token=consume(state), .operator=OP_LITERAL_STR};
+        new->operands[0].obj.strval = makeString(new->token.tok.source+1, new->token.tok.length-2);
         return new;
 }
 static Node* grouping(parser_info *const state) {
@@ -186,11 +191,8 @@ static Node* invert(parser_info *const state) {
         return new;
 }
 static Node* none(parser_info *const state) {
-        Node *const new = ALLOCATE_SIMPLE_NODE(OP_LITERAL);
-        Object* obj = malloc(sizeof *obj);
-        *new = (Node) {.token=consume(state), .operator=OP_LITERAL};
-        new->operands[0].obj = obj;
-        *obj = (OBJ_NONE);
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_LITERAL_NONE);
+        *new = (Node) {.token=consume(state), .operator=OP_LITERAL_NONE};
         return new;
 }
 static Node* identifier(parser_info *const state) {

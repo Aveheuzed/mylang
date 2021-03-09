@@ -6,8 +6,16 @@
 
 typedef enum {
         // no operand
+        OP_LITERAL_INT,
+        OP_LITERAL_FLOAT,
+        OP_LITERAL_TRUE,
+        OP_LITERAL_FALSE,
+        OP_LITERAL_NONE,
+        OP_LITERAL_STR,
+
+        LAST_OP_LITERAL=OP_LITERAL_STR, // not actually an operator
+
         OP_VARIABLE,
-        OP_LITERAL,
 
         // one operand
         OP_UNARY_PLUS,
@@ -50,7 +58,7 @@ typedef struct Node {
         union {
                 struct Node* nd;
                 uintptr_t len;
-                Object* obj;
+                ObjectCore obj;
         } operands[];
 } Node;
 
