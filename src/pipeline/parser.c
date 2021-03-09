@@ -91,10 +91,10 @@ void freeNode(Node* node) {
 
         uintptr_t nb = nb_operands[node->operator];
         uintptr_t index;
-        if (nb == UINTPTR_MAX) index = 1, nb = (uintptr_t)node->operands[0];
+        if (nb == UINTPTR_MAX) index = 1, nb = node->operands[0].len;
         else index = 0;
 
-        for (; index<nb; index++) freeNode(node->operands[index]);
+        for (; index<nb; index++) freeNode(node->operands[index].nd);
         free(node);
 }
 inline parser_info mk_parser_info(FILE* file) {
@@ -117,7 +117,7 @@ static Node* unary_plus(parser_info *const state) {
         if (operand == NULL) return NULL;
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_UNARY_PLUS);
         *new = (Node) {.token=operator, .operator=OP_UNARY_PLUS};
-        new->operands[0] = operand;
+        new->operands[0].nd = operand;
         return new;
 }
 static Node* unary_minus(parser_info *const state) {
@@ -126,7 +126,7 @@ static Node* unary_minus(parser_info *const state) {
         if (operand == NULL) return NULL;
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_UNARY_MINUS);
         *new = (Node) {.token=operator, .operator=OP_UNARY_MINUS};
-        new->operands[0] = operand;
+        new->operands[0].nd = operand;
         return new;
 }
 static Node* integer(parser_info *const state) {
@@ -155,7 +155,7 @@ static Node* invert(parser_info *const state) {
         if (operand == NULL) return NULL;
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INVERT);
         *new = (Node) {.token=operator, .operator=OP_INVERT};
-        new->operands[0] = operand;
+        new->operands[0].nd = operand;
         return new;
 }
 static Node* identifier(parser_info *const state) {
@@ -181,8 +181,8 @@ static Node* binary_plus(parser_info *const state, Node *const root) {
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_SUM);
         *new = (Node) {.token=operator, .operator=OP_SUM};
-        new->operands[0] = root;
-        new->operands[1] = operand;
+        new->operands[0].nd = root;
+        new->operands[1].nd = operand;
         return new;
 }
 static Node* binary_minus(parser_info *const state, Node *const root) {
@@ -194,8 +194,8 @@ static Node* binary_minus(parser_info *const state, Node *const root) {
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_DIFFERENCE);
         *new = (Node) {.token=operator, .operator=OP_DIFFERENCE};
-        new->operands[0] = root;
-        new->operands[1] = operand;
+        new->operands[0].nd = root;
+        new->operands[1].nd = operand;
         return new;
 }
 static Node* binary_star(parser_info *const state, Node *const root) {
@@ -207,8 +207,8 @@ static Node* binary_star(parser_info *const state, Node *const root) {
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_PRODUCT);
         *new = (Node) {.token=operator, .operator=OP_PRODUCT};
-        new->operands[0] = root;
-        new->operands[1] = operand;
+        new->operands[0].nd = root;
+        new->operands[1].nd = operand;
         return new;
 }
 static Node* binary_slash(parser_info *const state, Node *const root) {
@@ -220,8 +220,8 @@ static Node* binary_slash(parser_info *const state, Node *const root) {
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_DIVISION);
         *new = (Node) {.token=operator, .operator=OP_DIVISION};
-        new->operands[0] = root;
-        new->operands[1] = operand;
+        new->operands[0].nd = root;
+        new->operands[1].nd = operand;
         return new;
 }
 static Node* binary_and(parser_info *const state, Node *const root) {
@@ -233,8 +233,8 @@ static Node* binary_and(parser_info *const state, Node *const root) {
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_AND);
         *new = (Node) {.token=operator, .operator=OP_AND};
-        new->operands[0] = root;
-        new->operands[1] = operand;
+        new->operands[0].nd = root;
+        new->operands[1].nd = operand;
         return new;
 }
 static Node* binary_or(parser_info *const state, Node *const root) {
@@ -246,8 +246,8 @@ static Node* binary_or(parser_info *const state, Node *const root) {
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_OR);
         *new = (Node) {.token=operator, .operator=OP_OR};
-        new->operands[0] = root;
-        new->operands[1] = operand;
+        new->operands[0].nd = root;
+        new->operands[1].nd = operand;
         return new;
 }
 static Node* lt(parser_info *const state, Node *const root) {
@@ -259,8 +259,8 @@ static Node* lt(parser_info *const state, Node *const root) {
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_LT);
         *new = (Node) {.token=operator, .operator=OP_LT};
-        new->operands[0] = root;
-        new->operands[1] = operand;
+        new->operands[0].nd = root;
+        new->operands[1].nd = operand;
         return new;
 }
 static Node* le(parser_info *const state, Node *const root) {
@@ -272,8 +272,8 @@ static Node* le(parser_info *const state, Node *const root) {
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_LE);
         *new = (Node) {.token=operator, .operator=OP_LE};
-        new->operands[0] = root;
-        new->operands[1] = operand;
+        new->operands[0].nd = root;
+        new->operands[1].nd = operand;
         return new;
 }
 static Node* gt(parser_info *const state, Node *const root) {
@@ -286,7 +286,7 @@ static Node* gt(parser_info *const state, Node *const root) {
 
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INVERT);
         *new = (Node) {.token=operator, .operator=OP_INVERT};
-        new->operands[0] = operand;
+        new->operands[0].nd = operand;
         return new;
 }
 static Node* ge(parser_info *const state, Node *const root) {
@@ -299,7 +299,7 @@ static Node* ge(parser_info *const state, Node *const root) {
 
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INVERT);
         *new = (Node) {.token=operator, .operator=OP_INVERT};
-        new->operands[0] = operand;
+        new->operands[0].nd = operand;
         return new;
 }
 static Node* eq(parser_info *const state, Node *const root) {
@@ -311,8 +311,8 @@ static Node* eq(parser_info *const state, Node *const root) {
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_EQ);
         *new = (Node) {.token=operator, .operator=OP_EQ};
-        new->operands[0] = root;
-        new->operands[1] = operand;
+        new->operands[0].nd = root;
+        new->operands[1].nd = operand;
         return new;
 }
 static Node* ne(parser_info *const state, Node *const root) {
@@ -325,7 +325,7 @@ static Node* ne(parser_info *const state, Node *const root) {
 
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INVERT);
         *new = (Node) {.token=operator, .operator=OP_INVERT};
-        new->operands[0] = operand;
+        new->operands[0].nd = operand;
         return new;
 }
 static Node* affect(parser_info *const state, Node *const root) {
@@ -339,8 +339,8 @@ static Node* affect(parser_info *const state, Node *const root) {
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_AFFECT);
         *new = (Node) {.token=operator, .operator=OP_AFFECT};
-        new->operands[0] = root;
-        new->operands[1] = operand;
+        new->operands[0].nd = root;
+        new->operands[1].nd = operand;
         return new;
 }
 static Node* call(parser_info *const state, Node *const root) {
@@ -350,23 +350,23 @@ static Node* call(parser_info *const state, Node *const root) {
 
         new->token = consume(state);
         new->operator = OP_CALL;
-        new->operands[1] = root;
+        new->operands[1].nd = root;
 
         while (getTtype(state) != TOKEN_PCLOSE) {
                 Node* arg = parseExpression(state, PREC_NONE);
                 if (arg == NULL) {
-                        new->operands[0] = (void*) count;
+                        new->operands[0].len = count;
                         freeNode(new);
                         return NULL;
                 }
                 new = reallocateNode(new, ++count+1);
-                new->operands[count] = arg;
+                new->operands[count].nd = arg;
 
                 if (getTtype(state) == TOKEN_COMMA) consume(state);
                 else if (getTtype(state) != TOKEN_PCLOSE) return infixParseError(state, new);
         }
         consume(state);
-        new->operands[0] = (void*) count;
+        new->operands[0].len = count;
         return new;
 
 }
@@ -381,8 +381,8 @@ static Node* iadd(parser_info *const state, Node *const root) {
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_IADD);
         *new = (Node) {.token=operator, .operator=OP_IADD};
-        new->operands[0] = root;
-        new->operands[1] = operand;
+        new->operands[0].nd = root;
+        new->operands[1].nd = operand;
         return new;
 }
 static Node* isub(parser_info *const state, Node *const root) {
@@ -396,8 +396,8 @@ static Node* isub(parser_info *const state, Node *const root) {
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_ISUB);
         *new = (Node) {.token=operator, .operator=OP_ISUB};
-        new->operands[0] = root;
-        new->operands[1] = operand;
+        new->operands[0].nd = root;
+        new->operands[1].nd = operand;
         return new;
 }
 static Node* imul(parser_info *const state, Node *const root) {
@@ -411,8 +411,8 @@ static Node* imul(parser_info *const state, Node *const root) {
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_IMUL);
         *new = (Node) {.token=operator, .operator=OP_IMUL};
-        new->operands[0] = root;
-        new->operands[1] = operand;
+        new->operands[0].nd = root;
+        new->operands[1].nd = operand;
         return new;
 }
 static Node* idiv(parser_info *const state, Node *const root) {
@@ -426,8 +426,8 @@ static Node* idiv(parser_info *const state, Node *const root) {
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_IDIV);
         *new = (Node) {.token=operator, .operator=OP_IDIV};
-        new->operands[0] = root;
-        new->operands[1] = operand;
+        new->operands[0].nd = root;
+        new->operands[1].nd = operand;
         return new;
 }
 
@@ -516,19 +516,19 @@ static Node* declare_statement(parser_info *const state) {
                         return prefixParseError(state);
         }
 
-        new->operands[0] = parseExpression(state, PREC_NONE);
-        if ( new->operands[0] == NULL) {
+        new->operands[0].nd = parseExpression(state, PREC_NONE);
+        if ( new->operands[0].nd == NULL) {
                 freeNode(new);
                 return NULL;
         }
-        if (new->operands[0]->operator != OP_VARIABLE) {
+        if (new->operands[0].nd->operator != OP_VARIABLE) {
                 return infixParseError(state, new);
         }
 
         if (getTtype(state) == TOKEN_EQUAL) {
                 consume(state);
-                new->operands[1] = parseExpression(state, PREC_NONE);
-                if (new->operands[1] == NULL){
+                new->operands[1].nd = parseExpression(state, PREC_NONE);
+                if (new->operands[1].nd == NULL){
                         freeNode(new);
                         return NULL;
                 }
@@ -552,14 +552,14 @@ static Node* block_statement(parser_info *const state) {
         while (getTtype(state) != TOKEN_BCLOSE) {
                 Node* substmt = parse_statement(state);
                 if (substmt == NULL) {
-                        stmt->operands[0] = (void*) nb_children;
+                        stmt->operands[0].len = nb_children;
                         freeNode(stmt);
                         return NULL;
                 }
                 stmt = reallocateNode(stmt, ++nb_children+1);
-                stmt->operands[nb_children] = substmt;
+                stmt->operands[nb_children].nd = substmt;
         }
-        stmt->operands[0] = (void*) nb_children;
+        stmt->operands[0].len = nb_children;
         consume(state);
         return stmt;
 }
