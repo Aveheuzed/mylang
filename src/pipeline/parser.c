@@ -4,6 +4,8 @@
 #include <stdint.h>
 
 #include "headers/pipeline/parser.h"
+#include "headers/utils/runtime_types.h"
+#include "headers/utils/error.h"
 
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 
@@ -18,6 +20,15 @@ typedef enum Precedence {
         PREC_UNARY,
         PREC_CALL,
 } Precedence;
+
+typedef struct ResolverRecord {
+        size_t allocated;
+        size_t len;
+        struct {
+                char const* key;
+                RuntimeType type;
+        } record[];
+} ResolverRecord;
 
 typedef Node* (*StatementHandler)(parser_info *const state);
 typedef Node* (*UnaryParseFn)(parser_info *const state);
@@ -97,12 +108,46 @@ void freeNode(Node* node) {
         for (; index<nb; index++) freeNode(node->operands[index].nd);
         free(node);
 }
+
+static ResolverRecord* mk_record(void) {
+        ResolverRecord *const record = malloc(offsetof(ResolverRecord, record)
+                + 16*sizeof((ResolverRecord){0}.record[0]));
+        record->allocated = 16;
+        record->len = 0;
+        return record;
+}
+static void free_record(ResolverRecord* record) {
+        free(record);
+}
+static ResolverRecord* grow_record(ResolverRecord* record, const size_t new_size) {
+        record = realloc(record, offsetof(ResolverRecord, record)
+                + new_size*sizeof((ResolverRecord){0}.record[0]));
+        record->allocated = new_size;
+        return record;
+}
+static void record_variable(parser_info *const state, char const* key, RuntimeType type) {
+        if (state->resolv->len >= state->resolv->allocated) {
+                state->resolv = grow_record(state->resolv, state->resolv->allocated*2);
+        }
+
+        // shortcut, the less I type the better
+        ResolverRecord *const record = state->resolv;
+
+        record->record[record->len++] = (typeof(record->record[0])) {.key=key, .type=type};
+}
+static RuntimeType resolve_variable(const ResolverRecord* record, const char* key) {
+        for (size_t i=record->len; i-->0; ) if (record->record[i].key==key) return record->record[i].type;
+        return TYPEERROR;
+}
+
 inline parser_info mk_parser_info(FILE* file) {
-        return (parser_info) {.lxinfo=mk_lexer_info(file), .stale=1};
+        return (parser_info) {.lxinfo=mk_lexer_info(file), .stale=1, .resolv=mk_record()};
 }
 inline void del_parser_info(parser_info prsinfo) {
         del_lexer_info(prsinfo.lxinfo);
+        free_record(prsinfo.resolv);
 }
+
 
 // --------------------- prefix parse functions --------------------------------
 
@@ -112,31 +157,37 @@ static Node* prefixParseError(parser_info *const state) {
         return NULL;
 }
 static Node* unary_plus(parser_info *const state) {
+        static const RuntimeType types[LEN_TYPES] = {
+                [TYPE_INT]=TYPE_INT,
+        };
         const LocalizedToken operator = consume(state);
         Node* operand = parseExpression(state, PREC_UNARY);
         if (operand == NULL) return NULL;
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_UNARY_PLUS);
-        *new = (Node) {.token=operator, .operator=OP_UNARY_PLUS};
+        *new = (Node) {.token=operator, .operator=OP_UNARY_PLUS, .type=types[operand->type]};
         new->operands[0].nd = operand;
         return new;
 }
 static Node* unary_minus(parser_info *const state) {
+        static const RuntimeType types[LEN_TYPES] = {
+                [TYPE_INT]=TYPE_INT,
+        };
         const LocalizedToken operator = consume(state);
         Node* operand = parseExpression(state, PREC_UNARY);
         if (operand == NULL) return NULL;
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_UNARY_MINUS);
-        *new = (Node) {.token=operator, .operator=OP_UNARY_MINUS};
+        *new = (Node) {.token=operator, .operator=OP_UNARY_MINUS, .type=types[operand->type]};
         new->operands[0].nd = operand;
         return new;
 }
 static Node* integer(parser_info *const state) {
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INT);
-        *new = (Node) {.token=consume(state), .operator=OP_INT};
+        *new = (Node) {.token=consume(state), .operator=OP_INT, .type=TYPE_INT};
         return new;
 }
 static Node* string(parser_info *const state) {
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_STR);
-        *new = (Node) {.token=consume(state), .operator=OP_STR};
+        *new = (Node) {.token=consume(state), .operator=OP_STR, .type=TYPE_STR};
         return new;
 }
 static Node* grouping(parser_info *const state) {
@@ -150,17 +201,26 @@ static Node* grouping(parser_info *const state) {
         return operand;
 }
 static Node* invert(parser_info *const state) {
+        static const RuntimeType types[LEN_TYPES] = {
+                [TYPE_INT]=TYPE_INT,
+                [TYPE_STR]=TYPE_INT,
+        };
         const LocalizedToken operator = consume(state);
         Node* operand = parseExpression(state, PREC_UNARY);
         if (operand == NULL) return NULL;
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INVERT);
-        *new = (Node) {.token=operator, .operator=OP_INVERT};
+        *new = (Node) {.token=operator, .operator=OP_INVERT, .type=types[operand->type]};
         new->operands[0].nd = operand;
         return new;
 }
 static Node* identifier(parser_info *const state) {
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_VARIABLE);
         *new = (Node) {.token=consume(state), .operator=OP_VARIABLE};
+        if ((new->type = resolve_variable(state->resolv, new->token.tok.source)) == TYPEERROR) {
+                TypeError(new->token);
+                freeNode(new);
+                return NULL;
+        }
         return new;
 }
 
@@ -173,6 +233,10 @@ static Node* infixParseError(parser_info *const state, Node *const root) {
         return NULL;
 }
 static Node* binary_plus(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+                [TYPE_STR][TYPE_STR]=TYPE_INT,
+        };
         const LocalizedToken operator = consume(state);
         Node* operand = parseExpression(state, PREC_ADD);
         if (operand == NULL) {
@@ -180,12 +244,15 @@ static Node* binary_plus(parser_info *const state, Node *const root) {
                 return NULL;
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_SUM);
-        *new = (Node) {.token=operator, .operator=OP_SUM};
+        *new = (Node) {.token=operator, .operator=OP_SUM, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
 }
 static Node* binary_minus(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+        };
         const LocalizedToken operator = consume(state);
         Node* operand = parseExpression(state, PREC_ADD);
         if (operand == NULL) {
@@ -193,12 +260,18 @@ static Node* binary_minus(parser_info *const state, Node *const root) {
                 return NULL;
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_DIFFERENCE);
-        *new = (Node) {.token=operator, .operator=OP_DIFFERENCE};
+        *new = (Node) {.token=operator, .operator=OP_DIFFERENCE, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
 }
 static Node* binary_star(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+                [TYPE_INT][TYPE_STR]=TYPE_INT,
+                [TYPE_STR][TYPE_INT]=TYPE_INT,
+
+        };
         const LocalizedToken operator = consume(state);
         Node* operand = parseExpression(state, PREC_MUL);
         if (operand == NULL) {
@@ -206,12 +279,15 @@ static Node* binary_star(parser_info *const state, Node *const root) {
                 return NULL;
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_PRODUCT);
-        *new = (Node) {.token=operator, .operator=OP_PRODUCT};
+        *new = (Node) {.token=operator, .operator=OP_PRODUCT, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
 }
 static Node* binary_slash(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+        };
         const LocalizedToken operator = consume(state);
         Node* operand = parseExpression(state, PREC_MUL);
         if (operand == NULL) {
@@ -219,12 +295,16 @@ static Node* binary_slash(parser_info *const state, Node *const root) {
                 return NULL;
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_DIVISION);
-        *new = (Node) {.token=operator, .operator=OP_DIVISION};
+        *new = (Node) {.token=operator, .operator=OP_DIVISION, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
 }
 static Node* binary_and(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+                [TYPE_STR][TYPE_STR]=TYPE_STR,
+        };
         const LocalizedToken operator = consume(state);
         Node* operand = parseExpression(state, PREC_AND);
         if (operand == NULL) {
@@ -232,12 +312,16 @@ static Node* binary_and(parser_info *const state, Node *const root) {
                 return NULL;
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_AND);
-        *new = (Node) {.token=operator, .operator=OP_AND};
+        *new = (Node) {.token=operator, .operator=OP_AND, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
 }
 static Node* binary_or(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+                [TYPE_STR][TYPE_STR]=TYPE_STR,
+        };
         const LocalizedToken operator = consume(state);
         Node* operand = parseExpression(state, PREC_OR);
         if (operand == NULL) {
@@ -245,12 +329,16 @@ static Node* binary_or(parser_info *const state, Node *const root) {
                 return NULL;
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_OR);
-        *new = (Node) {.token=operator, .operator=OP_OR};
+        *new = (Node) {.token=operator, .operator=OP_OR, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
 }
 static Node* lt(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+                [TYPE_STR][TYPE_STR]=TYPE_INT,
+        };
         const LocalizedToken operator = consume(state);
         Node* operand = parseExpression(state, PREC_COMPARISON);
         if (operand == NULL) {
@@ -258,12 +346,16 @@ static Node* lt(parser_info *const state, Node *const root) {
                 return NULL;
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_LT);
-        *new = (Node) {.token=operator, .operator=OP_LT};
+        *new = (Node) {.token=operator, .operator=OP_LT, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
 }
 static Node* le(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+                [TYPE_STR][TYPE_STR]=TYPE_INT,
+        };
         const LocalizedToken operator = consume(state);
         Node* operand = parseExpression(state, PREC_COMPARISON);
         if (operand == NULL) {
@@ -271,12 +363,16 @@ static Node* le(parser_info *const state, Node *const root) {
                 return NULL;
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_LE);
-        *new = (Node) {.token=operator, .operator=OP_LE};
+        *new = (Node) {.token=operator, .operator=OP_LE, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
 }
 static Node* gt(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+                [TYPE_STR][TYPE_STR]=TYPE_INT,
+        };
         // > is implemented as !(<=)
         refresh(state);
         // not how we DON'T consume the token; `le` will do it
@@ -285,11 +381,15 @@ static Node* gt(parser_info *const state, Node *const root) {
         if (operand == NULL) return NULL;
 
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INVERT);
-        *new = (Node) {.token=operator, .operator=OP_INVERT};
+        *new = (Node) {.token=operator, .operator=OP_INVERT, .type=types[root->type][operand->type]};
         new->operands[0].nd = operand;
         return new;
 }
 static Node* ge(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+                [TYPE_STR][TYPE_STR]=TYPE_INT,
+        };
         // >= is implemented as !(<)
         refresh(state);
         // not how we DON'T consume the token; `lt` will do it
@@ -298,11 +398,15 @@ static Node* ge(parser_info *const state, Node *const root) {
         if (operand == NULL) return NULL;
 
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INVERT);
-        *new = (Node) {.token=operator, .operator=OP_INVERT};
+        *new = (Node) {.token=operator, .operator=OP_INVERT, .type=types[root->type][operand->type]};
         new->operands[0].nd = operand;
         return new;
 }
 static Node* eq(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+                [TYPE_STR][TYPE_STR]=TYPE_INT,
+        };
         const LocalizedToken operator = consume(state);
         Node* operand = parseExpression(state, PREC_COMPARISON);
         if (operand == NULL) {
@@ -310,12 +414,16 @@ static Node* eq(parser_info *const state, Node *const root) {
                 return NULL;
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_EQ);
-        *new = (Node) {.token=operator, .operator=OP_EQ};
+        *new = (Node) {.token=operator, .operator=OP_EQ, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
 }
 static Node* ne(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+                [TYPE_STR][TYPE_STR]=TYPE_INT,
+        };
         // != is implemented as !(==)
         refresh(state);
         // not how we DON'T consume the token; `eq` will do it
@@ -324,11 +432,15 @@ static Node* ne(parser_info *const state, Node *const root) {
         if (operand == NULL) return NULL;
 
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INVERT);
-        *new = (Node) {.token=operator, .operator=OP_INVERT};
+        *new = (Node) {.token=operator, .operator=OP_INVERT, .type=types[root->type][operand->type]};
         new->operands[0].nd = operand;
         return new;
 }
 static Node* affect(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+                [TYPE_STR][TYPE_STR]=TYPE_STR,
+        };
         if (root->operator != OP_VARIABLE) return infixParseError(state, root);
 
         const LocalizedToken operator = consume(state);
@@ -338,7 +450,7 @@ static Node* affect(parser_info *const state, Node *const root) {
                 return NULL;
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_AFFECT);
-        *new = (Node) {.token=operator, .operator=OP_AFFECT};
+        *new = (Node) {.token=operator, .operator=OP_AFFECT, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
@@ -367,10 +479,15 @@ static Node* call(parser_info *const state, Node *const root) {
         }
         consume(state);
         new->operands[0].len = count;
+        new->type=TYPE_VOID; // currently not implemented
         return new;
 
 }
 static Node* iadd(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+                [TYPE_STR][TYPE_STR]=TYPE_STR,
+        };
         if (root->operator != OP_VARIABLE) return infixParseError(state, root);
 
         const LocalizedToken operator = consume(state);
@@ -380,12 +497,15 @@ static Node* iadd(parser_info *const state, Node *const root) {
                 return NULL;
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_IADD);
-        *new = (Node) {.token=operator, .operator=OP_IADD};
+        *new = (Node) {.token=operator, .operator=OP_IADD, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
 }
 static Node* isub(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+        };
         if (root->operator != OP_VARIABLE) return infixParseError(state, root);
 
         const LocalizedToken operator = consume(state);
@@ -395,12 +515,17 @@ static Node* isub(parser_info *const state, Node *const root) {
                 return NULL;
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_ISUB);
-        *new = (Node) {.token=operator, .operator=OP_ISUB};
+        *new = (Node) {.token=operator, .operator=OP_ISUB, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
 }
 static Node* imul(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+                [TYPE_STR][TYPE_INT]=TYPE_STR,
+                [TYPE_INT][TYPE_STR]=TYPE_STR,
+        };
         if (root->operator != OP_VARIABLE) return infixParseError(state, root);
 
         const LocalizedToken operator = consume(state);
@@ -410,12 +535,15 @@ static Node* imul(parser_info *const state, Node *const root) {
                 return NULL;
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_IMUL);
-        *new = (Node) {.token=operator, .operator=OP_IMUL};
+        *new = (Node) {.token=operator, .operator=OP_IMUL, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
 }
 static Node* idiv(parser_info *const state, Node *const root) {
+        static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
+                [TYPE_INT][TYPE_INT]=TYPE_INT,
+        };
         if (root->operator != OP_VARIABLE) return infixParseError(state, root);
 
         const LocalizedToken operator = consume(state);
@@ -425,7 +553,7 @@ static Node* idiv(parser_info *const state, Node *const root) {
                 return NULL;
         }
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_IDIV);
-        *new = (Node) {.token=operator, .operator=OP_IDIV};
+        *new = (Node) {.token=operator, .operator=OP_IDIV, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
@@ -504,6 +632,10 @@ static Node* simple_statement(parser_info *const state) {
 }
 
 static Node* declare_statement(parser_info *const state) {
+        static const RuntimeType types[TOKEN_EOF] = {
+                [TOKEN_KW_INT]=TYPE_INT,
+                [TOKEN_KW_STR]=TYPE_STR,
+        };
         Node* new = NULL;
         switch (getTtype(state)) {
                 case TOKEN_KW_INT:
@@ -541,19 +673,24 @@ static Node* declare_statement(parser_info *const state) {
                 return NULL;
         }
 
+        record_variable(state, new->operands[0].nd->token.tok.source, types[new->operator]);
+
         return new;
 }
 
 static Node* block_statement(parser_info *const state) {
+        const size_t resolv_size = state->resolv->len;
         uintptr_t nb_children = 0;
         Node* stmt = allocateNode(nb_children + 1); // add one, for the length of the array
         stmt->token = consume(state);
         stmt->operator = OP_BLOCK;
+        stmt->type=TYPE_VOID;
         while (getTtype(state) != TOKEN_BCLOSE) {
                 Node* substmt = parse_statement(state);
                 if (substmt == NULL) {
                         stmt->operands[0].len = nb_children;
                         freeNode(stmt);
+                        state->resolv->len = resolv_size;
                         return NULL;
                 }
                 stmt = reallocateNode(stmt, ++nb_children+1);
@@ -561,6 +698,7 @@ static Node* block_statement(parser_info *const state) {
         }
         stmt->operands[0].len = nb_children;
         consume(state);
+        state->resolv->len = resolv_size;
         return stmt;
 }
 
@@ -568,6 +706,7 @@ static Node* empty_statement(parser_info *const state) {
         Node* new = ALLOCATE_SIMPLE_NODE(OP_NOP);
         new->token = consume(state);
         new->operator = OP_NOP;
+        new->type=TYPE_VOID;
         return new;
 }
 

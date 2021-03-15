@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "headers/pipeline/token.h"
+#include "headers/utils/runtime_types.h"
 
 typedef enum {
         // no operand
@@ -46,6 +47,8 @@ typedef enum {
 typedef struct Node {
         LocalizedToken token;
         Operator operator;
+        RuntimeType type;
+        
         /*note about the f.a.m.:
         For nodes that don't have a fixed number of children, the first element of this array is an uintptr_t that will indicate the number of children this array contains. In that case, the first child (if present) will be found at index 1.
         */

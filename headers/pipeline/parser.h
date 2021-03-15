@@ -7,6 +7,7 @@
 #include "headers/pipeline/node.h"
 
 typedef struct parser_info {
+        struct ResolverRecord* resolv; // private structure — don't touch!
         lexer_info lxinfo;
         LocalizedToken last_produced;
         char stale; // state of the token, 1 if it needs to be refreshed
