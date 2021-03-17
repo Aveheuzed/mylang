@@ -611,7 +611,7 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                         root = rule.parse_fn(state, root);
         }
 }
-
+        LOG("Type de l'expression renvoyée: %d", root->type);
         return root;
 }
 
@@ -637,30 +637,35 @@ static Node* declare_statement(parser_info *const state) {
                 [TOKEN_KW_STR]=TYPE_STR,
         };
         Node* new = NULL;
-        switch (getTtype(state)) {
-                case TOKEN_KW_INT:
-                case TOKEN_KW_STR:
-                        new = ALLOCATE_SIMPLE_NODE(OP_DECLARE);
-                        new->token = consume(state);
-                        new->operator = OP_DECLARE;
-                        break;
-                default:
-                        return prefixParseError(state);
+
+        if (types[getTtype(state)] != 0) {
+                new = ALLOCATE_SIMPLE_NODE(OP_DECLARE);
+                new->type = types[getTtype(state)];
+                new->token = consume(state);
+                new->operator = OP_DECLARE;
+        }
+        else {
+                return prefixParseError(state);
         }
 
-        new->operands[0].nd = parseExpression(state, PREC_NONE);
-        if ( new->operands[0].nd == NULL) {
+        if (getTtype(state) == TOKEN_IDENTIFIER) {
+                new->operands[0].nd = ALLOCATE_SIMPLE_NODE(OP_VARIABLE);
+                *(new->operands[0].nd) = (Node) {.token=consume(state), .operator=OP_VARIABLE};
+        }
+        else {
                 freeNode(new);
                 return NULL;
-        }
-        if (new->operands[0].nd->operator != OP_VARIABLE) {
-                return infixParseError(state, new);
         }
 
         if (getTtype(state) == TOKEN_EQUAL) {
                 consume(state);
                 new->operands[1].nd = parseExpression(state, PREC_NONE);
                 if (new->operands[1].nd == NULL){
+                        freeNode(new);
+                        return NULL;
+                }
+                if (new->operands[1].nd->type != new->type) {
+                        TypeError(new->token);
                         freeNode(new);
                         return NULL;
                 }
