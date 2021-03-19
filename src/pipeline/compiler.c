@@ -46,11 +46,16 @@ static int compileNop(compiler_info *const state, const Node* node) {
         return 1;
 }
 static int compileExpressionStmt(compiler_info *const state, const Node* node) {
+        LOG("");
         const Value val = BF_allocate(state, node->type);
-        const Target target = (Target) {.pos = val.pos, .weight=0};
+        const Target target = (Target) {.pos=val.pos, .weight=0};
          // weight=0 cuz we don't actually care about the value ;)
 
         const int status = compile_expression(state, node, target);
+        #ifdef DEBUG
+        seekpos(state, val.pos);
+        emitOutput(state);
+        #endif
         BF_free(state, val);
         return status;
 
@@ -74,10 +79,59 @@ static int compileDeclaration(compiler_info *const state, const Node* node) {
         return addVariable(state, v);
 }
 
+
+// ------------------------ statement handlers -------------------------------
+// ------------------------ expression handlers -------------------------------
+
+static int compile_literal_int(compiler_info *const state, const Node* node, const Target target) {
+        seekpos(state, target.pos);
+        emitPlus(state, atoi(node->token.tok.source)*target.weight);
+        return 1;
+}
+static int compile_variable(compiler_info *const state, const Node* node, const Target target) {
+        Variable *const v = getVariable(state, node->token.tok.source);
+        if (v == NULL) {
+                LOG("Warning: got to compile a nonexistent variable");
+                return 0; // unreachable, since the parser has done its job
+        }
+        Value temp = BF_allocate(state, v->val.type);
+        const Target targets[] = {
+                target,
+                {.pos=temp.pos, .weight=1}
+        };
+        transfer(state, v->val.pos, sizeof(targets)/sizeof(*targets), targets);
+        transfer(state, temp.pos, 1, &((Target){.pos=v->val.pos, .weight=1}));
+        BF_free(state, temp);
+        return 1;
+}
+
+static int compile_unary_plus(compiler_info *const state, const Node* node, const Target target) {
+        return compile_expression(state, node->operands[0].nd, target);
+}
+static int compile_unary_minus(compiler_info *const state, const Node* node, const Target target) {
+        return compile_expression(state, node->operands[0].nd, (Target) {.pos=target.pos, .weight=-target.weight});
+}
+static int compile_binary_plus(compiler_info *const state, const Node* node, const Target target) {
+        return
+           compile_expression(state, node->operands[0].nd, target)
+        && compile_expression(state, node->operands[1].nd, target);
+}
+static int compile_binary_minus(compiler_info *const state, const Node* node, const Target target) {
+        return
+           compile_expression(state, node->operands[0].nd, target)
+        && compile_expression(state, node->operands[1].nd, (Target) {.pos=target.pos, .weight=-target.weight});
+}
+
 // ------------------------ end compilation handlers ---------------------------
 
 static int compile_expression(compiler_info *const state, const Node* node, const Target target) {
         static const ExprCompilationHandler handlers[LEN_OPERATORS] = {
+                [OP_INT] = compile_literal_int,
+                [OP_VARIABLE] = compile_variable,
+                [OP_UNARY_PLUS] = compile_unary_plus,
+                [OP_UNARY_MINUS] = compile_unary_minus,
+                [OP_SUM] = compile_binary_plus,
+                [OP_DIFFERENCE] = compile_binary_minus,
         };
 
         const ExprCompilationHandler handler = handlers[node->operator];
