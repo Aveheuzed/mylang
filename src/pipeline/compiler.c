@@ -151,11 +151,8 @@ static int _compile_statement(compiler_info *const state, const Node* node) {
         static const StmtCompilationHandler handlers[LEN_OPERATORS] = {
                 [OP_NOP] = compileNop,
                 [OP_BLOCK] = compileBlock,
-                [OP_INT] = compileDeclaration,
-                [OP_STR] = compileDeclaration,
+                [OP_DECLARE] = compileDeclaration,
         };
-
-        LOG("");
 
         const StmtCompilationHandler handler = handlers[node->operator];
         if (handler == NULL) return compileExpressionStmt(state, node);
