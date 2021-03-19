@@ -126,6 +126,7 @@ static ResolverRecord* grow_record(ResolverRecord* record, const size_t new_size
         return record;
 }
 static void record_variable(parser_info *const state, char const* key, RuntimeType type) {
+        LOG("Recording %s as %d", key, type);
         if (state->resolv->len >= state->resolv->allocated) {
                 state->resolv = grow_record(state->resolv, state->resolv->allocated*2);
         }
@@ -678,7 +679,7 @@ static Node* declare_statement(parser_info *const state) {
                 return NULL;
         }
 
-        record_variable(state, new->operands[0].nd->token.tok.source, types[new->operator]);
+        record_variable(state, new->operands[0].nd->token.tok.source, new->type);
 
         return new;
 }
