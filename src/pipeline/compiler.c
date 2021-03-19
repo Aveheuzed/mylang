@@ -124,6 +124,31 @@ static int compile_binary_minus(compiler_info *const state, const Node* node, co
            compile_expression(state, node->operands[0].nd, target)
         && compile_expression(state, node->operands[1].nd, (Target) {.pos=target.pos, .weight=-target.weight});
 }
+static int compile_affect(compiler_info *const state, const Node* node, const Target target) {
+        Variable *const v = getVariable(state, node->operands[0].nd->token.tok.source);
+        if (v == NULL) {
+                LOG("Warning: got to compile a nonexistent variable");
+                return 0; // unreachable, since the parser has done its job
+        }
+        const Value temp = BF_allocate(state, v->val.type);
+        if (!compile_expression(state, node->operands[1].nd, (Target) {.pos=temp.pos, .weight=1})) {
+                BF_free(state, temp);
+                return 0;
+        }
+        const Target tgts[] = {
+                target,
+                {.pos=v->val.pos, .weight=1}
+        };
+        reset(state, v->val.pos);
+        transfer(state, temp.pos, sizeof(tgts)/sizeof(*tgts), tgts);
+        BF_free(state, temp);
+        return 1;
+
+        // can't do that because the variable might be used to compute the lhs.
+        /*
+        reset(state, v->val.pos);
+        return compile_expression(state, node->operands[1].nd, (Target){.pos=v->val.pos, .weight=1});*/
+}
 
 // ------------------------ end compilation handlers ---------------------------
 
@@ -135,6 +160,7 @@ static int compile_expression(compiler_info *const state, const Node* node, cons
                 [OP_UNARY_MINUS] = compile_unary_minus,
                 [OP_SUM] = compile_binary_plus,
                 [OP_DIFFERENCE] = compile_binary_minus,
+                [OP_AFFECT] = compile_affect,
         };
 
         const ExprCompilationHandler handler = handlers[node->operator];
