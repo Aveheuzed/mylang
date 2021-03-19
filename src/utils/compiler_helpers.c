@@ -88,7 +88,9 @@ int addVariable(compiler_info *const state, Variable v) {
 
         return 1;
 }
-Variable* getVariable(compiler_info *const state, char const* name) {
+Variable getVariable(compiler_info *const state, char const* name) {
+        // this function is guaranteed to return; any nonexistent variables
+        // raise errors on parsing, so we're safe here at compiler level.
         for (BFNamespace* ns=state->currentNS; ns!=NULL; ns=ns->enclosing) {
                 const hash_t mask = ns->allocated - 1;
 
@@ -97,9 +99,11 @@ Variable* getVariable(compiler_info *const state, char const* name) {
                         index = hash(name) & mask;
                         ns->dict[index].name != NULL;
                         index = (index+1)&mask
-                ) if (ns->dict[index].name == name) return &(ns->dict[index]);
+                ) if (ns->dict[index].name == name) return ns->dict[index];
         }
-        return NULL;
+
+        // just there so as not to trigger GCC
+        return (Variable){.name=NULL, .val.pos=SIZE_MAX, .val.type=TYPEERROR};
 }
 
 // --------------------------- emitXXX helpers ---------------------------------

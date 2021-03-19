@@ -92,18 +92,14 @@ static int compile_literal_int(compiler_info *const state, const Node* node, con
         return 1;
 }
 static int compile_variable(compiler_info *const state, const Node* node, const Target target) {
-        Variable *const v = getVariable(state, node->token.tok.source);
-        if (v == NULL) {
-                LOG("Warning: got to compile a nonexistent variable");
-                return 0; // unreachable, since the parser has done its job
-        }
-        Value temp = BF_allocate(state, v->val.type);
+        const Variable v = getVariable(state, node->token.tok.source);
+        Value temp = BF_allocate(state, v.val.type);
         const Target targets[] = {
                 target,
                 {.pos=temp.pos, .weight=1}
         };
-        transfer(state, v->val.pos, sizeof(targets)/sizeof(*targets), targets);
-        transfer(state, temp.pos, 1, &((Target){.pos=v->val.pos, .weight=1}));
+        transfer(state, v.val.pos, sizeof(targets)/sizeof(*targets), targets);
+        transfer(state, temp.pos, 1, &((Target){.pos=v.val.pos, .weight=1}));
         BF_free(state, temp);
         return 1;
 }
@@ -125,21 +121,17 @@ static int compile_binary_minus(compiler_info *const state, const Node* node, co
         && compile_expression(state, node->operands[1].nd, (Target) {.pos=target.pos, .weight=-target.weight});
 }
 static int compile_affect(compiler_info *const state, const Node* node, const Target target) {
-        Variable *const v = getVariable(state, node->operands[0].nd->token.tok.source);
-        if (v == NULL) {
-                LOG("Warning: got to compile a nonexistent variable");
-                return 0; // unreachable, since the parser has done its job
-        }
-        const Value temp = BF_allocate(state, v->val.type);
+        const Variable v = getVariable(state, node->operands[0].nd->token.tok.source);
+        const Value temp = BF_allocate(state, v.val.type);
         if (!compile_expression(state, node->operands[1].nd, (Target) {.pos=temp.pos, .weight=1})) {
                 BF_free(state, temp);
                 return 0;
         }
         const Target tgts[] = {
                 target,
-                {.pos=v->val.pos, .weight=1}
+                {.pos=v.val.pos, .weight=1}
         };
-        reset(state, v->val.pos);
+        reset(state, v.val.pos);
         transfer(state, temp.pos, sizeof(tgts)/sizeof(*tgts), tgts);
         BF_free(state, temp);
         return 1;
