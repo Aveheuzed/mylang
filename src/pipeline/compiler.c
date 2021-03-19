@@ -46,10 +46,13 @@ static int compileNop(compiler_info *const state, const Node* node) {
         return 1;
 }
 static int compileExpressionStmt(compiler_info *const state, const Node* node) {
-        LOG("");
         const Value val = BF_allocate(state, node->type);
+        #ifdef DEBUG
+        const Target target = (Target) {.pos=val.pos, .weight=1};
+        #else
         const Target target = (Target) {.pos=val.pos, .weight=0};
          // weight=0 cuz we don't actually care about the value ;)
+         #endif
 
         const int status = compile_expression(state, node, target);
         #ifdef DEBUG
