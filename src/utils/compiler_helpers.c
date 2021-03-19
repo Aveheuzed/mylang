@@ -122,7 +122,7 @@ static CompiledProgram* _emitCompressible(CompiledProgram* program, BFOperator o
                         }
                 }
         }
-        for (; amount > BF_MAX_RUN; amount -= BF_MAX_RUN) {
+        for (; amount >= BF_MAX_RUN; amount -= BF_MAX_RUN) {
                 if (program->len >= program->maxlen)
                         program = growProgram(program, program->maxlen*2);
                 program->bytecode[program->len++] = (CompressedBFOperator) {.operator=op, .run=BF_MAX_RUN};
