@@ -6,6 +6,7 @@
 #include "headers/pipeline/parser.h"
 #include "headers/utils/runtime_types.h"
 #include "headers/utils/error.h"
+#include "headers/utils/builtins.h"
 
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 
@@ -26,7 +27,8 @@ typedef struct ResolverRecord {
         size_t len;
         struct {
                 char const* key;
-                RuntimeType type;
+                size_t arity; // SIZE_MAX for non-functions
+                RuntimeType type; // return type for functions
         } record[];
 } ResolverRecord;
 
@@ -125,7 +127,7 @@ static ResolverRecord* grow_record(ResolverRecord* record, const size_t new_size
         record->allocated = new_size;
         return record;
 }
-static void record_variable(parser_info *const state, char const* key, RuntimeType type) {
+static void record_variable(parser_info *const state, char const* key, size_t arity, RuntimeType type) {
         LOG("Recording %s as %d", key, type);
         if (state->resolv->len >= state->resolv->allocated) {
                 state->resolv = grow_record(state->resolv, state->resolv->allocated*2);
@@ -134,15 +136,30 @@ static void record_variable(parser_info *const state, char const* key, RuntimeTy
         // shortcut, the less I type the better
         ResolverRecord *const record = state->resolv;
 
-        record->record[record->len++] = (typeof(record->record[0])) {.key=key, .type=type};
+        record->record[record->len++] = (typeof(record->record[0])) {.key=key, .type=type, .arity=arity};
 }
 static RuntimeType resolve_variable(const ResolverRecord* record, const char* key) {
-        for (size_t i=record->len; i-->0; ) if (record->record[i].key==key) return record->record[i].type;
+        for (size_t i=record->len; i-->0; ) if (record->record[i].key==key) {
+                return record->record[i].type;
+        }
+        return TYPEERROR;
+}
+static RuntimeType resolve_function(const ResolverRecord* record, const char* key, const size_t expected_arity) {
+        for (size_t i=record->len; i-->0; ) if (record->record[i].key==key) {
+                if (record->record[i].arity != expected_arity) return TYPEERROR;
+                else return record->record[i].type;
+        }
         return TYPEERROR;
 }
 
 inline parser_info mk_parser_info(FILE* file) {
-        return (parser_info) {.lxinfo=mk_lexer_info(file), .stale=1, .resolv=mk_record()};
+        parser_info prsinfo =  (parser_info) {.lxinfo=mk_lexer_info(file), .stale=1, .resolv=mk_record()};
+
+        for (size_t i = 0; i < nb_builtins; i++) {
+                record_variable(&(prsinfo), builtins[i].name,  builtins[i].arity, builtins[i].returnType);
+        }
+
+        return prsinfo;
 }
 inline void del_parser_info(parser_info prsinfo) {
         del_lexer_info(prsinfo.lxinfo);
@@ -480,7 +497,12 @@ static Node* call(parser_info *const state, Node *const root) {
         }
         consume(state);
         new->operands[0].len = count;
-        new->type=TYPE_VOID; // currently not implemented
+        if ((new->type = resolve_function(state->resolv, new->operands[1].nd->token.tok.source, count-1)) == TYPEERROR) {
+                LOG("%lu", count);
+                TypeError(new->token);
+                freeNode(new);
+                return NULL;
+        }
         return new;
 
 }
@@ -679,7 +701,7 @@ static Node* declare_statement(parser_info *const state) {
                 return NULL;
         }
 
-        record_variable(state, new->operands[0].nd->token.tok.source, new->type);
+        record_variable(state, new->operands[0].nd->token.tok.source, SIZE_MAX, new->type);
 
         return new;
 }

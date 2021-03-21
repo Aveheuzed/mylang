@@ -15,7 +15,10 @@ typedef struct Target {
 
 typedef struct Variable {
         char* name;
-        Value val;
+        union {
+                Value val;
+                struct BuiltinFunction* func; // defined in builtins.h, but *circular includes*…
+        };
 } Variable;
 
 typedef struct BFNamespace {

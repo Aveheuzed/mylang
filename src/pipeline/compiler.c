@@ -7,6 +7,7 @@
 #include "headers/utils/compiler_helpers.h"
 #include "headers/utils/mm.h"
 #include "headers/utils/error.h"
+#include "headers/utils/builtins.h"
 
 
 // return SUCCESS (1) or FAILURE (0)
@@ -26,6 +27,10 @@ compiler_info mk_compiler_info(FILE* file) {
                 .current_pos=0,
         };
         pushNamespace(&c);
+        for (size_t i = 0; i < nb_builtins; i++) {
+                Variable v = (Variable) {.name=builtins[i].name, .func=&(builtins[i])};
+                addVariable(&c, v);
+        }
         return c;
 }
 void del_compiler_info(compiler_info cmpinfo) {
@@ -47,18 +52,20 @@ static int compileNop(compiler_info *const state, const Node* node) {
 }
 static int compileExpressionStmt(compiler_info *const state, const Node* node) {
         const Value val = BF_allocate(state, node->type);
-        #ifdef DEBUG
+#ifdef DEBUG
         const Target target = (Target) {.pos=val.pos, .weight=1};
-        #else
+#else
         const Target target = (Target) {.pos=val.pos, .weight=0};
          // weight=0 cuz we don't actually care about the value ;)
-         #endif
+#endif
 
         const int status = compile_expression(state, node, target);
-        #ifdef DEBUG
-        seekpos(state, val.pos);
-        emitOutput(state);
-        #endif
+#ifdef DEBUG
+        if (val.type != TYPE_VOID) {
+                seekpos(state, val.pos);
+                emitOutput(state);
+        }
+#endif
         BF_free(state, val);
         return status;
 
@@ -141,6 +148,30 @@ static int compile_affect(compiler_info *const state, const Node* node, const Ta
         reset(state, v->val.pos);
         return compile_expression(state, node->operands[1].nd, (Target){.pos=v->val.pos, .weight=1});*/
 }
+static int compile_call(compiler_info *const state, const Node* node, const Target target) {
+        BuiltinFunctionHandler called = getVariable(state, node->operands[1].nd->token.tok.source).func->handler;
+
+        Value arguments[node->operands[0].len-1];
+
+        // node structure :
+        // [len, funcname, args…]
+
+        for (size_t i = 0; i < sizeof(arguments)/sizeof(*arguments); i++) {
+                arguments[i] = BF_allocate(state, node->operands[i+2].nd->type);
+                if (!compile_expression(state, node->operands[i+2].nd, (Target) {.pos=arguments[i].pos, .weight=1})) {
+                        return 0;
+                }
+        }
+
+        const int status = called(state, arguments, target);
+
+        for (size_t i = 0; i < sizeof(arguments)/sizeof(*arguments); i++) {
+                BF_free(state, arguments[i]);
+        }
+
+        return status;
+
+}
 
 // ------------------------ end compilation handlers ---------------------------
 
@@ -153,6 +184,7 @@ static int compile_expression(compiler_info *const state, const Node* node, cons
                 [OP_SUM] = compile_binary_plus,
                 [OP_DIFFERENCE] = compile_binary_minus,
                 [OP_AFFECT] = compile_affect,
+                [OP_CALL] = compile_call,
         };
 
         const ExprCompilationHandler handler = handlers[node->operator];

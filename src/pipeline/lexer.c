@@ -4,10 +4,16 @@
 #include "headers/pipeline/lexer.h"
 #include "headers/utils/identifiers_record.h"
 #include "headers/utils/error.h"
+#include "headers/utils/builtins.h"
 
 inline lexer_info mk_lexer_info(FILE* file) {
         lexer_info lxinfo = (lexer_info) {.file=file, .pos.line=1, .pos.column=1};
         lxinfo.record = allocateRecord();
+
+        for (size_t i = 0; i < nb_builtins; i++) {
+                builtins[i].name = internalize(&(lxinfo.record), strdup(builtins[i].name), strlen(builtins[i].name));
+        }
+
         return lxinfo;
 }
 inline void del_lexer_info(lexer_info lxinfo) {
