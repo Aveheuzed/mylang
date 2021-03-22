@@ -23,9 +23,9 @@ int main(int argc, char* argv[]) {
 
         while (compile_statement(&cmpinfo));
 
-        interpretBF(cmpinfo.program);
+        const CompiledProgram* program = del_compiler_info(cmpinfo);
 
-        del_compiler_info(cmpinfo);
+        interpretBF(program);
 
         return EXIT_SUCCESS;
 }

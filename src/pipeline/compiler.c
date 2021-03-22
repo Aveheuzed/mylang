@@ -33,7 +33,7 @@ compiler_info mk_compiler_info(FILE* file) {
         }
         return c;
 }
-void del_compiler_info(compiler_info cmpinfo) {
+CompiledProgram* del_compiler_info(compiler_info cmpinfo) {
         while (cmpinfo.currentNS != NULL) {
                 /* we could also have repeatedly popped, but this is faster
                 since we don't have to free the variables in the memory view. */
@@ -41,8 +41,8 @@ void del_compiler_info(compiler_info cmpinfo) {
                 free(cmpinfo.currentNS);
                 cmpinfo.currentNS = next;
         }
-        freeProgram(cmpinfo.program);
         freeMemoryView(cmpinfo.memstate);
+        return cmpinfo.program;
 }
 
 // ------------------------ compilation handlers -------------------------------
