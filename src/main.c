@@ -1,31 +1,30 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <stddef.h>
-#include <string.h>
 
-#include "headers/pipeline/lexer.h"
-#include "headers/pipeline/parser.h"
-#include "headers/pipeline/compiler.h"
+#include "headers/pipeline/bytecode.h"
 #include "headers/pipeline/bf.h"
+#include "headers/utils/shellio.h"
 
 int main(int argc, char* argv[]) {
         FILE* source_code;
         switch (argc) {
                 case 1:
-                        source_code = stdin; break;
+                        source_code = stdin;
+                        break;
                 case 2:
-                        source_code = fopen(argv[1], "r"); break;
+                        source_code = fopen(argv[1], "r");
+                        break;
                 default:
                         puts("Invalid number of arguments.\nUsage : mylang [file]");
                         return EXIT_FAILURE;
         }
-        compiler_info cmpinfo = mk_compiler_info(source_code);
 
-        while (compile_statement(&cmpinfo));
-
-        const CompiledProgram* program = del_compiler_info(cmpinfo);
+        CompiledProgram* program = input_highlevel(source_code);
+        fclose(source_code);
+        if (program == NULL) return EXIT_FAILURE;
 
         interpretBF(program);
+        free(program);
 
         return EXIT_SUCCESS;
 }

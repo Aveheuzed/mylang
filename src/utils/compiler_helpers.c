@@ -24,9 +24,6 @@ CompiledProgram* createProgram(void) {
         ret->len = 0;
         return ret;
 }
-void freeProgram(CompiledProgram* ptr) {
-        free(ptr);
-}
 static CompiledProgram* growProgram(CompiledProgram* ptr, const size_t newsize) {
         ptr = realloc(ptr, offsetof(CompiledProgram, bytecode) + sizeof(CompressedBFOperator)*newsize);
         ptr->maxlen = newsize;
@@ -108,7 +105,7 @@ Variable getVariable(compiler_info *const state, char const* name) {
 
 // --------------------------- emitXXX helpers ---------------------------------
 
-static CompiledProgram* _emitCompressible(CompiledProgram* program, BFOperator op, size_t amount) {
+CompiledProgram* _emitCompressible(CompiledProgram* program, BFOperator op, size_t amount) {
         if (op > BF_CANCOMPRESS) {
                 LOG("Error : trying to compress operator %hu", op);
                 return program;
@@ -139,7 +136,7 @@ static CompiledProgram* _emitCompressible(CompiledProgram* program, BFOperator o
 
         return program;
 }
-static CompiledProgram* _emitNonCompressible(CompiledProgram* program, BFOperator op) {
+CompiledProgram* _emitNonCompressible(CompiledProgram* program, BFOperator op) {
         if (op <= BF_CANCOMPRESS) {
                 LOG("Warning : trying to not compress operator %hu", op);
         }
@@ -149,7 +146,7 @@ static CompiledProgram* _emitNonCompressible(CompiledProgram* program, BFOperato
         return program;
 }
 
-static CompiledProgram* _emitOpeningBracket(CompiledProgram* program, size_t *const bracketpos) {
+CompiledProgram* _emitOpeningBracket(CompiledProgram* program, size_t *const bracketpos) {
         *bracketpos = program->len;
         program->len++;
         program->len += sizeof(ptrdiff_t) / sizeof(CompressedBFOperator);
@@ -159,7 +156,7 @@ static CompiledProgram* _emitOpeningBracket(CompiledProgram* program, size_t *co
         program->bytecode[program->len-1].run = BF_MAX_RUN; // security, this will be overwritten later
         return program;
 }
-static CompiledProgram* _emitClosingBracket(CompiledProgram* program, const size_t bracket) {
+CompiledProgram* _emitClosingBracket(CompiledProgram* program, const size_t bracket) {
         size_t pos = program->len;
         program->bytecode[program->len++] = (CompressedBFOperator) {.operator=BF_JUMP_BWD, .run=1};
         program->len += sizeof(ptrdiff_t) / sizeof(CompressedBFOperator);

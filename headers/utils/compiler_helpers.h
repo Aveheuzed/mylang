@@ -28,7 +28,6 @@ typedef struct BFNamespace {
 } BFNamespace;
 
 CompiledProgram* createProgram(void);
-void freeProgram(CompiledProgram* ptr);
 
 void pushNamespace(compiler_info *const state);
 void popNamespace(compiler_info *const state);
@@ -37,6 +36,10 @@ Variable getVariable(compiler_info *const state, char const* name);
 // returns zero on failure
 int addVariable(compiler_info *const state, Variable v);
 
+CompiledProgram* _emitCompressible(CompiledProgram* program, BFOperator op, size_t amount);
+CompiledProgram* _emitNonCompressible(CompiledProgram* program, BFOperator op);
+CompiledProgram* _emitOpeningBracket(CompiledProgram* program, size_t *const bracketpos);
+CompiledProgram* _emitClosingBracket(CompiledProgram* program, const size_t bracket);
 
 void emitPlus(compiler_info *const state, const size_t amount);
 void emitMinus(compiler_info *const state, const size_t amount);
