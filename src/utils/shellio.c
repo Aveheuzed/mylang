@@ -21,7 +21,7 @@ void output_bf(FILE* file, const CompiledProgram* pgm) {
                         fputc(operators[op.operator], file);
                 }
                 if (op.operator > BF_NOOPERAND)
-                        i += (sizeof(uintptr_t)/sizeof(op);
+                        i += sizeof(uintptr_t)/sizeof(op);
         }
 }
 
