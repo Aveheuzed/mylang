@@ -166,6 +166,80 @@ static int compile_call(compiler_info *const state, const Node* node, const Targ
         return status;
 
 }
+static int compile_multiply(compiler_info *const state, const Node* node, const Target target) {
+        const Node* opA = node->operands[0].nd;
+        const Node* opB = node->operands[1].nd;
+        if ((opA->type != TYPE_INT) || (opB->type != TYPE_INT)) {
+                TypeError(node->token);
+                return 0;
+        }
+
+
+        if (opA->operator == OP_INT) {
+                if (opB->operator == OP_INT) {
+                        // easy case: multiply an interger literal with another
+                        // we can compute that at compile-time
+                        seekpos(state, target.pos);
+                        emitPlus(state,
+                                 atoi(opA->token.tok.source)
+                                *atoi(opB->token.tok.source)
+                        );
+                        return 1;
+                }
+                else
+                        // multiply a literal with whatever
+                        // we just have to adjut the target's weight
+                        return compile_expression(state, opB,
+                        (Target) {.pos=target.pos, .weight=target.weight*atoi(opA->token.tok.source)}
+                );
+        }
+        else {
+                if (opB->operator == OP_INT)
+                        // multiply whatever with a literal
+                        // we just have to adjut the target's weight
+                        return compile_expression(state, opA, (Target) {.pos=target.pos, .weight=target.weight*atoi(opB->token.tok.source)}
+                        );
+                else {
+                        // general case, basically two nested `transfer`s
+
+                        // principle: X*Y = Y+Y+Y+Y+Y+Y+… (X times)
+                        // so we "just" transfer Y on the target, without losing its value, X times
+                        Value xval = BF_allocate(state, opA->type);
+                        Value yval = BF_allocate(state, opB->type);
+                        if ( // computing operands
+                        !compile_expression(state, opB, (Target) {.pos=yval.pos, .weight=1}) ||
+                        !compile_expression(state, opA, (Target) {.pos=xval.pos, .weight=1})
+                        ) {
+                                BF_free(state, xval);
+                                BF_free(state, yval);
+                                return 0;
+                        }
+                        Value yclone = BF_allocate(state, yval.type);
+
+                        seekpos(state, xval.pos);
+                        const size_t mainloop = openJump(state);
+                        emitMinus(state, 1); // loop: do <X> times:
+
+                        const Target forth[] = {
+                                target,
+                                {.pos=yclone.pos, .weight=1},
+                        }; // transfer Y onto these
+                        const Target back[] = {
+                                {.pos=yval.pos, .weight=1},
+                        }; // then transfer Y' back on Y
+                        transfer(state, yval.pos, sizeof(forth)/sizeof(*forth), forth);
+                        transfer(state, yclone.pos, sizeof(back)/sizeof(*back), back);
+
+                        seekpos(state, xval.pos); // the loop is on X ; don't forget to jump back there before closing the jump!
+                        closeJump(state, mainloop);
+
+                        BF_free(state, xval);
+                        BF_free(state, yval);
+                        BF_free(state, yclone);
+                        return 1;
+                }
+        }
+}
 
 // ------------------------ end compilation handlers ---------------------------
 
@@ -179,6 +253,7 @@ static int compile_expression(compiler_info *const state, const Node* node, cons
                 [OP_DIFFERENCE] = compile_binary_minus,
                 [OP_AFFECT] = compile_affect,
                 [OP_CALL] = compile_call,
+                [OP_PRODUCT] = compile_multiply,
         };
 
         const ExprCompilationHandler handler = handlers[node->operator];
