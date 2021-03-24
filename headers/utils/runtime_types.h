@@ -7,7 +7,7 @@ typedef enum RuntimeType {
         TYPE_STR,
         TYPE_VOID,
 
-        LEN_TYPES=TYPE_VOID
+        LEN_TYPES
 } RuntimeType;
 
 #endif
