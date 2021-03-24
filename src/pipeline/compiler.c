@@ -93,6 +93,8 @@ static int compile_literal_int(compiler_info *const state, const Node* node, con
         return 1;
 }
 static int compile_variable(compiler_info *const state, const Node* node, const Target target) {
+        if (target.weight == 0) return 1;
+        
         const Variable v = getVariable(state, node->token.tok.source);
         Value temp = BF_allocate(state, v.val.type);
         const Target targets[] = {
@@ -209,11 +211,18 @@ static int compile_multiply(compiler_info *const state, const Node* node, const 
 
                         // principle: X*Y = Y+Y+Y+Y+Y+Y+… (X times)
                         // so we "just" transfer Y on the target, without losing its value, X times
+
+                        // shortcut if we don't actually need the result
+                        // we still recurse, there might be side-effects down in the AST.
+                        if (target.weight == 0) {
+                                return compile_expression(state, opA, target) && compile_expression(state, opB, target);
+                        }
+
                         Value xval = BF_allocate(state, opA->type);
                         Value yval = BF_allocate(state, opB->type);
                         if ( // computing operands
-                        !compile_expression(state, opB, (Target) {.pos=yval.pos, .weight=1}) ||
-                        !compile_expression(state, opA, (Target) {.pos=xval.pos, .weight=1})
+                        !compile_expression(state, opA, (Target) {.pos=yval.pos, .weight=1}) ||
+                        !compile_expression(state, opB, (Target) {.pos=xval.pos, .weight=1})
                         ) {
                                 BF_free(state, xval);
                                 BF_free(state, yval);
