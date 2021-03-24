@@ -3,6 +3,6 @@
 
 #include "headers/pipeline/bytecode.h"
 
-void interpretBF(CompiledProgram const* bytecode);
+void interpretBF(const CompiledProgram* bytecode);
 
 #endif
