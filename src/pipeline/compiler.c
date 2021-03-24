@@ -60,12 +60,6 @@ static int compileExpressionStmt(compiler_info *const state, const Node* node) {
 #endif
 
         const int status = compile_expression(state, node, target);
-#ifdef DEBUG
-        if (val.type != TYPE_VOID) {
-                seekpos(state, val.pos);
-                emitOutput(state);
-        }
-#endif
         BF_free(state, val);
         return status;
 
