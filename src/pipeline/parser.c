@@ -498,7 +498,6 @@ static Node* call(parser_info *const state, Node *const root) {
         consume(state);
         new->operands[0].len = count;
         if ((new->type = resolve_function(state->resolv, new->operands[1].nd->token.tok.source, count-1)) == TYPEERROR) {
-                LOG("%lu", count);
                 TypeError(new->token);
                 freeNode(new);
                 return NULL;
@@ -615,8 +614,6 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                 [TOKEN_IDIV] = {.parse_fn=idiv, .precedence=PREC_AFFECT},
         };
 
-        LOG("Appel avec une précédence de %d", precedence);
-
         Node* root;
 
         {
@@ -632,9 +629,8 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                 ) {
                         if (rule.parse_fn == NULL) return infixParseError(state, root); // should be unreachable?
                         root = rule.parse_fn(state, root);
+                }
         }
-}
-        LOG("Type de l'expression renvoyée: %d", root->type);
         return root;
 }
 
@@ -747,8 +743,6 @@ Node* parse_statement(parser_info *const state) {
                 [TOKEN_KW_STR] = declare_statement,
                 [TOKEN_SEMICOLON] = empty_statement,
         };
-
-        LOG("Building a new statement");
 
         if (getTtype(state) == TOKEN_EOF || getTtype(state) == TOKEN_ERROR) return NULL;
 
