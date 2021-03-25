@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#include "headers/pipeline/compiler.h"
+#include "headers/pipeline/state.h"
 #include "headers/utils/runtime_types.h"
 
 typedef struct Value {

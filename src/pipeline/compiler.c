@@ -3,7 +3,9 @@
 #include <stdlib.h>
 
 #include "headers/pipeline/node.h"
+#include "headers/pipeline/parser.h"
 #include "headers/pipeline/compiler.h"
+
 #include "headers/utils/compiler_helpers.h"
 #include "headers/utils/mm.h"
 #include "headers/utils/error.h"
@@ -18,31 +20,33 @@ static int _compile_statement(compiler_info *const state, const Node* node);
 static int compile_expression(compiler_info *const state, const Node* node, const Target target);
 
 
-compiler_info mk_compiler_info(FILE* file) {
-        compiler_info c = (compiler_info) {
-                .prsinfo=mk_parser_info(file),
-                .program=createProgram(),
-                .memstate=createMemoryView(),
-                .currentNS=NULL,
-                .current_pos=0,
-        };
-        pushNamespace(&c);
+void mk_compiler_info(compiler_info *const cmpinfo) {
+        cmpinfo->program = createProgram();
+        cmpinfo->memstate = createMemoryView();
+        cmpinfo->currentNS = NULL;
+        cmpinfo->current_pos = 0;
+
+        pushNamespace(cmpinfo);
         for (size_t i = 0; i < nb_builtins; i++) {
                 Variable v = (Variable) {.name=builtins[i].name, .func=&(builtins[i])};
-                addVariable(&c, v);
+                addVariable(cmpinfo, v);
         }
-        return c;
 }
-CompiledProgram* del_compiler_info(compiler_info cmpinfo) {
-        while (cmpinfo.currentNS != NULL) {
+void del_compiler_info(compiler_info *const cmpinfo) {
+        while (cmpinfo->currentNS != NULL) {
                 /* we could also have repeatedly popped, but this is faster
                 since we don't have to free the variables in the memory view. */
-                BFNamespace* next = cmpinfo.currentNS->enclosing;
-                free(cmpinfo.currentNS);
-                cmpinfo.currentNS = next;
+                BFNamespace* next = cmpinfo->currentNS->enclosing;
+                free(cmpinfo->currentNS);
+                cmpinfo->currentNS = next;
         }
-        freeMemoryView(cmpinfo.memstate);
-        return cmpinfo.program;
+        freeMemoryView(cmpinfo->memstate);
+        freeProgram(cmpinfo->program);
+}
+CompiledProgram* get_bytecode(pipeline_state *const state) {
+        CompiledProgram *const pgm = state->cmpinfo.program;
+        state->cmpinfo.program = NULL;
+        return pgm;
 }
 
 // ------------------------ compilation handlers -------------------------------

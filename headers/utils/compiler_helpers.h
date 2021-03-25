@@ -3,9 +3,10 @@
 
 #include <stddef.h>
 
-#include "headers/pipeline/compiler.h"
+#include "headers/pipeline/state.h"
 #include "headers/utils/runtime_types.h"
 #include "headers/utils/mm.h"
+#include "headers/pipeline/bytecode.h"
 
 
 typedef struct Target {
@@ -28,6 +29,7 @@ typedef struct BFNamespace {
 } BFNamespace;
 
 CompiledProgram* createProgram(void);
+void freeProgram(CompiledProgram* pgm);
 
 void pushNamespace(compiler_info *const state);
 void popNamespace(compiler_info *const state);
