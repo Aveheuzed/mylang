@@ -2,11 +2,11 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "headers/utils/compiler_helpers.h"
-#include "headers/pipeline/state.h"
-#include "headers/pipeline/bytecode.h"
-#include "headers/utils/mm.h"
-#include "headers/utils/hash.h"
+#include "utils/compiler_helpers.h"
+#include "pipeline/state.h"
+#include "pipeline/bytecode.h"
+#include "utils/mm.h"
+#include "utils/hash.h"
 
 #define GROW_THRESHHOLD (0.8) // TODO: benchmark this value
 

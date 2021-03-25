@@ -1,8 +1,8 @@
 #ifndef parser_h
 #define parser_h
 
-#include "headers/pipeline/state.h"
-#include "headers/pipeline/node.h"
+#include "pipeline/state.h"
+#include "pipeline/node.h"
 
 void mk_parser_info(parser_info *const prsinfo);
 void del_parser_info(parser_info *const prsinfo);

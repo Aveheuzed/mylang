@@ -2,11 +2,11 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "headers/pipeline/compiler.h"
-#include "headers/pipeline/state.h"
+#include "pipeline/compiler.h"
+#include "pipeline/state.h"
 
-#include "headers/utils/shellio.h"
-#include "headers/utils/compiler_helpers.h"
+#include "utils/shellio.h"
+#include "utils/compiler_helpers.h"
 
 
 void output_bf(FILE* file, const CompiledProgram* pgm) {

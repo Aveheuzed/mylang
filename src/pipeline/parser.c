@@ -3,13 +3,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "headers/pipeline/lexer.h"
-#include "headers/pipeline/parser.h"
-#include "headers/pipeline/node.h"
+#include "pipeline/lexer.h"
+#include "pipeline/parser.h"
+#include "pipeline/node.h"
 
-#include "headers/utils/runtime_types.h"
-#include "headers/utils/error.h"
-#include "headers/utils/builtins.h"
+#include "utils/runtime_types.h"
+#include "utils/error.h"
+#include "utils/builtins.h"
 
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 

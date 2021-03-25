@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "headers/utils/error.h"
+#include "utils/error.h"
 
 void TypeError(const LocalizedToken t) {
         fprintf(stderr, "Incompatible types for %s.\n", t.tok.source);

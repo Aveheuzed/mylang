@@ -3,10 +3,10 @@
 
 #include <stddef.h>
 
-#include "headers/pipeline/state.h"
-#include "headers/utils/runtime_types.h"
-#include "headers/utils/mm.h"
-#include "headers/pipeline/bytecode.h"
+#include "pipeline/state.h"
+#include "utils/runtime_types.h"
+#include "utils/mm.h"
+#include "pipeline/bytecode.h"
 
 
 typedef struct Target {

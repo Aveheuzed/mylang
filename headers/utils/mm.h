@@ -3,8 +3,8 @@
 
 #include <stddef.h>
 
-#include "headers/pipeline/state.h"
-#include "headers/utils/runtime_types.h"
+#include "pipeline/state.h"
+#include "utils/runtime_types.h"
 
 typedef struct Value {
         size_t pos;
