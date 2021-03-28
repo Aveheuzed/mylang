@@ -34,6 +34,7 @@ void output_cbf(FILE* file, const CompiledProgram* pgm) {
         fwrite(pgm->bytecode, sizeof(pgm->bytecode[0]), pgm->len, file);
 }
 
+
 static CompiledProgram* makeAjump(FILE* file, CompiledProgram* pgm) {
         size_t bracketpos;
         pgm = _emitOpeningBracket(pgm, &bracketpos);
@@ -63,6 +64,7 @@ static CompiledProgram* makeAjump(FILE* file, CompiledProgram* pgm) {
                 case '[':
                         pgm = makeAjump(file, pgm);
                         if (pgm == NULL) return NULL;
+                        break;
                 case ']':
                         pgm = _emitClosingBracket(pgm, bracketpos);
                         return pgm;
