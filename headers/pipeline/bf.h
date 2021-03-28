@@ -1,8 +1,8 @@
 #ifndef bf_h
 #define bf_h
 
-#include "headers/pipeline/bytecode.h"
+#include "pipeline/bytecode.h"
 
-void interpretBF(CompiledProgram const* bytecode);
+void interpretBF(const CompiledProgram* bytecode);
 
 #endif

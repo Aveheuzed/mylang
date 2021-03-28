@@ -3,10 +3,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "headers/pipeline/parser.h"
-#include "headers/utils/runtime_types.h"
-#include "headers/utils/error.h"
-#include "headers/utils/builtins.h"
+#include "pipeline/lexer.h"
+#include "pipeline/parser.h"
+#include "pipeline/node.h"
+
+#include "utils/runtime_types.h"
+#include "utils/error.h"
+#include "utils/builtins.h"
 
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 
@@ -76,6 +79,26 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_BLOCK] = UINTPTR_MAX,
 }; // set to UINTPTR_MAX for a variable number of operands
 
+
+// --------------------- end of declarations -----------------------------------
+
+static ResolverRecord* mk_record(void) {
+        ResolverRecord *const record = malloc(offsetof(ResolverRecord, record)
+                + 16*sizeof((ResolverRecord){0}.record[0]));
+        record->allocated = 16;
+        record->len = 0;
+        return record;
+}
+static void free_record(ResolverRecord* record) {
+        free(record);
+}
+static ResolverRecord* grow_record(ResolverRecord* record, const size_t new_size) {
+        record = realloc(record, offsetof(ResolverRecord, record)
+                + new_size*sizeof((ResolverRecord){0}.record[0]));
+        record->allocated = new_size;
+        return record;
+}
+
 static inline void refresh(parser_info *const prsinfo) {
         // call to guarantee the last produced token is not stale
         if (prsinfo->stale) {
@@ -93,6 +116,7 @@ static inline TokenType getTtype(parser_info *const prsinfo) {
         refresh(prsinfo);
         return prsinfo->last_produced.tok.type;
 }
+
 static Node* allocateNode(const uintptr_t nb_children) {
         return malloc(offsetof(Node, operands) + sizeof(Node*)*nb_children);
 }
@@ -111,32 +135,15 @@ void freeNode(Node* node) {
         free(node);
 }
 
-static ResolverRecord* mk_record(void) {
-        ResolverRecord *const record = malloc(offsetof(ResolverRecord, record)
-                + 16*sizeof((ResolverRecord){0}.record[0]));
-        record->allocated = 16;
-        record->len = 0;
-        return record;
-}
-static void free_record(ResolverRecord* record) {
-        free(record);
-}
-static ResolverRecord* grow_record(ResolverRecord* record, const size_t new_size) {
-        record = realloc(record, offsetof(ResolverRecord, record)
-                + new_size*sizeof((ResolverRecord){0}.record[0]));
-        record->allocated = new_size;
-        return record;
-}
-static void record_variable(parser_info *const state, char const* key, size_t arity, RuntimeType type) {
+static ResolverRecord* record_variable(ResolverRecord* record, char const* key, size_t arity, RuntimeType type) {
         LOG("Recording %s as %d", key, type);
-        if (state->resolv->len >= state->resolv->allocated) {
-                state->resolv = grow_record(state->resolv, state->resolv->allocated*2);
+        if (record->len >= record->allocated) {
+                record = grow_record(record, record->allocated*2);
         }
 
-        // shortcut, the less I type the better
-        ResolverRecord *const record = state->resolv;
-
         record->record[record->len++] = (typeof(record->record[0])) {.key=key, .type=type, .arity=arity};
+
+        return record;
 }
 static RuntimeType resolve_variable(const ResolverRecord* record, const char* key) {
         for (size_t i=record->len; i-->0; ) if (record->record[i].key==key) {
@@ -152,20 +159,19 @@ static RuntimeType resolve_function(const ResolverRecord* record, const char* ke
         return TYPEERROR;
 }
 
-inline parser_info mk_parser_info(FILE* file) {
-        parser_info prsinfo =  (parser_info) {.lxinfo=mk_lexer_info(file), .stale=1, .resolv=mk_record()};
+void mk_parser_info(parser_info *const prsinfo) {
+        prsinfo->stale = 1;
+        ResolverRecord* record = mk_record();
 
         for (size_t i = 0; i < nb_builtins; i++) {
-                record_variable(&(prsinfo), builtins[i].name,  builtins[i].arity, builtins[i].returnType);
+                record = record_variable(record, builtins[i].name,  builtins[i].arity, builtins[i].returnType);
         }
 
-        return prsinfo;
+        prsinfo->resolv = record;
 }
-inline void del_parser_info(parser_info prsinfo) {
-        del_lexer_info(prsinfo.lxinfo);
-        free_record(prsinfo.resolv);
+void del_parser_info(parser_info *const prsinfo) {
+        free_record(prsinfo->resolv);
 }
-
 
 // --------------------- prefix parse functions --------------------------------
 
@@ -498,7 +504,6 @@ static Node* call(parser_info *const state, Node *const root) {
         consume(state);
         new->operands[0].len = count;
         if ((new->type = resolve_function(state->resolv, new->operands[1].nd->token.tok.source, count-1)) == TYPEERROR) {
-                LOG("%lu", count);
                 TypeError(new->token);
                 freeNode(new);
                 return NULL;
@@ -615,8 +620,6 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                 [TOKEN_IDIV] = {.parse_fn=idiv, .precedence=PREC_AFFECT},
         };
 
-        LOG("Appel avec une précédence de %d", precedence);
-
         Node* root;
 
         {
@@ -632,9 +635,8 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                 ) {
                         if (rule.parse_fn == NULL) return infixParseError(state, root); // should be unreachable?
                         root = rule.parse_fn(state, root);
+                }
         }
-}
-        LOG("Type de l'expression renvoyée: %d", root->type);
         return root;
 }
 
@@ -701,7 +703,7 @@ static Node* declare_statement(parser_info *const state) {
                 return NULL;
         }
 
-        record_variable(state, new->operands[0].nd->token.tok.source, SIZE_MAX, new->type);
+        state->resolv = record_variable(state->resolv, new->operands[0].nd->token.tok.source, SIZE_MAX, new->type);
 
         return new;
 }
@@ -747,8 +749,6 @@ Node* parse_statement(parser_info *const state) {
                 [TOKEN_KW_STR] = declare_statement,
                 [TOKEN_SEMICOLON] = empty_statement,
         };
-
-        LOG("Building a new statement");
 
         if (getTtype(state) == TOKEN_EOF || getTtype(state) == TOKEN_ERROR) return NULL;
 

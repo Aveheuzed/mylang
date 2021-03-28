@@ -1,20 +1,11 @@
 #ifndef parser_h
 #define parser_h
 
-#include <stdint.h> // for the uintptr_t, may be needed in the use of Nodes
+#include "pipeline/state.h"
+#include "pipeline/node.h"
 
-#include "headers/pipeline/lexer.h"
-#include "headers/pipeline/node.h"
-
-typedef struct parser_info {
-        struct ResolverRecord* resolv; // private structure — don't touch!
-        lexer_info lxinfo;
-        LocalizedToken last_produced;
-        char stale; // state of the token, 1 if it needs to be refreshed
-} parser_info;
-
-parser_info mk_parser_info(FILE* file);
-void del_parser_info(parser_info prsinfo);
+void mk_parser_info(parser_info *const prsinfo);
+void del_parser_info(parser_info *const prsinfo);
 
 Node* parse_statement(parser_info *const state);
 

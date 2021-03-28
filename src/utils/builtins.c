@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "headers/utils/builtins.h"
-#include "headers/utils/mm.h"
-#include "headers/utils/compiler_helpers.h"
-#include "headers/utils/runtime_types.h"
+#include "utils/builtins.h"
+#include "utils/mm.h"
+#include "utils/compiler_helpers.h"
+#include "utils/runtime_types.h"
 
 
 int builtin_print(compiler_info *const state, const Value argv[], const Target target) {

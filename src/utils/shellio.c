@@ -1,8 +1,13 @@
 #include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
 
-#include "headers/utils/shellio.h"
-#include "headers/utils/compiler_helpers.h"
-#include "headers/pipeline/compiler.h"
+#include "pipeline/compiler.h"
+#include "pipeline/state.h"
+
+#include "utils/shellio.h"
+#include "utils/compiler_helpers.h"
+
 
 void output_bf(FILE* file, const CompiledProgram* pgm) {
         static const char operators[] = {
@@ -119,7 +124,13 @@ CompiledProgram* input_cbf(FILE* file) {
 }
 
 CompiledProgram* input_highlevel(FILE* file) {
-        compiler_info cmpinfo = mk_compiler_info(file);
-        while (compile_statement(&cmpinfo));
-        return del_compiler_info(cmpinfo);
+        pipeline_state pipeline;
+        mk_pipeline(&pipeline, file);
+
+        while (compile_statement(&pipeline.cmpinfo));
+
+        CompiledProgram *const pgm = get_bytecode(&pipeline);
+        del_pipeline(&pipeline);
+
+        return pgm;
 }
