@@ -116,7 +116,9 @@ CompiledProgram* _emitCompressible(CompiledProgram* program, BFOperator op, size
         }
         if (program->len) {
                 CompressedBFOperator *const last_op = &(program->bytecode[program->len-1]);
-                if (last_op->operator == op) {
+                if (last_op->operator == op && last_op->run) {
+                // we check for run != 0 to prevent `+` from nesting into a `]`'s field.
+                // a compressible operator with a run of 0 is silly anyway!
                         if (last_op->run + amount < BF_MAX_RUN) {
                                 last_op->run += amount;
                                 amount = 0;
@@ -161,8 +163,8 @@ CompiledProgram* _emitClosingBracket(CompiledProgram* program) {
                 size_t uplen = up->len;
 
                 // the `+1`s account for the not-yet-written `]`
-                ptrdiff_t fwdjump = (program->len + 1) + 2 * sizeof(fwdjump) / sizeof(CompressedBFOperator);
-                ptrdiff_t bwdjump = -(program->len + 1);
+                size_t fwdjump = (program->len + 1) + 2 * sizeof(fwdjump) / sizeof(CompressedBFOperator);
+                size_t bwdjump = (program->len + 1);
 
 
                 // we're gonna add the whole program, plus `[`, plus `]`, plus two fields for the jumps

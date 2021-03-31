@@ -61,17 +61,17 @@ void interpretBF(const CompiledProgram* bytecode) {
                 NEXT();
         lbracket:
                 if (!data[pos]) {
-                        ptrdiff_t increment;
-                        memcpy(&increment, text+1, sizeof(ptrdiff_t));
+                        size_t increment;
+                        memcpy(&increment, text+1, sizeof(size_t));
                         text += increment;
-                } else text += sizeof(ptrdiff_t)/sizeof(*text);
+                } else text += sizeof(size_t)/sizeof(*text);
                 NEXT();
         rbracket:
                 if (data[pos]) {
-                        ptrdiff_t increment;
-                        memcpy(&increment, text+1, sizeof(ptrdiff_t));
-                        text += increment;
-                } else text += sizeof(ptrdiff_t)/sizeof(*text);
+                        size_t increment;
+                        memcpy(&increment, text+1, sizeof(size_t));
+                        text -= increment;
+                } else text += sizeof(size_t)/sizeof(*text);
                 NEXT();
 
         end:
