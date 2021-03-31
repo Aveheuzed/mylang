@@ -98,7 +98,7 @@ static int compile_literal_int(compiler_info *const state, const Node* node, con
 }
 static int compile_variable(compiler_info *const state, const Node* node, const Target target) {
         if (target.weight == 0) return 1;
-        
+
         const Variable v = getVariable(state, node->token.tok.source);
         Value temp = BF_allocate(state, v.val.type);
         const Target targets[] = {
@@ -235,7 +235,7 @@ static int compile_multiply(compiler_info *const state, const Node* node, const 
                         Value yclone = BF_allocate(state, yval.type);
 
                         seekpos(state, xval.pos);
-                        const size_t mainloop = openJump(state);
+                        openJump(state);
                         emitMinus(state, 1); // loop: do <X> times:
 
                         const Target forth[] = {
@@ -249,7 +249,7 @@ static int compile_multiply(compiler_info *const state, const Node* node, const 
                         transfer(state, yclone.pos, sizeof(back)/sizeof(*back), back);
 
                         seekpos(state, xval.pos); // the loop is on X ; don't forget to jump back there before closing the jump!
-                        closeJump(state, mainloop);
+                        closeJump(state);
 
                         BF_free(state, xval);
                         BF_free(state, yval);

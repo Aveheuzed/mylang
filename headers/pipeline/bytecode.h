@@ -31,6 +31,7 @@ typedef struct CompressedBFOperator {
 #define BF_MAX_RUN ((1<<5)-1)
 
 typedef struct CompiledProgram {
+        struct CompiledProgram* up;
         size_t len;
         size_t maxlen;
         CompressedBFOperator bytecode[];

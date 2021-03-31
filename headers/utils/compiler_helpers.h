@@ -40,8 +40,8 @@ int addVariable(compiler_info *const state, Variable v);
 
 CompiledProgram* _emitCompressible(CompiledProgram* program, BFOperator op, size_t amount);
 CompiledProgram* _emitNonCompressible(CompiledProgram* program, BFOperator op);
-CompiledProgram* _emitOpeningBracket(CompiledProgram* program, size_t *const bracketpos);
-CompiledProgram* _emitClosingBracket(CompiledProgram* program, const size_t bracket);
+CompiledProgram* _emitOpeningBracket(CompiledProgram* program);
+CompiledProgram* _emitClosingBracket(CompiledProgram* program);
 
 void emitPlus(compiler_info *const state, const size_t amount);
 void emitMinus(compiler_info *const state, const size_t amount);
@@ -50,8 +50,8 @@ void emitRight(compiler_info *const state, const size_t amount);
 void emitInput(compiler_info *const state);
 void emitOutput(compiler_info *const state);
 
-size_t openJump(compiler_info *const state) __attribute__ ((warn_unused_result));
-void closeJump(compiler_info *const state, const size_t jump_pos);
+void openJump(compiler_info *const state);
+void closeJump(compiler_info *const state);
 
 
 void seekpos(compiler_info *const state, const size_t i);
