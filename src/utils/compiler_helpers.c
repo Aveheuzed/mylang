@@ -148,7 +148,7 @@ CompiledProgram* _emitNonCompressible(CompiledProgram* program, BFOperator op) {
         }
         if (program->len >= program->maxlen)
                 program = growProgram(program, program->maxlen*2);
-        program->bytecode[program->len++] = (CompressedBFOperator) {.operator=op, .run=1};
+        program->bytecode[program->len++] = (CompressedBFOperator) {.operator=op, .run=0};
         return program;
 }
 
@@ -163,28 +163,42 @@ CompiledProgram* _emitClosingBracket(CompiledProgram* program) {
                 size_t uplen = up->len;
 
                 // the `+1`s account for the not-yet-written `]`
-                size_t fwdjump = (program->len + 1) + 2 * sizeof(fwdjump) / sizeof(CompressedBFOperator);
                 size_t bwdjump = (program->len + 1);
 
-
-                // we're gonna add the whole program, plus `[`, plus `]`, plus two fields for the jumps
-                up->len += program->len + 1 + 1 + (sizeof(fwdjump)+sizeof(bwdjump))/sizeof(CompressedBFOperator);
+                // we're gonna add the whole program, plus `[`, plus `]`
+                up->len += program->len + 1 + 1;
                 if (up->len >= up->maxlen)
                         up = growProgram(up, up->len);
 
-                up->bytecode[uplen++] = (CompressedBFOperator) {.operator=BF_JUMP_FWD, .run=1};
+                if (bwdjump <= BF_MAX_RUN) {
+                        // short jump, encoded in the bracket's `.run`
+                        up->bytecode[uplen++] = (CompressedBFOperator) {.operator=BF_JUMP_FWD, .run=bwdjump};
+                        memcpy(&(up->bytecode[uplen]), program->bytecode, program->len*sizeof(CompressedBFOperator));
+                        uplen += program->len;
+                        up->bytecode[uplen++] = (CompressedBFOperator) {.operator=BF_JUMP_BWD, .run=bwdjump};
+                }
+                else {
+                        // long jump, encoded in separate fields (size_t)
 
-                memcpy(&(up->bytecode[uplen]), &fwdjump, sizeof(fwdjump));
-                uplen += sizeof(fwdjump)/sizeof(CompressedBFOperator);
+                        // ajusting for the two fields
+                        size_t fwdjump = bwdjump + 2 * sizeof(fwdjump) / sizeof(CompressedBFOperator);
+                        up->len += (sizeof(fwdjump)+sizeof(bwdjump))/sizeof(CompressedBFOperator);
+                        if (up->len >= up->maxlen)
+                                up = growProgram(up, up->len);
 
-                memcpy(&(up->bytecode[uplen]), program->bytecode, program->len*sizeof(CompressedBFOperator));
-                uplen += program->len;
+                        up->bytecode[uplen++] = (CompressedBFOperator) {.operator=BF_JUMP_FWD, .run=0};
 
-                up->bytecode[uplen++] = (CompressedBFOperator) {.operator=BF_JUMP_BWD, .run=1};
+                        memcpy(&(up->bytecode[uplen]), &fwdjump, sizeof(fwdjump));
+                        uplen += sizeof(fwdjump)/sizeof(CompressedBFOperator);
 
-                memcpy(&(up->bytecode[uplen]), &bwdjump, sizeof(bwdjump));
-                uplen += sizeof(bwdjump)/sizeof(CompressedBFOperator);
+                        memcpy(&(up->bytecode[uplen]), program->bytecode, program->len*sizeof(CompressedBFOperator));
+                        uplen += program->len;
 
+                        up->bytecode[uplen++] = (CompressedBFOperator) {.operator=BF_JUMP_BWD, .run=0};
+
+                        memcpy(&(up->bytecode[uplen]), &bwdjump, sizeof(bwdjump));
+                        uplen += sizeof(bwdjump)/sizeof(CompressedBFOperator);
+                }
 
                 if (uplen != up->len) LOG("Assertion error while closing a bracket: lengths off by %lu", uplen - up->len);
 
