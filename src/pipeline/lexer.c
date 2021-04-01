@@ -40,6 +40,7 @@ static inline void detect_keywords(Token *const token) {
         static const struct {char* source; TokenType type;} keywords[] = {
                 {"int", TOKEN_KW_INT},
                 {"str", TOKEN_KW_STR},
+                {"if", TOKEN_IF},
 
                 {NULL, 0}
         };

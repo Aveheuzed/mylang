@@ -72,6 +72,8 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
 
         [OP_DECLARE] = 2, // variable, initializer (type as operator)
 
+        [OP_IF] = 2, // condition, consequence
+
         [OP_CALL] = UINTPTR_MAX,
 
         [OP_NOP] = 0,
@@ -740,6 +742,27 @@ static Node* empty_statement(parser_info *const state) {
         return new;
 }
 
+static Node* if_statement(parser_info *const state) {
+        Node* new = ALLOCATE_SIMPLE_NODE(OP_IF);
+        new->token = consume(state);
+        new->operator = OP_IF;
+        new->type = TYPE_VOID;
+        new->operands[0].nd = parseExpression(state, PREC_NONE);
+        if (new->operands[0].nd == NULL) {
+                freeNode(new);
+                return NULL;
+        }
+        if (new->operands[0].nd->type != TYPE_INT) {
+                TypeError(new->token);
+                return NULL;
+        }
+        if ((new->operands[1].nd = parse_statement(state)) == NULL) {
+                freeNode(new);
+                return NULL;
+        }
+        return new;
+}
+
 // ------------------ end statement handlers -----------------------------------
 
 Node* parse_statement(parser_info *const state) {
@@ -748,6 +771,7 @@ Node* parse_statement(parser_info *const state) {
                 [TOKEN_KW_INT] = declare_statement,
                 [TOKEN_KW_STR] = declare_statement,
                 [TOKEN_SEMICOLON] = empty_statement,
+                [TOKEN_IF] = if_statement,
         };
 
         if (getTtype(state) == TOKEN_EOF || getTtype(state) == TOKEN_ERROR) return NULL;

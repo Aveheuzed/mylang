@@ -86,6 +86,27 @@ static int compileDeclaration(compiler_info *const state, const Node* node) {
         }
         return addVariable(state, v);
 }
+static int compileIf(compiler_info *const state, const Node* node) {
+        if (node->operands[0].nd->type != TYPE_INT) LOG("Warning : non-int type used for condition");
+        Value condition = BF_allocate(state, node->operands[0].nd->type);
+
+        if (!compile_expression(state, node->operands[0].nd, (Target){.pos=condition.pos, .weight=1})) {
+                BF_free(state, condition);
+                return 0;
+        }
+
+        seekpos(state, condition.pos);
+        const size_t jump = openJump(state);
+        reset(state, condition.pos);
+        const int status = _compile_statement(state, node->operands[1].nd);
+        seekpos(state, condition.pos);
+        closeJump(state, jump);
+
+        BF_free(state, condition);
+        return status;
+
+
+}
 
 
 // ------------------------ statement handlers -------------------------------
@@ -98,7 +119,7 @@ static int compile_literal_int(compiler_info *const state, const Node* node, con
 }
 static int compile_variable(compiler_info *const state, const Node* node, const Target target) {
         if (target.weight == 0) return 1;
-        
+
         const Variable v = getVariable(state, node->token.tok.source);
         Value temp = BF_allocate(state, v.val.type);
         const Target targets[] = {
@@ -289,6 +310,7 @@ static int _compile_statement(compiler_info *const state, const Node* node) {
                 [OP_NOP] = compileNop,
                 [OP_BLOCK] = compileBlock,
                 [OP_DECLARE] = compileDeclaration,
+                [OP_IF] = compileIf,
         };
 
         const StmtCompilationHandler handler = handlers[node->operator];

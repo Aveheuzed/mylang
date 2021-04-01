@@ -36,6 +36,8 @@ typedef enum {
         TOKEN_KW_INT,
         TOKEN_KW_STR,
 
+        TOKEN_IF,
+
         TOKEN_ERROR,
         TOKEN_EOF, // please don't put new token types below here
 } TokenType;
