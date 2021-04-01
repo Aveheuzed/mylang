@@ -102,24 +102,24 @@ static int compileIfElse(compiler_info *const state, const Node* node) {
         int status;
         {
                 seekpos(state, condition.pos);
-                const size_t jump = openJump(state);
+                openJump(state);
                 reset(state, condition.pos);
                 seekpos(state, notCondition.pos);
                 emitMinus(state, 1);
                 status = _compile_statement(state, node->operands[1].nd);
                 seekpos(state, condition.pos);
-                closeJump(state, jump);
+                closeJump(state);
         }
 
         BF_free(state, condition);
 
         if (status) {
                 seekpos(state, notCondition.pos);
-                const size_t jump = openJump(state);
+                openJump(state);
                 reset(state, notCondition.pos);
                 status = _compile_statement(state, node->operands[2].nd);
                 seekpos(state, notCondition.pos);
-                closeJump(state, jump);
+                closeJump(state);
         }
 
         BF_free(state, notCondition);
@@ -275,7 +275,7 @@ static int compile_multiply(compiler_info *const state, const Node* node, const 
                         Value yclone = BF_allocate(state, yval.type);
 
                         seekpos(state, xval.pos);
-                        const size_t mainloop = openJump(state);
+                        openJump(state);
                         emitMinus(state, 1); // loop: do <X> times:
 
                         const Target forth[] = {
@@ -289,7 +289,7 @@ static int compile_multiply(compiler_info *const state, const Node* node, const 
                         transfer(state, yclone.pos, sizeof(back)/sizeof(*back), back);
 
                         seekpos(state, xval.pos); // the loop is on X ; don't forget to jump back there before closing the jump!
-                        closeJump(state, mainloop);
+                        closeJump(state);
 
                         BF_free(state, xval);
                         BF_free(state, yval);

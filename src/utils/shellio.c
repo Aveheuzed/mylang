@@ -35,43 +35,6 @@ void output_cbf(FILE* file, const CompiledProgram* pgm) {
 }
 
 
-static CompiledProgram* makeAjump(FILE* file, CompiledProgram* pgm) {
-        size_t bracketpos;
-        pgm = _emitOpeningBracket(pgm, &bracketpos);
-        while (1) switch (getc(file)) {
-                case EOF:
-                        fputs("Malformation detected in input file!", stderr);
-                        free(pgm);
-                        return NULL;
-                case '<':
-                        pgm = _emitCompressible(pgm, BF_LEFT, 1);
-                        break;
-                case '>':
-                        pgm = _emitCompressible(pgm, BF_RIGHT, 1);
-                        break;
-                case '+':
-                        pgm = _emitCompressible(pgm, BF_PLUS, 1);
-                        break;
-                case '-':
-                        pgm = _emitCompressible(pgm, BF_MINUS, 1);
-                        break;
-                case '.':
-                        pgm = _emitNonCompressible(pgm, BF_OUTPUT);
-                        break;
-                case ',':
-                        pgm = _emitCompressible(pgm, BF_INPUT, 1);
-                        break;
-                case '[':
-                        pgm = makeAjump(file, pgm);
-                        if (pgm == NULL) return NULL;
-                        break;
-                case ']':
-                        pgm = _emitClosingBracket(pgm, bracketpos);
-                        return pgm;
-                default:
-                        break;
-        }
-}
 CompiledProgram* input_bf(FILE* file) {
         CompiledProgram* pgm = createProgram();
         while (1) switch (getc(file)) {
@@ -96,13 +59,15 @@ CompiledProgram* input_bf(FILE* file) {
                         pgm = _emitCompressible(pgm, BF_INPUT, 1);
                         break;
                 case '[':
-                        pgm = makeAjump(file, pgm);
-                        if (pgm == NULL) return NULL;
+                        pgm = _emitOpeningBracket(pgm);
                         break;
                 case ']':
-                        fputs("Malformation detected in input file!\n", stderr);
-                        free(pgm);
-                        return NULL;
+                        pgm = _emitClosingBracket(pgm);
+                        if (pgm == NULL) {
+                                fputs("Malformation detected in input file!\n", stderr);
+                                return NULL;
+                        }
+                        break;
                 default:
                         break;
         }

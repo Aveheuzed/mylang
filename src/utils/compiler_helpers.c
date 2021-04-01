@@ -20,6 +20,7 @@ static inline hash_t hash(const char* key) {
 
 CompiledProgram* createProgram(void) {
         CompiledProgram* ret = malloc(offsetof(CompiledProgram, bytecode) + sizeof(CompressedBFOperator)*16);
+        ret->up = NULL;
         ret->maxlen = 16;
         ret->len = 0;
         return ret;
@@ -115,7 +116,9 @@ CompiledProgram* _emitCompressible(CompiledProgram* program, BFOperator op, size
         }
         if (program->len) {
                 CompressedBFOperator *const last_op = &(program->bytecode[program->len-1]);
-                if (last_op->operator == op) {
+                if (last_op->operator == op && last_op->run) {
+                // we check for run != 0 to prevent `+` from nesting into a `]`'s field.
+                // a compressible operator with a run of 0 is silly anyway!
                         if (last_op->run + amount < BF_MAX_RUN) {
                                 last_op->run += amount;
                                 amount = 0;
@@ -145,32 +148,65 @@ CompiledProgram* _emitNonCompressible(CompiledProgram* program, BFOperator op) {
         }
         if (program->len >= program->maxlen)
                 program = growProgram(program, program->maxlen*2);
-        program->bytecode[program->len++] = (CompressedBFOperator) {.operator=op, .run=1};
+        program->bytecode[program->len++] = (CompressedBFOperator) {.operator=op, .run=0};
         return program;
 }
 
-CompiledProgram* _emitOpeningBracket(CompiledProgram* program, size_t *const bracketpos) {
-        *bracketpos = program->len;
-        program->len++;
-        program->len += sizeof(ptrdiff_t) / sizeof(CompressedBFOperator);
-        if (program->len > program->maxlen)
-                program = growProgram(program, program->maxlen*2);
-        program->bytecode[*bracketpos] = (CompressedBFOperator) {.operator=BF_JUMP_FWD, .run=1};
-        program->bytecode[program->len-1].run = BF_MAX_RUN; // security, this will be overwritten later
-        return program;
+CompiledProgram* _emitOpeningBracket(CompiledProgram* program) {
+        CompiledProgram *const new = createProgram();
+        new->up = program;
+        return new;
 }
-CompiledProgram* _emitClosingBracket(CompiledProgram* program, const size_t bracket) {
-        size_t pos = program->len;
-        program->bytecode[program->len++] = (CompressedBFOperator) {.operator=BF_JUMP_BWD, .run=1};
-        program->len += sizeof(ptrdiff_t) / sizeof(CompressedBFOperator);
-        if (program->len > program->maxlen)
-                program = growProgram(program, program->maxlen*2);
+CompiledProgram* _emitClosingBracket(CompiledProgram* program) {
+        CompiledProgram* up = program->up;
+        if (up != NULL) {
+                size_t uplen = up->len;
 
-        ptrdiff_t fwdjump = pos - bracket + sizeof(ptrdiff_t)/sizeof(CompressedBFOperator);
-        ptrdiff_t bwdjump = bracket - pos + sizeof(ptrdiff_t)/sizeof(CompressedBFOperator);
-        memcpy(&(program->bytecode[bracket+1]), &fwdjump, sizeof(fwdjump));
-        memcpy(&(program->bytecode[pos+1]), &bwdjump, sizeof(bwdjump));
-        return program;
+                // the `+1`s account for the not-yet-written `]`
+                size_t bwdjump = (program->len + 1);
+
+                // we're gonna add the whole program, plus `[`, plus `]`
+                up->len += program->len + 1 + 1;
+                if (up->len >= up->maxlen)
+                        up = growProgram(up, up->len);
+
+                if (bwdjump <= BF_MAX_RUN) {
+                        // short jump, encoded in the bracket's `.run`
+                        up->bytecode[uplen++] = (CompressedBFOperator) {.operator=BF_JUMP_FWD, .run=bwdjump};
+                        memcpy(&(up->bytecode[uplen]), program->bytecode, program->len*sizeof(CompressedBFOperator));
+                        uplen += program->len;
+                        up->bytecode[uplen++] = (CompressedBFOperator) {.operator=BF_JUMP_BWD, .run=bwdjump};
+                }
+                else {
+                        // long jump, encoded in separate fields (size_t)
+
+                        // ajusting for the two fields
+                        size_t fwdjump = bwdjump + 2 * sizeof(fwdjump) / sizeof(CompressedBFOperator);
+                        up->len += (sizeof(fwdjump)+sizeof(bwdjump))/sizeof(CompressedBFOperator);
+                        if (up->len >= up->maxlen)
+                                up = growProgram(up, up->len);
+
+                        up->bytecode[uplen++] = (CompressedBFOperator) {.operator=BF_JUMP_FWD, .run=0};
+
+                        memcpy(&(up->bytecode[uplen]), &fwdjump, sizeof(fwdjump));
+                        uplen += sizeof(fwdjump)/sizeof(CompressedBFOperator);
+
+                        memcpy(&(up->bytecode[uplen]), program->bytecode, program->len*sizeof(CompressedBFOperator));
+                        uplen += program->len;
+
+                        up->bytecode[uplen++] = (CompressedBFOperator) {.operator=BF_JUMP_BWD, .run=0};
+
+                        memcpy(&(up->bytecode[uplen]), &bwdjump, sizeof(bwdjump));
+                        uplen += sizeof(bwdjump)/sizeof(CompressedBFOperator);
+                }
+
+                if (uplen != up->len) LOG("Assertion error while closing a bracket: lengths off by %lu", uplen - up->len);
+
+        }
+        else LOG("Error: trying to close a bracket on top-level");
+
+        freeProgram(program);
+        return up;
 }
 
 void emitPlus(compiler_info *const state, const size_t amount) {
@@ -191,13 +227,11 @@ void emitInput(compiler_info *const state) {
 void emitOutput(compiler_info *const state) {
         state->program = _emitNonCompressible(state->program, BF_OUTPUT);
 }
-size_t openJump(compiler_info *const state) {
-        size_t jump;
-        state->program = _emitOpeningBracket(state->program, &jump);
-        return jump;
+void openJump(compiler_info *const state) {
+        state->program = _emitOpeningBracket(state->program);
 }
-void closeJump(compiler_info *const state, const size_t jump_pos) {
-        state->program = _emitClosingBracket(state->program, jump_pos);
+void closeJump(compiler_info *const state) {
+        state->program = _emitClosingBracket(state->program);
 }
 
 // ----------------------- end emitXXX helpers ---------------------------------
@@ -211,7 +245,7 @@ void seekpos(compiler_info *const state, const size_t i) {
 }
 void transfer(compiler_info *const state, const size_t pos, const int nb_targets, const Target targets[]) {
         seekpos(state, pos);
-        const size_t jump = openJump(state);
+        openJump(state);
         for (int i=0; i<nb_targets; i++) {
                 const Target t = targets[i];
                 if (pos == t.pos) {
@@ -228,7 +262,7 @@ void transfer(compiler_info *const state, const size_t pos, const int nb_targets
         }
         seekpos(state, pos);
         emitMinus(state, 1);
-        closeJump(state, jump);
+        closeJump(state);
 }
 void reset(compiler_info *const state, const size_t i) {
         // [-]
