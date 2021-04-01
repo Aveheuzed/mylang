@@ -72,7 +72,7 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
 
         [OP_DECLARE] = 2, // variable, initializer (type as operator)
 
-        [OP_IF] = 2, // condition, consequence
+        [OP_IFELSE] = 3, // condition, consequence, else
 
         [OP_CALL] = UINTPTR_MAX,
 
@@ -743,9 +743,9 @@ static Node* empty_statement(parser_info *const state) {
 }
 
 static Node* if_statement(parser_info *const state) {
-        Node* new = ALLOCATE_SIMPLE_NODE(OP_IF);
+        Node* new = ALLOCATE_SIMPLE_NODE(OP_IFELSE);
         new->token = consume(state);
-        new->operator = OP_IF;
+        new->operator = OP_IFELSE;
         new->type = TYPE_VOID;
         new->operands[0].nd = parseExpression(state, PREC_NONE);
         if (new->operands[0].nd == NULL) {
@@ -759,6 +759,13 @@ static Node* if_statement(parser_info *const state) {
         if ((new->operands[1].nd = parse_statement(state)) == NULL) {
                 freeNode(new);
                 return NULL;
+        }
+        if (getTtype(state) == TOKEN_ELSE) {
+                consume(state);
+                if ((new->operands[2].nd = parse_statement(state)) == NULL) {
+                        freeNode(new);
+                        return NULL;
+                }
         }
         return new;
 }

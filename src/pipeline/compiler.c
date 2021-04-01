@@ -86,26 +86,45 @@ static int compileDeclaration(compiler_info *const state, const Node* node) {
         }
         return addVariable(state, v);
 }
-static int compileIf(compiler_info *const state, const Node* node) {
+static int compileIfElse(compiler_info *const state, const Node* node) {
         if (node->operands[0].nd->type != TYPE_INT) LOG("Warning : non-int type used for condition");
         Value condition = BF_allocate(state, node->operands[0].nd->type);
+        Value notCondition = BF_allocate(state, TYPE_INT);
+        seekpos(state, notCondition.pos);
+        emitPlus(state, 1);
 
         if (!compile_expression(state, node->operands[0].nd, (Target){.pos=condition.pos, .weight=1})) {
                 BF_free(state, condition);
+                BF_free(state, notCondition);
                 return 0;
         }
 
-        seekpos(state, condition.pos);
-        const size_t jump = openJump(state);
-        reset(state, condition.pos);
-        const int status = _compile_statement(state, node->operands[1].nd);
-        seekpos(state, condition.pos);
-        closeJump(state, jump);
+        int status;
+        {
+                seekpos(state, condition.pos);
+                const size_t jump = openJump(state);
+                reset(state, condition.pos);
+                seekpos(state, notCondition.pos);
+                emitMinus(state, 1);
+                status = _compile_statement(state, node->operands[1].nd);
+                seekpos(state, condition.pos);
+                closeJump(state, jump);
+        }
 
         BF_free(state, condition);
+
+        if (status) {
+                seekpos(state, notCondition.pos);
+                const size_t jump = openJump(state);
+                reset(state, notCondition.pos);
+                status = _compile_statement(state, node->operands[2].nd);
+                seekpos(state, notCondition.pos);
+                closeJump(state, jump);
+        }
+
+        BF_free(state, notCondition);
+
         return status;
-
-
 }
 
 
@@ -310,7 +329,7 @@ static int _compile_statement(compiler_info *const state, const Node* node) {
                 [OP_NOP] = compileNop,
                 [OP_BLOCK] = compileBlock,
                 [OP_DECLARE] = compileDeclaration,
-                [OP_IF] = compileIf,
+                [OP_IFELSE] = compileIfElse,
         };
 
         const StmtCompilationHandler handler = handlers[node->operator];

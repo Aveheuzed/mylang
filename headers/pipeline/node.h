@@ -37,7 +37,7 @@ typedef enum {
 
         OP_CALL,
 
-        OP_IF,
+        OP_IFELSE,
 
         OP_BLOCK,
 
