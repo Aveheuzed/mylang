@@ -22,11 +22,11 @@ void output_bf(FILE* file, const CompiledProgram* pgm) {
         };
         for (size_t i=0; i<pgm->len; i++) {
                 const CompressedBFOperator op = pgm->bytecode[i];
-                for (size_t j=0; j<op.run; j++) {
-                        fputc(operators[op.operator], file);
-                }
-                if (op.operator > BF_NOOPERAND)
-                        i += sizeof(uintptr_t)/sizeof(op);
+                if (op.operator <= BF_CANCOMPRESS) for (size_t j=0; j<op.run; j++) fputc(operators[op.operator], file);
+                else fputc(operators[op.operator], file);
+
+                if (op.operator > BF_NOOPERAND && !op.run)
+                        i += sizeof(size_t)/sizeof(op);
         }
 }
 
