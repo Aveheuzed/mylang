@@ -42,6 +42,8 @@ static inline void detect_keywords(Token *const token) {
                 {"str", TOKEN_KW_STR},
                 {"if", TOKEN_IF},
                 {"else", TOKEN_ELSE},
+                {"do", TOKEN_DO},
+                {"while", TOKEN_WHILE},
 
                 {NULL, 0}
         };
