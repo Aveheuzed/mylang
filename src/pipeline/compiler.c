@@ -168,10 +168,6 @@ static int compile_binary_minus(compiler_info *const state, const Node* node, co
 }
 static int compile_affect(compiler_info *const state, const Node* node, const Target target) {
         const Variable v = getVariable(state, node->operands[0].nd->token.tok.source);
-        if (target.weight == 0) {
-                // shortcut, if we don't need the result we can write it directly in place.
-                return compile_expression(state, node->operands[1].nd, (Target) {.pos=v.val.pos, .weight=1});
-        }
 
         const Value temp = BF_allocate(state, v.val.type);
         if (!compile_expression(state, node->operands[1].nd, (Target) {.pos=temp.pos, .weight=1})) {
