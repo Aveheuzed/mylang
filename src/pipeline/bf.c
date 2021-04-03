@@ -26,6 +26,8 @@ void interpretBF(const CompiledProgram* bytecode) {
                 [BF_JUMP_BWD] = &&rbracket,
         };
 
+        if (!bytecode->len) return;
+
         CompressedBFOperator const* text = bytecode->bytecode;
         const CompressedBFOperator* stop_text = text + bytecode->len;
 
@@ -35,7 +37,7 @@ void interpretBF(const CompiledProgram* bytecode) {
         size_t len = 1;
         Word* data = growBand(NULL, 0, 1);
 
-        goto *(text->run ? labels[text->operator] : &&end);
+        goto *(labels[text->operator]);
 
         inc:
                 data[pos] += text->run;
@@ -75,7 +77,7 @@ void interpretBF(const CompiledProgram* bytecode) {
                         else {
                                 size_t increment;
                                 memcpy(&increment, text+1, sizeof(size_t));
-                                text -= increment;        
+                                text -= increment;
                         }
                 } else if (!text->run) text += sizeof(size_t)/sizeof(*text);
                 NEXT();
