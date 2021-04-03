@@ -71,7 +71,10 @@ static int compileExpressionStmt(compiler_info *const state, const Node* node) {
 static int compileBlock(compiler_info *const state, const Node* node) {
         const uintptr_t len = node->operands[0].len;
         pushNamespace(state);
-        for (uintptr_t i=0; i<len; i++) if (!_compile_statement(state, node->operands[i+1].nd)) return 0;
+        for (uintptr_t i=0; i<len; i++) if (!_compile_statement(state, node->operands[i+1].nd)) {
+                popNamespace(state);
+                return 0;
+        }
         popNamespace(state);
         return 1;
 }
