@@ -132,7 +132,9 @@ static int compileIfElse(compiler_info *const state, const Node* node) {
 
 static int compile_literal_int(compiler_info *const state, const Node* node, const Target target) {
         seekpos(state, target.pos);
-        emitPlus(state, atoi(node->token.tok.source)*target.weight);
+        const ssize_t value = atoi(node->token.tok.source)*target.weight;
+        if (value > 0) emitPlus(state, value);
+        else emitMinus(state, -value);
         return 1;
 }
 static int compile_variable(compiler_info *const state, const Node* node, const Target target) {
