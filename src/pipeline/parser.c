@@ -73,6 +73,7 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_DECLARE] = 2, // variable, initializer (type as operator)
 
         [OP_IFELSE] = 3, // condition, consequence, else
+        [OP_DOWHILE] = 2, // body, condition
 
         [OP_CALL] = UINTPTR_MAX,
 
@@ -770,6 +771,35 @@ static Node* if_statement(parser_info *const state) {
         return new;
 }
 
+static Node* dowhile_statement(parser_info *const state) {
+        Node* new = ALLOCATE_SIMPLE_NODE(OP_DOWHILE);
+        new->token = consume(state);
+        new->operator = OP_DOWHILE;
+        new->type = TYPE_VOID;
+        if ((new->operands[0].nd = parse_statement(state)) == NULL) {
+                freeNode(new);
+                return NULL;
+        }
+        if (getTtype(state) != TOKEN_WHILE) {
+                return infixParseError(state, new);
+        }
+
+        const LocalizedToken whiletk = consume(state);
+
+        new->operands[1].nd = simple_statement(state); // we get the expression + semicolon done
+        if (new->operands[1].nd == NULL) {
+                freeNode(new);
+                return NULL;
+        }
+        if (new->operands[1].nd->type != TYPE_INT) {
+                TypeError(whiletk);
+                freeNode(new);
+                return NULL;
+        }
+
+        return new;
+}
+
 // ------------------ end statement handlers -----------------------------------
 
 Node* parse_statement(parser_info *const state) {
@@ -779,6 +809,7 @@ Node* parse_statement(parser_info *const state) {
                 [TOKEN_KW_STR] = declare_statement,
                 [TOKEN_SEMICOLON] = empty_statement,
                 [TOKEN_IF] = if_statement,
+                [TOKEN_DO] = dowhile_statement,
         };
 
         if (getTtype(state) == TOKEN_EOF || getTtype(state) == TOKEN_ERROR) return NULL;

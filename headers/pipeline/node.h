@@ -38,6 +38,7 @@ typedef enum {
         OP_CALL,
 
         OP_IFELSE,
+        OP_DOWHILE,
 
         OP_BLOCK,
 

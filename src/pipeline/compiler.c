@@ -125,6 +125,23 @@ static int compileIfElse(compiler_info *const state, const Node* node) {
 
         return status;
 }
+static int compileDoWhile(compiler_info *const state, const Node* node) {
+        Value condition = BF_allocate(state, node->operands[1].nd->type);
+        seekpos(state, condition.pos);
+        emitPlus(state, 1);
+        openJump(state);
+        reset(state, condition.pos);
+        if (!_compile_statement(state, node->operands[0].nd)) {
+                closeJump(state);
+                BF_free(state, condition);
+                return 0;
+        }
+        const int status = compile_expression(state, node->operands[1].nd, (Target){.weight=1, .pos=condition.pos});
+        seekpos(state, condition.pos);
+        closeJump(state);
+        BF_free(state, condition);
+        return status;
+}
 
 
 // ------------------------ statement handlers -------------------------------
@@ -327,6 +344,7 @@ static int _compile_statement(compiler_info *const state, const Node* node) {
                 [OP_BLOCK] = compileBlock,
                 [OP_DECLARE] = compileDeclaration,
                 [OP_IFELSE] = compileIfElse,
+                [OP_DOWHILE] = compileDoWhile,
         };
 
         const StmtCompilationHandler handler = handlers[node->operator];
