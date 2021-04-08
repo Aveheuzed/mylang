@@ -14,7 +14,7 @@ static inline Word* growBand(Word* ptr, const size_t oldlen, const size_t newlen
         return ptr;
 }
 
-void interpretBF(const CompiledProgram* bytecode) {
+void interpretBF(CompressedBFOperator const* text, const CompressedBFOperator* stop_text) {
         static const void* labels[] = {
                 [BF_RIGHT] = &&rsh,
                 [BF_LEFT] = &&lsh,
@@ -26,10 +26,7 @@ void interpretBF(const CompiledProgram* bytecode) {
                 [BF_JUMP_BWD] = &&rbracket,
         };
 
-        if (!bytecode->len) return;
-
-        CompressedBFOperator const* text = bytecode->bytecode;
-        const CompressedBFOperator* stop_text = text + bytecode->len;
+        if (text >= stop_text) return;
 
         #define NEXT() goto *((++text < stop_text) ? labels[text->operator] : &&end)
 

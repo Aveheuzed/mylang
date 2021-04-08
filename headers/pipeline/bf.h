@@ -3,6 +3,6 @@
 
 #include "pipeline/bytecode.h"
 
-void interpretBF(const CompiledProgram* bytecode);
+void interpretBF(CompressedBFOperator const* text, const CompressedBFOperator* stop_text);
 
 #endif

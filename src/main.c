@@ -125,7 +125,7 @@ When specifying several times the same option, the last one takes precedence.\n\
                 fclose(file);
         }
         if (output_method&(1<<3)) {
-                interpretBF(pgm);
+                interpretBF(pgm->bytecode, pgm->bytecode + pgm->len);
         }
 
         free(pgm);
