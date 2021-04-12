@@ -11,20 +11,23 @@
 
         .text
 
-.macro EXTRACT_OPERATOR
-        andb $7, %al
+.macro EXTRACT_OPERATOR target=%dl
+        andb $7, \target
 .endm
 
-.macro EXTRACT_RUN
-        shrb $3, %al
+.macro EXTRACT_RUN target=%al
+        shrb $3, \target
 .endm
 
 .macro NEXT
+        # results in bytecode in %rax (%al actually)
+        # and %rdx clobbered
         cmpq %r14, %r15
         jna .end
         movzbq (%r14), %rax
+        movq %rax, %rdx
         EXTRACT_OPERATOR
-        jmpq *(%rbx, %rax, 8)
+        jmpq *(%rbx, %rdx, 8)
 .endm
 
         .globl	interpretBF
@@ -51,9 +54,8 @@ interpretBF:
         movq %rdi, %r14
         xorq %r13, %r13
 
-
-        movq $0, %rdi
-        movq $0, %rsi
+        xorq %rdi, %rdi
+        xorq %rsi, %rsi
         movq (%rsp), %rdx
         call growBand
         movq %rax, %r12
@@ -61,25 +63,21 @@ interpretBF:
         leaq jumptable(%rip), %rbx
         NEXT
 .op_plus:
-        movb (%r14), %al
         EXTRACT_RUN
         addb %al, (%r12, %r13)
         incq %r14
         NEXT
 .op_minus:
-        movb (%r14), %al
         EXTRACT_RUN
         subb %al, (%r12, %r13)
         incq %r14
         NEXT
 .op_left:
-        movzbq (%r14), %rax
         EXTRACT_RUN
         subq %rax, %r13
         incq %r14
         NEXT
 .op_right:
-        movzbq (%r14), %rax
         EXTRACT_RUN
         addq %rax, %r13
         incq %r14
@@ -97,7 +95,6 @@ interpretBF:
 .op_lbr:
         cmpb $0, (%r12, %r13)
         jne .nojump
-        movzbq (%r14), %rax
         EXTRACT_RUN
         jz .lbr_longjump
         addq %rax, %r14
@@ -111,7 +108,6 @@ interpretBF:
 .op_rbr:
         cmpb $0, (%r12, %r13)
         je .nojump
-        movzbq (%r14), %rax
         EXTRACT_RUN
         jz .rbr_longjump
         subq %rax, %r14
@@ -123,7 +119,6 @@ interpretBF:
         subq %rax, %r14
         NEXT
 .nojump:
-        movzbq (%r14), %rax
         EXTRACT_RUN
         jnz .nojump_short
         addq $8, %r14
