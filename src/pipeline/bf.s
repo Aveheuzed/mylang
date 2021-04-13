@@ -62,6 +62,7 @@ interpretBF:
 
         leaq jumptable(%rip), %rbx
         NEXT
+
 .op_plus:
         EXTRACT_RUN
         addb %al, (%r12, %r13)
@@ -92,39 +93,90 @@ interpretBF:
         call putchar@PLT
         incq %r14
         NEXT
+
+# -------------------------------------lbr--------------------------------------
 .op_lbr:
+        # cmpb $0, (%r12, %r13)
+        # Z → data[pos] == 0
+        # EXTRACT_RUN
+        # Z → run == 0
+        # 00: data[pos] != 0 ; run != 0 → nojump, short → .lbr_nojump_short
+        # 01: data[pos] != 0 ; run == 0 → nojump, long  → .lbr_nojump_long
+        # 10: data[pos] == 0 ; run != 0 →   jump, short → .lbr_shortjump
+        # 11: data[pos] == 0 ; run == 0 →   jump, long  → .lbr_longjump
         cmpb $0, (%r12, %r13)
-        jne .nojump
+        # jz .lbr_jump
+        jnz .lbr_nojump
+
+.lbr_jump:
         EXTRACT_RUN
-        jz .lbr_longjump
+        # jz .lbr_jump_long
+        jnz .lbr_jump_short
+
+.lbr_jump_long:
+        incq %r14
+        addq (%r14), %r14
+        NEXT
+.lbr_jump_short:
+        incq %r14
         addq %rax, %r14
+        NEXT
+
+.lbr_nojump:
+        EXTRACT_RUN
+        jz .lbr_nojump_long
+        # jnz .lbr_nojump_short
+
+# ------------------------------------- common to lbr and rbr
+
+.lbr_nojump_short:
+.rbr_nojump_short:
         incq %r14
         NEXT
-.lbr_longjump:
-        incq %r14
-        movq (%r14), %rax
-        addq %rax, %r14
-        NEXT
+
+# -------------------------------------rbr--------------------------------------
+
 .op_rbr:
+        # cmpb $0, (%r12, %r13)
+        # Z → data[pos] == 0
+        # EXTRACT_RUN
+        # Z → run == 0
+        # 00: data[pos] != 0 ; run != 0 →   jump, short → .rbr_shortjump
+        # 01: data[pos] != 0 ; run == 0 →   jump, long  → .rbr_longjump
+        # 10: data[pos] == 0 ; run != 0 → nojump, short → .rbr_nojump_short
+        # 11: data[pos] == 0 ; run == 0 → nojump, long  → .rbr_nojump_long
         cmpb $0, (%r12, %r13)
-        je .nojump
+        jz .rbr_nojump
+        # jnz .rbr_jump
+
+.rbr_jump:
         EXTRACT_RUN
-        jz .rbr_longjump
-        subq %rax, %r14
+        # jz .rbr_jump_long
+        jnz .rbr_jump_short
+
+.rbr_jump_long:
         incq %r14
+        subq (%r14), %r14
         NEXT
-.rbr_longjump:
+.rbr_jump_short:
         incq %r14
-        movq (%r14), %rax
         subq %rax, %r14
         NEXT
-.nojump:
+
+.rbr_nojump:
         EXTRACT_RUN
-        jnz .nojump_short
-        addq $8, %r14
-.nojump_short:
-        incq %r14
+        # jz .rbr_nojump_long
+        jnz .rbr_nojump_short
+
+# ------------------------------------- common to lbr and rbr
+
+.lbr_nojump_long:
+.rbr_nojump_long:
+        addq $9, %r14
         NEXT
+
+# ------------------------------------------------------------------------------
+
 .end:
         movq %r12, %rdi
 
