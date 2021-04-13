@@ -68,29 +68,19 @@ interpretBF:
         addb %al, (%r12, %r13)
         incq %r14
         NEXT
-.op_minus:
-        EXTRACT_RUN
-        subb %al, (%r12, %r13)
-        incq %r14
-        NEXT
 .op_left:
         EXTRACT_RUN
         subq %rax, %r13
         incq %r14
         NEXT
+.op_minus:
+        EXTRACT_RUN
+        subb %al, (%r12, %r13)
+        incq %r14
+        NEXT
 .op_right:
         EXTRACT_RUN
         addq %rax, %r13
-        incq %r14
-        NEXT
-.op_in:
-        call getchar@PLT
-        movb %al, (%r12, %r13)
-        incq %r14
-        NEXT
-.op_out:
-        movzbq (%r12, %r13), %rdi
-        call putchar@PLT
         incq %r14
         NEXT
 
@@ -176,6 +166,17 @@ interpretBF:
         NEXT
 
 # ------------------------------------------------------------------------------
+
+.op_in:
+        call getchar@PLT
+        movb %al, (%r12, %r13)
+        incq %r14
+        NEXT
+.op_out:
+        movzbq (%r12, %r13), %rdi
+        call putchar@PLT
+        incq %r14
+        NEXT
 
 .end:
         movq %r12, %rdi
