@@ -20,12 +20,13 @@
 .endm
 
 .macro NEXT
-        # results in bytecode in %rax (%al actually)
-        # and %rdx clobbered
+        # results in run in %rax (%al actually)
+        # and %rdx clobbered (containing operator)
         cmpq %r14, %r15
         jna .end
         movzbq (%r14), %rax
         movq %rax, %rdx
+        EXTRACT_RUN
         EXTRACT_OPERATOR
         jz .op_plus # most common operation, easy to detect → effective shortcut
         jmpq *(%rbx, %rdx, 8)
@@ -65,22 +66,18 @@ interpretBF:
         NEXT
 
 .op_plus:
-        EXTRACT_RUN
         addb %al, (%r12, %r13)
         incq %r14
         NEXT
 .op_left:
-        EXTRACT_RUN
         subq %rax, %r13
         incq %r14
         NEXT
 .op_minus:
-        EXTRACT_RUN
         subb %al, (%r12, %r13)
         incq %r14
         NEXT
 .op_right:
-        EXTRACT_RUN
         addq %rax, %r13
         incq %r14
         NEXT
@@ -100,7 +97,7 @@ interpretBF:
         jnz .lbr_nojump
 
 .lbr_jump:
-        EXTRACT_RUN
+        cmpb $0, %al
         # jz .lbr_jump_long
         jnz .lbr_jump_short
 
@@ -114,7 +111,7 @@ interpretBF:
         NEXT
 
 .lbr_nojump:
-        EXTRACT_RUN
+        cmpb $0, %al
         jz .lbr_nojump_long
         # jnz .lbr_nojump_short
 
@@ -141,7 +138,7 @@ interpretBF:
         # jnz .rbr_jump
 
 .rbr_jump:
-        EXTRACT_RUN
+        cmpb $0, %al
         # jz .rbr_jump_long
         jnz .rbr_jump_short
 
@@ -155,7 +152,7 @@ interpretBF:
         NEXT
 
 .rbr_nojump:
-        EXTRACT_RUN
+        cmpb $0, %al
         # jz .rbr_nojump_long
         jnz .rbr_nojump_short
 
