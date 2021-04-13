@@ -27,6 +27,7 @@
         movzbq (%r14), %rax
         movq %rax, %rdx
         EXTRACT_OPERATOR
+        jz .op_plus # most common operation, easy to detect → effective shortcut
         jmpq *(%rbx, %rdx, 8)
 .endm
 
