@@ -10,6 +10,11 @@
 
 #define GROW_THRESHHOLD (0.8) // TODO: benchmark this value
 
+typedef struct RawComputationArray {
+        unsigned char len; // number of completed [(</>) (+/-)] pairs
+        int8_t bytecode[BF_MAX_RUN][2];
+} RawComputationArray;
+
 static inline hash_t hash(const char* key) {
         /* we have to remove the least significant bits, because that pointer
         was returned by `malloc`, and is therefore aligned for the largest types
@@ -19,18 +24,59 @@ static inline hash_t hash(const char* key) {
 }
 
 CompiledProgram* createProgram(void) {
-        CompiledProgram* ret = malloc(offsetof(CompiledProgram, bytecode) + sizeof(CompressedBFOperator)*16);
+        CompiledProgram* ret = malloc(offsetof(CompiledProgram, bytecode) + sizeof(Bytecode)*16);
         ret->up = NULL;
+        ret->comput_arr = NULL;
         ret->maxlen = 16;
         ret->len = 0;
         return ret;
 }
 void freeProgram(CompiledProgram* pgm) {
+        free(pgm->comput_arr);
         free(pgm);
 }
 static CompiledProgram* growProgram(CompiledProgram* ptr, const size_t newsize) {
-        ptr = realloc(ptr, offsetof(CompiledProgram, bytecode) + sizeof(CompressedBFOperator)*newsize);
+        ptr = realloc(ptr, offsetof(CompiledProgram, bytecode) + sizeof(Bytecode)*newsize);
         ptr->maxlen = newsize;
+        return ptr;
+}
+
+static CompiledProgram* ensure_no_computarr(CompiledProgram* ptr) {
+        if (ptr->comput_arr != NULL) {
+                if (ptr->comput_arr->len++ > BF_MAX_RUN) LOG("Warning: computation array length > BF_MAX_RUN.");
+
+                // ptr->comput_arr->len++;
+
+                const RawComputationArray* arr = ptr->comput_arr;
+
+                if (ptr->len + sizeof(arr->bytecode) + 1 >= ptr->maxlen)
+                        ptr = growProgram(ptr, ptr->maxlen + sizeof(arr->bytecode) + 16);
+
+                ptr->bytecode[ptr->len++].control = (ControlByte) {.mode=MODE_COMPUTE, .length=arr->len};
+
+                memcpy(&(ptr->bytecode[ptr->len]), arr->bytecode, sizeof(arr->bytecode[0])*arr->len);
+                // for (unsigned char i=0; i<arr->len; i++) {
+                //         ptr->bytecode[ptr->len++].byte = arr->bytecode[i][0];
+                //         ptr->bytecode[ptr->len++].byte = arr->bytecode[i][1];
+                // }
+
+                ptr->len += sizeof(arr->bytecode[0])*arr->len;
+
+                free(ptr->comput_arr);
+                ptr->comput_arr = NULL;
+        }
+
+        return ptr;
+}
+static CompiledProgram* ensure_computarr(CompiledProgram* ptr) {
+        if (ptr->comput_arr == NULL)
+                ptr->comput_arr = calloc(sizeof(RawComputationArray), 1);
+        else if (ptr->comput_arr->len >= BF_MAX_RUN) {
+                ptr = ensure_no_computarr(ptr);
+                ptr->comput_arr = calloc(sizeof(RawComputationArray), 1);
+
+                // (ptr=ensure_no_computarr(ptr))->comput_arr = calloc(sizeof(RawComputationArray))
+        }
         return ptr;
 }
 
@@ -109,123 +155,156 @@ Variable getVariable(compiler_info *const state, char const* name) {
 
 // --------------------------- emitXXX helpers ---------------------------------
 
-CompiledProgram* _emitCompressible(CompiledProgram* program, BFOperator op, size_t amount) {
-        if (op > BF_CANCOMPRESS) {
-                LOG("Error : trying to compress operator %hu", op);
+CompiledProgram* _emitLeftRight(CompiledProgram* program, ssize_t amount) {
+        program = ensure_computarr(program);
+
+        RawComputationArray *const arr = program->comput_arr;
+
+        if (arr->bytecode[arr->len][1]) arr->len++;
+
+        int8_t already_there = arr->bytecode[arr->len][0];
+        if (already_there + amount >= INT8_MIN
+        && already_there + amount <= INT8_MAX) {
+                arr->bytecode[arr->len][0] += amount;
                 return program;
         }
-        if (program->len) {
-                CompressedBFOperator *const last_op = &(program->bytecode[program->len-1]);
-                if (last_op->operator == op && last_op->run) {
-                // we check for run != 0 to prevent `+` from nesting into a `]`'s field.
-                // a compressible operator with a run of 0 is silly anyway!
-                        if (last_op->run + amount < BF_MAX_RUN) {
-                                last_op->run += amount;
-                                amount = 0;
-                        }
-                        else {
-                                amount -= BF_MAX_RUN - last_op->run;
-                                last_op->run = BF_MAX_RUN;
-                        }
-                }
+
+        if (amount > 0) {
+                amount -= INT8_MAX - already_there;
+                arr->bytecode[arr->len++][0] = INT8_MAX;
         }
-        for (; amount >= BF_MAX_RUN; amount -= BF_MAX_RUN) {
-                if (program->len >= program->maxlen)
-                        program = growProgram(program, program->maxlen*2);
-                program->bytecode[program->len++] = (CompressedBFOperator) {.operator=op, .run=BF_MAX_RUN};
+        else { // if (amount <= 0)
+                amount += INT8_MIN + already_there;
+                arr->bytecode[arr->len++][0] = INT8_MIN;
         }
-        if (amount) {
-                if (program->len >= program->maxlen)
-                        program = growProgram(program, program->maxlen*2);
-                program->bytecode[program->len++] = (CompressedBFOperator) {.operator=op, .run=amount};
+        return _emitLeftRight(program, amount);
+}
+CompiledProgram* _emitPlusMinus(CompiledProgram* program, ssize_t amount) {
+        program = ensure_computarr(program);
+
+        RawComputationArray *const arr = program->comput_arr;
+
+        int8_t already_there = arr->bytecode[arr->len][1];
+        if (already_there + amount >= INT8_MIN
+        && already_there + amount <= INT8_MAX) {
+                arr->bytecode[arr->len][1] += amount;
+                return program;
         }
 
-        return program;
-}
-CompiledProgram* _emitNonCompressible(CompiledProgram* program, BFOperator op) {
-        if (op <= BF_CANCOMPRESS) {
-                LOG("Warning : trying to not compress operator %hu", op);
+        if (amount > 0) {
+                amount -= INT8_MAX - already_there;
+                arr->bytecode[arr->len++][1] = INT8_MAX;
         }
+        else { // if (amount <= 0)
+                amount += INT8_MIN + already_there;
+                arr->bytecode[arr->len++][1] = INT8_MIN;
+        }
+        return _emitPlusMinus(program, amount);
+}
+CompiledProgram* _emitIn(CompiledProgram* program) {
+        program = ensure_no_computarr(program);
+
         if (program->len >= program->maxlen)
                 program = growProgram(program, program->maxlen*2);
-        program->bytecode[program->len++] = (CompressedBFOperator) {.operator=op, .run=0};
+        program->bytecode[program->len++].control.mode = MODE_IN;
+        return program;
+}
+CompiledProgram* _emitOut(CompiledProgram* program) {
+        program = ensure_no_computarr(program);
+
+        if (program->len >= program->maxlen)
+                program = growProgram(program, program->maxlen*2);
+        program->bytecode[program->len++].control.mode = MODE_OUT;
+        return program;
+}
+CompiledProgram* _emitEnd(CompiledProgram* program) {
+        program = ensure_no_computarr(program);
+
+        if (program->up != NULL) {
+                LOG("Error: terminating compilation with brackets still open.");
+                freeProgram(program);
+                return NULL;
+        }
+
+        if (program->len >= program->maxlen)
+                program = growProgram(program, program->maxlen+1);
+        program->bytecode[program->len++].control.mode = MODE_END;
         return program;
 }
 
 CompiledProgram* _emitOpeningBracket(CompiledProgram* program) {
+        program = ensure_no_computarr(program);
         CompiledProgram *const new = createProgram();
         new->up = program;
         return new;
 }
 CompiledProgram* _emitClosingBracket(CompiledProgram* program) {
         CompiledProgram* up = program->up;
-        if (up != NULL) {
-                size_t uplen = up->len;
+        if (up == NULL) {
+                LOG("Error: trying to close a bracket on top-level.");
+                freeProgram(program);
+                return NULL;
+        }
 
-                // the `+1`s account for the not-yet-written `]`
-                size_t bwdjump = (program->len + 1);
+        program = ensure_no_computarr(program);
 
-                // we're gonna add the whole program, plus `[`, plus `]`
-                up->len += program->len + 1 + 1;
-                if (up->len >= up->maxlen)
-                        up = growProgram(up, up->len);
+        const size_t backwardjump = program->len + 1; // +1 → `]`
 
-                if (bwdjump <= BF_MAX_RUN) {
-                        // short jump, encoded in the bracket's `.run`
-                        up->bytecode[uplen++] = (CompressedBFOperator) {.operator=BF_JUMP_FWD, .run=bwdjump};
-                        memcpy(&(up->bytecode[uplen]), program->bytecode, program->len*sizeof(CompressedBFOperator));
-                        uplen += program->len;
-                        up->bytecode[uplen++] = (CompressedBFOperator) {.operator=BF_JUMP_BWD, .run=bwdjump};
-                }
-                else {
-                        // long jump, encoded in separate fields (size_t)
+        if (backwardjump <= BF_MAX_RUN) {
+                // short jump
+                if (up->len + backwardjump + 1 >= up->maxlen) // +1 → `[`
+                        up = growProgram(up, up->len + backwardjump + 16);
 
-                        // ajusting for the two fields
-                        size_t fwdjump = bwdjump + 2 * sizeof(fwdjump) / sizeof(CompressedBFOperator);
-                        up->len += (sizeof(fwdjump)+sizeof(bwdjump))/sizeof(CompressedBFOperator);
-                        if (up->len >= up->maxlen)
-                                up = growProgram(up, up->len);
+                up->bytecode[up->len++].control = (ControlByte) {.mode=MODE_CJUMPFWD, .length=backwardjump};
 
-                        up->bytecode[uplen++] = (CompressedBFOperator) {.operator=BF_JUMP_FWD, .run=0};
+                memcpy(&(up->bytecode[up->len]), program->bytecode, program->len);
+                up->len += program->len;
 
-                        memcpy(&(up->bytecode[uplen]), &fwdjump, sizeof(fwdjump));
-                        uplen += sizeof(fwdjump)/sizeof(CompressedBFOperator);
-
-                        memcpy(&(up->bytecode[uplen]), program->bytecode, program->len*sizeof(CompressedBFOperator));
-                        uplen += program->len;
-
-                        up->bytecode[uplen++] = (CompressedBFOperator) {.operator=BF_JUMP_BWD, .run=0};
-
-                        memcpy(&(up->bytecode[uplen]), &bwdjump, sizeof(bwdjump));
-                        uplen += sizeof(bwdjump)/sizeof(CompressedBFOperator);
-                }
-
-                if (uplen != up->len) LOG("Assertion error while closing a bracket: lengths off by %lu", uplen - up->len);
+                up->bytecode[up->len++].control = (ControlByte) {.mode=MODE_CJUMPBWD, .length=backwardjump};
 
         }
-        else LOG("Error: trying to close a bracket on top-level");
+        else {
+                // long jump
+                size_t forwardjump = backwardjump + sizeof(forwardjump) + sizeof(backwardjump);
+
+                if (up->len + forwardjump + 1 >= up->maxlen) // +1 → `[`
+                        up = growProgram(up, up->len + forwardjump + 16);
+
+                up->bytecode[up->len++].control = (ControlByte) {.mode=MODE_NCJUMPFWD};
+
+                memcpy(&(up->bytecode[up->len]), &forwardjump, sizeof(forwardjump));
+                up->len += sizeof(forwardjump);
+
+                memcpy(&(up->bytecode[up->len]), program->bytecode, program->len);
+                up->len += program->len;
+
+                up->bytecode[up->len++].control = (ControlByte) {.mode=MODE_NCJUMPBWD};
+
+                memcpy(&(up->bytecode[up->len]), &backwardjump, sizeof(backwardjump));
+                up->len += sizeof(backwardjump);
+        }
 
         freeProgram(program);
         return up;
 }
 
 void emitPlus(compiler_info *const state, const size_t amount) {
-        state->program = _emitCompressible(state->program, BF_PLUS, amount);
+        state->program = _emitPlusMinus(state->program, amount);
 }
 void emitMinus(compiler_info *const state, const size_t amount) {
-        state->program = _emitCompressible(state->program, BF_MINUS, amount);
+        state->program = _emitPlusMinus(state->program, -amount);
 }
 void emitLeft(compiler_info *const state, const size_t amount) {
-        state->program = _emitCompressible(state->program, BF_LEFT, amount);
+        state->program = _emitLeftRight(state->program, -amount);
 }
 void emitRight(compiler_info *const state, const size_t amount) {
-        state->program = _emitCompressible(state->program, BF_RIGHT, amount);
+        state->program = _emitLeftRight(state->program, amount);
 }
 void emitInput(compiler_info *const state) {
-        state->program = _emitNonCompressible(state->program, BF_INPUT);
+        state->program = _emitIn(state->program);
 }
 void emitOutput(compiler_info *const state) {
-        state->program = _emitNonCompressible(state->program, BF_OUTPUT);
+        state->program = _emitOut(state->program);
 }
 void openJump(compiler_info *const state) {
         state->program = _emitOpeningBracket(state->program);
