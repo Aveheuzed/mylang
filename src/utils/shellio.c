@@ -58,7 +58,7 @@ CompiledProgram* input_bf(FILE* file) {
         CompiledProgram* pgm = createProgram();
         while (1) switch (getc(file)) {
                 case EOF:
-                        return pgm;
+                        return _emitEnd(pgm);
                 case '<':
                         pgm = _emitLeftRight(pgm, -1);
                         break;
@@ -90,7 +90,6 @@ CompiledProgram* input_bf(FILE* file) {
                 default:
                         break;
         }
-        return _emitEnd(pgm);
 }
 
 CompiledProgram* input_cbf(FILE* file) {
