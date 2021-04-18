@@ -38,10 +38,13 @@ Variable getVariable(compiler_info *const state, char const* name);
 // returns zero on failure
 int addVariable(compiler_info *const state, Variable v);
 
-CompiledProgram* _emitCompressible(CompiledProgram* program, BFOperator op, size_t amount);
-CompiledProgram* _emitNonCompressible(CompiledProgram* program, BFOperator op);
+CompiledProgram* _emitPlusMinus(CompiledProgram* program, ssize_t amount);
+CompiledProgram* _emitLeftRight(CompiledProgram* program, ssize_t amount);
+CompiledProgram* _emitIn(CompiledProgram* program);
+CompiledProgram* _emitOut(CompiledProgram* program);
 CompiledProgram* _emitOpeningBracket(CompiledProgram* program);
 CompiledProgram* _emitClosingBracket(CompiledProgram* program);
+CompiledProgram* _emitEnd(CompiledProgram* program);
 
 void emitPlus(compiler_info *const state, const size_t amount);
 void emitMinus(compiler_info *const state, const size_t amount);

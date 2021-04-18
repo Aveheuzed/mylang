@@ -10,23 +10,42 @@
 
 
 void output_bf(FILE* file, const CompiledProgram* pgm) {
-        static const char operators[] = {
-                [BF_PLUS] = '+',
-                [BF_MINUS] = '-',
-                [BF_LEFT] = '<',
-                [BF_RIGHT] = '>',
-                [BF_INPUT] = ',',
-                [BF_OUTPUT] = '.',
-                [BF_JUMP_FWD] = '[',
-                [BF_JUMP_BWD] = ']',
-        };
         for (size_t i=0; i<pgm->len; i++) {
-                const CompressedBFOperator op = pgm->bytecode[i];
-                if (op.operator <= BF_CANCOMPRESS) for (size_t j=0; j<op.run; j++) fputc(operators[op.operator], file);
-                else fputc(operators[op.operator], file);
-
-                if (op.operator > BF_NOOPERAND && !op.run)
-                        i += sizeof(size_t)/sizeof(op);
+                const ControlByte op = pgm->bytecode[i].control;
+                switch (op.mode) {
+                case MODE_COMPUTE:
+                        for (uint8_t l=0; l<op.length; l++) {
+                                int8_t run = pgm->bytecode[++i].byte;
+                                for (; run>0; run--) fputc('>', file);
+                                for (; run<0; run++) fputc('<', file);
+                                run = pgm->bytecode[++i].byte;
+                                for (; run>0; run--) fputc('+', file);
+                                for (; run<0; run++) fputc('-', file);
+                        }
+                        break;
+                case MODE_END:
+                        return;
+                case MODE_IN:
+                        fputc(',', file);
+                        break;
+                case MODE_OUT:
+                        fputc('.', file);
+                        break;
+                case MODE_CJUMPFWD:
+                        fputc('[', file);
+                        break;
+                case MODE_CJUMPBWD:
+                        fputc(']', file);
+                        break;
+                case MODE_NCJUMPFWD:
+                        fputc('[', file);
+                        i += sizeof(size_t)/sizeof(int8_t);
+                        break;
+                case MODE_NCJUMPBWD:
+                        fputc(']', file);
+                        i += sizeof(size_t)/sizeof(int8_t);
+                        break;
+                }
         }
 }
 
@@ -39,24 +58,24 @@ CompiledProgram* input_bf(FILE* file) {
         CompiledProgram* pgm = createProgram();
         while (1) switch (getc(file)) {
                 case EOF:
-                        return pgm;
+                        return _emitEnd(pgm);
                 case '<':
-                        pgm = _emitCompressible(pgm, BF_LEFT, 1);
+                        pgm = _emitLeftRight(pgm, -1);
                         break;
                 case '>':
-                        pgm = _emitCompressible(pgm, BF_RIGHT, 1);
+                        pgm = _emitLeftRight(pgm, +1);
                         break;
                 case '+':
-                        pgm = _emitCompressible(pgm, BF_PLUS, 1);
+                        pgm = _emitPlusMinus(pgm, 1);
                         break;
                 case '-':
-                        pgm = _emitCompressible(pgm, BF_MINUS, 1);
+                        pgm = _emitPlusMinus(pgm, -1);
                         break;
                 case '.':
-                        pgm = _emitNonCompressible(pgm, BF_OUTPUT);
+                        pgm = _emitOut(pgm);
                         break;
                 case ',':
-                        pgm = _emitCompressible(pgm, BF_INPUT, 1);
+                        pgm = _emitIn(pgm);
                         break;
                 case '[':
                         pgm = _emitOpeningBracket(pgm);
@@ -71,7 +90,6 @@ CompiledProgram* input_bf(FILE* file) {
                 default:
                         break;
         }
-        return pgm;
 }
 
 CompiledProgram* input_cbf(FILE* file) {

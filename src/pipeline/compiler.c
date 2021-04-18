@@ -46,7 +46,7 @@ void del_compiler_info(compiler_info *const cmpinfo) {
 CompiledProgram* get_bytecode(pipeline_state *const state) {
         CompiledProgram *const pgm = state->cmpinfo.program;
         state->cmpinfo.program = NULL;
-        return pgm;
+        return _emitEnd(pgm);
 }
 
 // ------------------------ compilation handlers -------------------------------
