@@ -1,8 +1,6 @@
 # pdata:     %r12
 # pos:       %r13
-# data_len at (rsp)
 # ptext:     %r14
-# stop_text: %r15
 # jumptable : %rbx
 
 # bytecode :
@@ -15,20 +13,18 @@
         andb $7, \target
 .endm
 
-.macro EXTRACT_RUN target=%al
+.macro EXTRACT_RUN target=%cl
         shrb $3, \target
 .endm
 
 .macro NEXT
-        # results in run in %rax (%al actually)
+        # results in run in %rcx (%cl actually)
         # and %rdx clobbered (containing operator)
-        cmpq %r14, %r15
-        jna .end
-        movzbq (%r14), %rax
-        movq %rax, %rdx
+        movzbq (%r14), %rcx
+        movq %rcx, %rdx
         EXTRACT_RUN
         EXTRACT_OPERATOR
-        jz .op_plus # most common operation, easy to detect → effective shortcut
+        jz .op_compute # most common operation, easy to detect → effective shortcut
         jmpq *(%rbx, %rdx, 8)
 .endm
 
@@ -36,13 +32,6 @@
         .type	interpretBF, @function
 
 interpretBF:
-        # text comes in %rdi
-        # stop_text comes in %rsi
-        cmpq %rdi, %rsi
-        ja .interpretBF
-        ret
-
-.interpretBF: # real start!!
         pushq %r12
         pushq %r13
         pushq %r14
@@ -50,120 +39,34 @@ interpretBF:
         pushq %rbp
         pushq %rbx
 
-        pushq $0xffff # data_len
+        subq $8, %rsp
 
-        movq %rsi, %r15
         movq %rdi, %r14
         xorq %r13, %r13
 
-        xorq %rdi, %rdi
-        xorq %rsi, %rsi
-        movq (%rsp), %rdx
-        call growBand
+        movq $65536, %rdi
+        movq $1, %rsi
+        call calloc@PLT
         movq %rax, %r12
 
         leaq jumptable(%rip), %rbx
         NEXT
 
-.op_plus:
-        addb %al, (%r12, %r13)
-        incq %r14
-        NEXT
-.op_left:
-        subq %rax, %r13
-        incq %r14
-        NEXT
-.op_minus:
-        subb %al, (%r12, %r13)
-        incq %r14
-        NEXT
-.op_right:
-        addq %rax, %r13
-        incq %r14
-        NEXT
-
-# -------------------------------------lbr--------------------------------------
-.op_lbr:
-        # cmpb $0, (%r12, %r13)
-        # Z → data[pos] == 0
-        # EXTRACT_RUN
-        # Z → run == 0
-        # 00: data[pos] != 0 ; run != 0 → nojump, short → .lbr_nojump_short
-        # 01: data[pos] != 0 ; run == 0 → nojump, long  → .lbr_nojump_long
-        # 10: data[pos] == 0 ; run != 0 →   jump, short → .lbr_shortjump
-        # 11: data[pos] == 0 ; run == 0 →   jump, long  → .lbr_longjump
-        cmpb $0, (%r12, %r13)
-        # jz .lbr_jump
-        jnz .lbr_nojump
-
-.lbr_jump:
-        cmpb $0, %al
-        # jz .lbr_jump_long
-        jnz .lbr_jump_short
-
-.lbr_jump_long:
-        incq %r14
-        addq (%r14), %r14
-        NEXT
-.lbr_jump_short:
-        incq %r14
-        addq %rax, %r14
-        NEXT
-
-.lbr_nojump:
-        cmpb $0, %al
-        jz .lbr_nojump_long
-        # jnz .lbr_nojump_short
-
-# ------------------------------------- common to lbr and rbr
-
-.lbr_nojump_short:
-.rbr_nojump_short:
-        incq %r14
-        NEXT
-
-# -------------------------------------rbr--------------------------------------
-
-.op_rbr:
-        # cmpb $0, (%r12, %r13)
-        # Z → data[pos] == 0
-        # EXTRACT_RUN
-        # Z → run == 0
-        # 00: data[pos] != 0 ; run != 0 →   jump, short → .rbr_shortjump
-        # 01: data[pos] != 0 ; run == 0 →   jump, long  → .rbr_longjump
-        # 10: data[pos] == 0 ; run != 0 → nojump, short → .rbr_nojump_short
-        # 11: data[pos] == 0 ; run == 0 → nojump, long  → .rbr_nojump_long
-        cmpb $0, (%r12, %r13)
-        jz .rbr_nojump
-        # jnz .rbr_jump
-
-.rbr_jump:
-        cmpb $0, %al
-        # jz .rbr_jump_long
-        jnz .rbr_jump_short
-
-.rbr_jump_long:
-        incq %r14
-        subq (%r14), %r14
-        NEXT
-.rbr_jump_short:
-        incq %r14
-        subq %rax, %r14
-        NEXT
-
-.rbr_nojump:
-        cmpb $0, %al
-        # jz .rbr_nojump_long
-        jnz .rbr_nojump_short
-
-# ------------------------------------- common to lbr and rbr
-
-.lbr_nojump_long:
-.rbr_nojump_long:
-        addq $9, %r14
-        NEXT
-
 # ------------------------------------------------------------------------------
+.op_compute:
+        movw 1(%r14), %ax
+        # <> in %al
+        # +- in %ah
+        movsbq %al, %rdx
+        movb %ah, %al
+
+        addq %rdx, %r13
+        addb %al, (%r12, %r13)
+
+        addq $2, %r14
+        loop .op_compute # count stored in %rcx
+        incq %r14
+        NEXT
 
 .op_in:
         call getchar@PLT
@@ -174,6 +77,42 @@ interpretBF:
         movzbq (%r12, %r13), %rdi
         call putchar@PLT
         incq %r14
+        NEXT
+
+.op_clbr:
+        incq %r14
+        cmpb $0, (%r12, %r13)
+        jne .clbr_nojump
+        addq %rcx, %r14
+.clbr_nojump:
+        NEXT
+
+.op_nclbr:
+        incq %r14
+        cmpb $0, (%r12, %r13)
+        jne .nclbr_nojump
+        addq (%r14), %r14
+        NEXT
+.nclbr_nojump:
+        addq $8, %r14
+        NEXT
+
+.op_crbr:
+        incq %r14
+        cmpb $0, (%r12, %r13)
+        je .crbr_nojump
+        subq %rcx, %r14
+.crbr_nojump:
+        NEXT
+
+.op_ncrbr:
+        incq %r14
+        cmpb $0, (%r12, %r13)
+        je .ncrbr_nojump
+        subq (%r14), %r14
+        NEXT
+.ncrbr_nojump:
+        addq $8, %r14
         NEXT
 
 .end:
@@ -193,13 +132,13 @@ interpretBF:
 .size	interpretBF, .-interpretBF
 
 jumptable:
-        .quad .op_plus
-        .quad .op_minus
-        .quad .op_left
-        .quad .op_right
+        .quad .op_compute
+        .quad .end
         .quad .op_in
         .quad .op_out
-        .quad .op_lbr
-        .quad .op_rbr
+        .quad .op_clbr
+        .quad .op_nclbr
+        .quad .op_crbr
+        .quad .op_ncrbr
 
 .size jumptable, .-jumptable
