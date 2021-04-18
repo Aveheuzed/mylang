@@ -9,44 +9,66 @@
 typedef uint8_t Word;
 
 void interpretBF(const Bytecode bytecode[]) {
-        Bytecode const* text = bytecode;
-        uint8_t *const band = calloc(65536, sizeof(*band));
-        size_t pos = 0;
+        #define NEXT() goto *labels[(++text)->control.mode]
+        #define NEXT_NOAUTOINC() goto *labels[(text)->control.mode]
 
-        for(;;text++) switch (text->control.mode) {
-                case MODE_COMPUTE:
-                        for (unsigned char length = text->control.length; length-- > 0;)
-                                pos += (++text)->byte,
-                                band[pos] += (++text)->byte;
-                        break;
-                case MODE_END:
-                        free(band);
-                        return;
-                case MODE_IN:
-                        band[pos] = getchar();
-                        break;
-                case MODE_OUT:
-                        putchar(band[pos]);
-                        break;
-                case MODE_CJUMPFWD:
-                        if (!band[pos]) text += text->control.length;
-                        break;
-                case MODE_NCJUMPFWD:
-                        if (!band[pos]) {
-                                size_t increment;
-                                memcpy(&increment, text+1, sizeof(increment));
-                                text += increment;
-                        } else text += sizeof(size_t);
-                        break;
-                case MODE_CJUMPBWD:
-                        if (band[pos]) text -= text->control.length;
-                        break;
-                case MODE_NCJUMPBWD:
-                        if (band[pos]) {
-                                size_t increment;
-                                memcpy(&increment, text+1, sizeof(increment));
-                                text -= increment;
-                        } else text += sizeof(size_t);
-                        break;
-        }
+        static const void* labels[] = {
+                [MODE_COMPUTE] = &&mode_compute,
+                [MODE_END] = &&mode_end,
+                [MODE_IN] = &&mode_in,
+                [MODE_OUT] = &&mode_out,
+                [MODE_CJUMPFWD] = &&mode_cjumpfwd,
+                [MODE_NCJUMPFWD] = &&mode_ncjumpfwd,
+                [MODE_CJUMPBWD] = &&mode_cjumpbwd,
+                [MODE_NCJUMPBWD] = &&mode_ncjumpbwd,
+        };
+        Bytecode const* text = bytecode;
+        int8_t *const band = calloc(65536, sizeof(*band));
+        unsigned int pos = 0;
+
+        NEXT_NOAUTOINC();
+
+        mode_compute:
+        for (unsigned char length = text->control.length; length-- > 0;)
+                pos += (++text)->byte,
+                band[pos] += (++text)->byte;
+        NEXT();
+
+        mode_in:
+        band[pos] = getchar();
+        NEXT();
+
+        mode_out:
+        putchar(band[pos]);
+        NEXT();
+
+        mode_cjumpfwd:
+        if (!band[pos]) text += text->control.length;
+        NEXT();
+
+        mode_ncjumpfwd:
+        if (!band[pos]) {
+                size_t increment;
+                memcpy(&increment, ++text, sizeof(increment));
+                text += increment;
+        } else text += sizeof(size_t) + 1;
+        NEXT_NOAUTOINC();
+
+        mode_cjumpbwd:
+        if (band[pos]) text -= text->control.length;
+        NEXT();
+
+        mode_ncjumpbwd:
+        if (band[pos]) {
+                size_t increment;
+                memcpy(&increment, ++text, sizeof(increment));
+                text -= increment;
+        } else text += sizeof(size_t) + 1;
+        NEXT_NOAUTOINC();
+
+        mode_end:
+        free(band);
+
+        #undef NEXT_NOAUTOINC
+        #undef NEXT
 }
