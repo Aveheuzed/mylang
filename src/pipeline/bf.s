@@ -54,11 +54,8 @@ interpretBF:
 
 # ------------------------------------------------------------------------------
 .op_compute:
-        movw 1(%r14), %ax
-        # <> in %al
-        # +- in %ah
-        movsbq %al, %rdx
-        movb %ah, %al
+        movsbq 1(%r14), %rdx # <>
+        movb 2(%r14), %al # +-
 
         addq %rdx, %r13
         addb %al, (%r12, %r13)
