@@ -64,7 +64,8 @@ interpretBF:
         addb %al, (%r12, %r13)
 
         addq $2, %r14
-        loop .op_compute # count stored in %rcx
+        decb %cl
+        jnz .op_compute
         incq %r14
         NEXT
 
