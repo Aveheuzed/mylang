@@ -24,8 +24,8 @@
         movq %rcx, %rdx
         EXTRACT_RUN
         EXTRACT_OPERATOR
-        jz .op_compute # most common operation, easy to detect → effective shortcut
-        jmpq *(%rbx, %rdx, 8)
+        {disp8} jz .op_compute # most common operation, easy to detect → effective shortcut
+        {disp8} jmpq *(%rbx, %rdx, 8)
 .endm
 
         .globl	interpretBF
@@ -62,7 +62,7 @@ interpretBF:
 
         addq $2, %r14
         decb %cl
-        jnz .op_compute
+        {disp8} jnz .op_compute
         incq %r14
         NEXT
 
@@ -80,7 +80,7 @@ interpretBF:
 .op_clbr:
         incq %r14
         cmpb $0, (%r12, %r13)
-        jne .clbr_nojump
+        {disp8} jne .clbr_nojump
         addq %rcx, %r14
 .clbr_nojump:
         NEXT
@@ -88,7 +88,7 @@ interpretBF:
 .op_nclbr:
         incq %r14
         cmpb $0, (%r12, %r13)
-        jne .nclbr_nojump
+        {disp8} jne .nclbr_nojump
         addq (%r14), %r14
         NEXT
 .nclbr_nojump:
@@ -98,7 +98,7 @@ interpretBF:
 .op_crbr:
         incq %r14
         cmpb $0, (%r12, %r13)
-        je .crbr_nojump
+        {disp8} je .crbr_nojump
         subq %rcx, %r14
 .crbr_nojump:
         NEXT
@@ -106,7 +106,7 @@ interpretBF:
 .op_ncrbr:
         incq %r14
         cmpb $0, (%r12, %r13)
-        je .ncrbr_nojump
+        {disp8} je .ncrbr_nojump
         subq (%r14), %r14
         NEXT
 .ncrbr_nojump:
