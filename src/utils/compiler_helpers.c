@@ -248,36 +248,64 @@ CompiledProgram* _emitClosingBracket(CompiledProgram* program) {
 
         program = ensure_no_computarr(program);
 
-        const size_t backwardjump = program->len + 1; // +1 → `]`
+        size_t forwardjump = program->len + 1;
+        size_t backwardjump = program->len + 1; // +1 → `]`
 
-        if (backwardjump <= BF_MAX_RUN) {
-                // short jump
-                if (up->len + backwardjump + 1 >= up->maxlen) // +1 → `[`
-                        up = growProgram(up, up->len + backwardjump + 16);
+        /*
+        In the following case, we can skip a few brackets when jumping backward
+        [ [ foo ] bar ] baz
+           ^----------+
+        Instead of
+        [ [ foo ] bar ] baz
+         ^------------+
 
-                up->bytecode[up->len++].control = (ControlByte) {.mode=MODE_CJUMPFWD, .length=backwardjump};
+        On the other hand, the following case would require rewriting bytecode, so we leave that optimization to runtime.
+        [ foo [ bar ] ] baz
+              +--------^
+        Instead of
+        [ foo [ bar ] ] baz
+              +------^
+        */
+        for (size_t i=0; i<program->len; i++) {
+                if (program->bytecode[i].control.mode == MODE_CJUMPFWD) {
+                        backwardjump -= 1;
+                        continue;
+                }
+                if (program->bytecode[i].control.mode == MODE_NCJUMPFWD) {
+                        backwardjump -= sizeof(size_t) + 1;
+                        i += sizeof(size_t);
+                        continue;
+                }
+                break;
+        }
+        if (backwardjump > BF_MAX_RUN) forwardjump += sizeof(size_t);
+        if (forwardjump > BF_MAX_RUN) forwardjump += sizeof(size_t);
+        
+        const size_t new_upsize = up->len
+                        + program->len
+                        + (forwardjump > BF_MAX_RUN)*sizeof(size_t)
+                        + (backwardjump > BF_MAX_RUN)*sizeof(size_t)
+                        + 2;
+        if (new_upsize >= up->maxlen)
+                up = growProgram(up, new_upsize + 16);
 
-                memcpy(&(up->bytecode[up->len]), program->bytecode, program->len);
-                up->len += program->len;
-
-                up->bytecode[up->len++].control = (ControlByte) {.mode=MODE_CJUMPBWD, .length=backwardjump};
-
+        if (forwardjump <= BF_MAX_RUN) {
+                up->bytecode[up->len++].control = (ControlByte) {.mode=MODE_CJUMPFWD, .length=forwardjump};
         }
         else {
-                // long jump
-                size_t forwardjump = backwardjump + sizeof(forwardjump) + sizeof(backwardjump);
-
-                if (up->len + forwardjump + 1 >= up->maxlen) // +1 → `[`
-                        up = growProgram(up, up->len + forwardjump + 16);
-
                 up->bytecode[up->len++].control = (ControlByte) {.mode=MODE_NCJUMPFWD};
 
                 memcpy(&(up->bytecode[up->len]), &forwardjump, sizeof(forwardjump));
                 up->len += sizeof(forwardjump);
+        }
 
-                memcpy(&(up->bytecode[up->len]), program->bytecode, program->len);
-                up->len += program->len;
+        memcpy(&(up->bytecode[up->len]), program->bytecode, program->len);
+        up->len += program->len;
 
+        if (backwardjump <= BF_MAX_RUN) {
+                up->bytecode[up->len++].control = (ControlByte) {.mode=MODE_CJUMPBWD, .length=backwardjump};
+        }
+        else {
                 up->bytecode[up->len++].control = (ControlByte) {.mode=MODE_NCJUMPBWD};
 
                 memcpy(&(up->bytecode[up->len]), &backwardjump, sizeof(backwardjump));
