@@ -755,19 +755,10 @@ static Object interpret_idiv(const Node* root, Namespace **const ns) {
 static int interpretBlock(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
         const uintptr_t nb_children = root->operands[0].len;
 
-        Namespace * new_ns = allocateNamespace(ns);
-
-        int exit_code = 1;
-
         for (uintptr_t i=1; i<=nb_children; i++) {
-                if (!_interpretStatement(prsinfo, root->operands[i].nd, &new_ns)) {
-                        exit_code = 0;
-                        break;
-                }
+                if (!_interpretStatement(prsinfo, root->operands[i].nd, ns)) return 0;
         }
-
-        freeNamespace(new_ns);
-        return exit_code;
+        return 1;
 }
 static int interpretIf(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
         Object predicate = interpretExpression(root->operands[0].nd, ns);
