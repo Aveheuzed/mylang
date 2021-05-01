@@ -10,10 +10,10 @@
 
 
 static Object interpretExpression(const Node* root, Namespace **const ns);
-static int _interpretStatement(parser_info *const prsinfo, const Node* root, Namespace **const ns);
+static int _interpretStatement(const Node* root, Namespace **const ns);
 
 typedef Object (*ExprInterpretFn)(const Node* root, Namespace **const ns);
-typedef int (*StmtInterpretFn)(parser_info *const prsinfo, const Node* root, Namespace **const ns);
+typedef int (*StmtInterpretFn)(const Node* root, Namespace **const ns);
 
 static Object interpretVariable(const Node* root, Namespace **const ns) {
         Object* obj = ns_get_value(*ns, root->token.tok.source);
@@ -752,37 +752,37 @@ static Object interpret_idiv(const Node* root, Namespace **const ns) {
         TypeError(root->token); return ERROR;
 }
 
-static int interpretBlock(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
+static int interpretBlock(const Node* root, Namespace **const ns) {
         const uintptr_t nb_children = root->operands[0].len;
 
         for (uintptr_t i=1; i<=nb_children; i++) {
-                if (!_interpretStatement(prsinfo, root->operands[i].nd, ns)) return 0;
+                if (!_interpretStatement(root->operands[i].nd, ns)) return 0;
         }
         return 1;
 }
-static int interpretIf(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
+static int interpretIf(const Node* root, Namespace **const ns) {
         Object predicate = interpretExpression(root->operands[0].nd, ns);
         predicate = tobool(1, &predicate);
         if (predicate.type == TYPE_ERROR) return 0;
-        if (predicate.intval) return _interpretStatement(prsinfo, root->operands[1].nd, ns);
-        else if (root->operands[2].nd != NULL) return _interpretStatement(prsinfo, root->operands[2].nd, ns);
+        if (predicate.intval) return _interpretStatement(root->operands[1].nd, ns);
+        else if (root->operands[2].nd != NULL) return _interpretStatement(root->operands[2].nd, ns);
         else return 1;
 }
-static int interpretWhile(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
+static int interpretWhile(const Node* root, Namespace **const ns) {
         Object predicate;
         while (
                 predicate = interpretExpression(root->operands[0].nd, ns),
                 predicate = tobool(1, &predicate),
                 predicate.type != TYPE_ERROR && predicate.intval
         ) {
-                if (!_interpretStatement(prsinfo, root->operands[1].nd, ns)) {
+                if (!_interpretStatement(root->operands[1].nd, ns)) {
                         return 0;
                 }
         }
         if (predicate.type == TYPE_ERROR) return 0;
         else return 1;
 }
-static int interpretNop(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
+static int interpretNop(const Node* root, Namespace **const ns) {
         return 1;
 }
 
@@ -826,7 +826,7 @@ static Object interpretExpression(const Node* root, Namespace **const ns) {
         }
         return handler(root, ns);
 }
-static int _interpretStatement(parser_info *const prsinfo, const Node* root, Namespace **const ns) {
+static int _interpretStatement(const Node* root, Namespace **const ns) {
         static const StmtInterpretFn interpreters[LEN_OPERATORS] = {
                 [OP_BLOCK] = interpretBlock,
                 [OP_IFELSE] = interpretIf,
@@ -844,12 +844,12 @@ static int _interpretStatement(parser_info *const prsinfo, const Node* root, Nam
                 return result.type != TYPE_ERROR;
         }
         else {
-                return interpreters[root->operator](prsinfo, root, ns);
+                return interpreters[root->operator](root, ns);
         }
 }
 
 int interpretStatement(parser_info *const prsinfo, Namespace **const ns) {
         LOG("Interpreting a new statement");
         Node* root = parse_statement(prsinfo);
-        return _interpretStatement(prsinfo, root, ns);
+        return _interpretStatement(root, ns);
 }
