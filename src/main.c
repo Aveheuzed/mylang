@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
         // no input in REPL, because reading tokens and input from the same source cases havroc
         if (argc == 2) declare_variable(&psinfo, &ns, "input", (Object){.type=TYPE_NATIVEF, .natfunval=&input});
 
-        while (interpretStatement(&psinfo, &ns));
+        while (interpretStatement(&psinfo, &ns) == OK_OK);
 
         del_parser_info(psinfo);
 
