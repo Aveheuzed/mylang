@@ -48,6 +48,7 @@ Namespace* allocateNamespace(Namespace **const enclosing) {
         Namespace *const pool = calloc(offsetof(Namespace, pool) + sizeof(Variable)*1, 1);
         pool->len = 1;
         pool->enclosing = enclosing;
+        pool->returned = OBJ_NONE;
         return pool;
 }
 void freeNamespace(Namespace* pool) {

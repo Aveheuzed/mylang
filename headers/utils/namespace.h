@@ -18,6 +18,7 @@ typedef struct Namespace {
         size_t len; // guaranteed to be a power of 2
         size_t nb_entries;
         struct Namespace** enclosing;
+        Object returned;
         Variable pool[];
 } Namespace;
 

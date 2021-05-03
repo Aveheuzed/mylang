@@ -487,10 +487,14 @@ static Object interpretCall(const Node* root, Namespace **const ns) {
                                 ERROR_GUARD(value);
                                 ns_set_value(&new_ns, key, value);
                         }
-                        const int result = _interpretStatement(funcnode.funval->body, &new_ns);
+
+                        /* Using _code_, we could tell wether the function returned or not (OK_OK vs OK_ABORT).
+                        We don't need to, though. */
+                        const errcode code = _interpretStatement(funcnode.funval->body, &new_ns);
+                        if (code == ERROR_ABORT) return ERROR;
+                        Object result = new_ns->returned;
                         freeNamespace(new_ns);
-                        if (!result) return ERROR;
-                        return OBJ_NONE;
+                        return result;
                 }
                 default:
                         TypeError(root->token);
@@ -808,6 +812,12 @@ static errcode interpretWhile(const Node* root, Namespace **const ns) {
 static errcode interpretNop(const Node* root, Namespace **const ns) {
         return OK_OK;
 }
+static errcode interpret_return(const Node* root, Namespace **const ns) {
+        Object value = interpretExpression(root->operands[0].nd, ns);
+        if (value.type == TYPE_ERROR) return ERROR_ABORT;
+        (*ns)->returned = value;
+        return OK_ABORT;
+}
 
 static Object interpretExpression(const Node* root, Namespace **const ns) {
         static const ExprInterpretFn interpreters[LEN_OPERATORS] = {
@@ -856,6 +866,7 @@ static errcode _interpretStatement(const Node* root, Namespace **const ns) {
                 [OP_IFELSE] = interpretIf,
                 [OP_WHILE] = interpretWhile,
                 [OP_NOP] = interpretNop,
+                [OP_RETURN] = interpret_return,
         };
 
         if (root == NULL) return OK_ABORT;
