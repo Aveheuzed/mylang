@@ -1,11 +1,22 @@
 #include <stdlib.h>
 #include <stddef.h>
+#include <string.h>
 
 #include "headers/utils/namespace.h"
 
-#define GROW_THRESHHOLD (0.8) // TODO: benchmark this value
+typedef struct Variable {
+        /* Since identifiers are internalized, we use the pointer to the string
+        to compute the hash digest for the identifier.
+        This way, we don't need to iterate over the string.*/
+        char* key;
+        Object value;
+} Variable;
 
-#define BUCKET_FULL(bucket) ((bucket).key != NULL)
+typedef struct NS_pool {
+        size_t len; // guaranteed to be a power of 2
+        size_t nb_entries;
+        Variable pool[];
+} NS_pool;
 
 static inline hash_t hash(const char* key) {
         /* we have to remove the least significant bits, because that pointer
@@ -15,27 +26,37 @@ static inline hash_t hash(const char* key) {
         return ((hash_t) key) >> 4;
 }
 
-static void raw_ns_set_value(Namespace *const pool, Variable v) {
+static void raw_ns_set_value(NS_pool *const pool, Variable v) {
         const size_t mask = pool->len-1;
         hash_t index = hash(v.key) & mask;
         LOG("%s expects to be put at %lu", v.key, index);
         for (;
-                BUCKET_FULL(pool->pool[mask&index]) &&
+                (pool->pool[mask&index].key !=  NULL) &&
                 (pool->pool[mask&index].key != v.key);
                 index++);
         LOG("Putting %s at index %lu", v.key, index&mask);
-        if (pool->pool[mask&index].key != v.key) pool->nb_entries++;
+        if (pool->pool[mask&index].key == NULL) pool->nb_entries++;
         pool->pool[mask&index] = v;
 }
 
-static Namespace* growNamespace(Namespace* pool) {
+static Object* raw_ns_get_value(NS_pool *const pool, const char* key) {
+        const hash_t mask = pool->len - 1;
+        hash_t index = mask & hash(key);
+        Variable* v;
+        do {
+                v = &(pool->pool[(index++)&mask]);
+                if (v->key == key) return &(v->value);
+                if (v->key == NULL) return NULL;
+        } while (1);
+}
+
+static NS_pool* growPool(NS_pool* pool) {
         const size_t new_size = pool->len * 2;
 
         LOG("Namespace grows from %lu to %lu entries, because it contains %lu variables", pool->len, new_size, pool->nb_entries);
 
-        Namespace *new_pool = calloc(offsetof(Namespace, pool) + sizeof(Variable)*new_size, 1);
+        NS_pool *new_pool = calloc(offsetof(NS_pool, pool) + sizeof(Variable)*new_size, 1);
         new_pool->len = new_size;
-        new_pool->enclosing = pool->enclosing;
         for (size_t i=0; i<pool->len; i++) {
                 Variable v = pool->pool[i];
                 if (v.key != NULL) raw_ns_set_value(new_pool, v);
@@ -44,63 +65,65 @@ static Namespace* growNamespace(Namespace* pool) {
         return new_pool;
 }
 
-Namespace* allocateNamespace(Namespace **const enclosing) {
-        Namespace *const pool = calloc(offsetof(Namespace, pool) + sizeof(Variable)*1, 1);
-        pool->len = 1;
-        pool->enclosing = enclosing;
-        pool->returned = OBJ_NONE;
-        return pool;
-}
-void freeNamespace(Namespace* pool) {
-        free(pool);
+static inline NS_pool* fuse_pools(Namespace *const ns) {
+        if (ns->ro != NULL) {
+                const size_t size = offsetof(NS_pool, pool) + sizeof(Variable) * ns->ro->len;
+                NS_pool* target = malloc(size);
+                memcpy(target, ns->ro, size);
+
+                while (target->nb_entries + ns->rw->nb_entries >= target->len)
+                        target = growPool(target);
+
+                for (size_t i=0; i<ns->rw->len; i++) {
+                        Variable v = ns->rw->pool[i];
+                        if (v.key != NULL) raw_ns_set_value(target, v);
+                }
+                return target;
+        }
+        else {
+                const size_t size = offsetof(NS_pool, pool) + sizeof(Variable) * ns->rw->len;
+                NS_pool *const target = malloc(size);
+                memcpy(target, ns->rw, size);
+                return target;
+        }
 }
 
-void ns_set_value(Namespace **const pool, char *const key, Object value) {
-        if ((*pool)->len * GROW_THRESHHOLD <= ((*pool)->nb_entries+1))
-                *pool = growNamespace(*pool);
-        raw_ns_set_value(*pool, (Variable){.key=key, .value=value});
+Namespace allocateNamespace(Namespace *const enclosing) {
+        static const size_t ns_start_len = 1;
+
+        Namespace new;
+
+        new.rw = calloc(offsetof(NS_pool, pool) + sizeof(Variable) * ns_start_len, 1);
+        new.rw->len = ns_start_len;
+
+        if (enclosing == NULL) new.ro = NULL;
+        else new.ro = fuse_pools(enclosing);
+        new.returned = OBJ_NONE;
+
+        return new;
+}
+void freeNamespace(Namespace* ns) {
+        free(ns->ro);
+        free(ns->rw);
 }
 
-Object* ns_get_value(Namespace *const pool, const char* key) {
-        LOG("Trying to get value %s", key);
-        const hash_t mask = pool->len - 1;
-        hash_t index = mask & hash(key);
-        Variable* v;
-        do {
-                v = &(pool->pool[(index++)&mask]);
-                if (v->key == key) {
-                        LOG("Found");
-                        return &(v->value);
-                }
-                if (!BUCKET_FULL(*v)) {
-                        if (pool->enclosing != NULL) {
-                                LOG("Recursing");
-                                return ns_get_value(*(pool->enclosing), key);
-                        }
-                        else {
-                                LOG("Not found");
-                                return NULL;
-                        }
-                }
-        } while (1);
+void ns_set_value(Namespace *const ns, char *const key, Object value) {
+        static const float grow_threshhold = 0.8;
+        if (ns->rw->len * grow_threshhold <= (ns->rw->nb_entries+1))
+                ns->rw = growPool(ns->rw);
+
+        raw_ns_set_value(ns->rw, (Variable){.key=key, .value=value});
 }
 
-Object* ns_get_rw_value(Namespace *const pool, const char* key) {
-        LOG("Trying to get value %s", key);
-        const hash_t mask = pool->len - 1;
-        hash_t index = mask & hash(key);
-        Variable* v;
-        do {
-                v = &(pool->pool[(index++)&mask]);
-                if (v->key == key) {
-                        LOG("Found");
-                        return &(v->value);
-                }
-                if (!BUCKET_FULL(*v)) {
-                        return NULL;
-                }
-        } while (1);
+Object* ns_get_value(Namespace *const ns, const char* key) {
+        if (ns->ro == NULL) return raw_ns_get_value(ns->rw, key);
+
+        Object* value = NULL;
+        if (value == NULL) value = raw_ns_get_value(ns->rw, key);
+        if (value == NULL) value = raw_ns_get_value(ns->ro, key);
+        return value;
 }
 
-#undef BUCKET_FULL
-#undef GROW_THRESHHOLD
+Object* ns_get_rw_value(Namespace *const ns, const char* key) {
+        return raw_ns_get_value(ns->rw, key);
+}
