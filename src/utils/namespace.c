@@ -85,5 +85,22 @@ Object* ns_get_value(Namespace *const pool, const char* key) {
         } while (1);
 }
 
+Object* ns_get_rw_value(Namespace *const pool, const char* key) {
+        LOG("Trying to get value %s", key);
+        const hash_t mask = pool->len - 1;
+        hash_t index = mask & hash(key);
+        Variable* v;
+        do {
+                v = &(pool->pool[(index++)&mask]);
+                if (v->key == key) {
+                        LOG("Found");
+                        return &(v->value);
+                }
+                if (!BUCKET_FULL(*v)) {
+                        return NULL;
+                }
+        } while (1);
+}
+
 #undef BUCKET_FULL
 #undef GROW_THRESHHOLD

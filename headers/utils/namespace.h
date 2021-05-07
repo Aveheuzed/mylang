@@ -27,5 +27,6 @@ void freeNamespace(Namespace* pool);
 
 void ns_set_value(Namespace **const pool, char *const key, Object value);
 Object* ns_get_value(Namespace *const pool, const char* key);
+Object* ns_get_rw_value(Namespace *const pool, const char* key);
 
 #endif

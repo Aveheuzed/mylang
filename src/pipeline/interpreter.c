@@ -523,12 +523,7 @@ static Object interpret_iadd(const Node* root, Namespace **const ns) {
                 },
         };
 
-        // we must isolate the current namespace, because we don't want to write into an enclosing one, juste like `=`.
-        Namespace ** enclosing = (**ns).enclosing;
-        (**ns).enclosing = NULL;
-
-        Object* target = ns_get_value(*ns, root->operands[0].nd->token.tok.source);
-        (**ns).enclosing = enclosing;
+        Object* target = ns_get_rw_value(*ns, root->operands[0].nd->token.tok.source);
         if (target == NULL) {
                 RuntimeError(root->token);
                 return ERROR;
@@ -591,11 +586,7 @@ static Object interpret_isub(const Node* root, Namespace **const ns) {
                 },
         };
 
-        Namespace ** enclosing = (**ns).enclosing;
-        (**ns).enclosing = NULL;
-
-        Object* target = ns_get_value(*ns, root->operands[0].nd->token.tok.source);
-        (**ns).enclosing = enclosing;
+        Object* target = ns_get_rw_value(*ns, root->operands[0].nd->token.tok.source);
         if (target == NULL) {
                 RuntimeError(root->token);
                 return ERROR;
@@ -660,11 +651,7 @@ static Object interpret_imul(const Node* root, Namespace **const ns) {
                 },
         };
 
-        Namespace ** enclosing = (**ns).enclosing;
-        (**ns).enclosing = NULL;
-
-        Object* target = ns_get_value(*ns, root->operands[0].nd->token.tok.source);
-        (**ns).enclosing = enclosing;
+        Object* target = ns_get_rw_value(*ns, root->operands[0].nd->token.tok.source);
         if (target == NULL) {
                 RuntimeError(root->token);
                 return ERROR;
@@ -734,11 +721,7 @@ static Object interpret_idiv(const Node* root, Namespace **const ns) {
                 },
         };
 
-        Namespace ** enclosing = (**ns).enclosing;
-        (**ns).enclosing = NULL;
-
-        Object* target = ns_get_value(*ns, root->operands[0].nd->token.tok.source);
-        (**ns).enclosing = enclosing;
+        Object* target = ns_get_rw_value(*ns, root->operands[0].nd->token.tok.source);
         if (target == NULL) {
                 RuntimeError(root->token);
                 return ERROR;
