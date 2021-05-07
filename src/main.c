@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
                         return EXIT_FAILURE;
         }
         parser_info psinfo = mk_parser_info(source_code);
-        Namespace ns = allocateNamespace(NULL);
+        Namespace ns = allocateNamespace();
 
         declare_variable(&psinfo, &ns, "print", (Object){.type=TYPE_NATIVEF, .natfunval=&print_value});
         declare_variable(&psinfo, &ns, "clock", (Object){.type=TYPE_NATIVEF, .natfunval=&native_clock});
@@ -44,6 +44,7 @@ int main(int argc, char* argv[]) {
 
         while (interpretStatement(&psinfo, &ns) == OK_OK);
 
+        freeNamespace(&ns);
         del_parser_info(psinfo);
 
         return EXIT_SUCCESS;

@@ -480,21 +480,25 @@ static Object interpretCall(const Node* root, Namespace *const ns) {
                                 ArityError(argc, root->operands[0].len-1);
                                 return ERROR;
                         }
-                        Namespace new_ns = allocateNamespace(ns);
+
+                        pushNamespace(ns);
                         for (uintptr_t iarg=0; iarg<argc; iarg++) {
                                 char* key = funcnode.funval->arguments[iarg];
                                 Object value = interpretExpression(root->operands[iarg+2].nd, ns);
                                 ERROR_GUARD(value);
-                                ns_set_value(&new_ns, key, value);
+                                ns_set_value(ns, key, value);
                         }
+                        const errcode code = _interpretStatement(funcnode.funval->body, ns);
+                        popNamespace(ns);
 
-                        /* Using _code_, we could tell wether the function returned or not (OK_OK vs OK_ABORT).
-                        We don't need to, though. */
-                        const errcode code = _interpretStatement(funcnode.funval->body, &new_ns);
-                        if (code == ERROR_ABORT) return ERROR;
-                        Object result = new_ns.returned;
-                        freeNamespace(&new_ns);
-                        return result;
+                        switch (code) {
+                                case OK_OK:
+                                return OBJ_NONE;
+                                case OK_ABORT:
+                                return ns->staging;
+                                case ERROR_ABORT:
+                                return ERROR;
+                        }
                 }
                 default:
                         TypeError(root->token);
@@ -798,7 +802,7 @@ static errcode interpretNop(const Node* root, Namespace *const ns) {
 static errcode interpret_return(const Node* root, Namespace *const ns) {
         Object value = interpretExpression(root->operands[0].nd, ns);
         if (value.type == TYPE_ERROR) return ERROR_ABORT;
-        ns->returned = value;
+        ns->staging = value;
         return OK_ABORT;
 }
 
