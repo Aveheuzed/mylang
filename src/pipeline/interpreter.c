@@ -481,7 +481,7 @@ static Object interpretCall(const Node* root, Namespace *const ns) {
                                 return ERROR;
                         }
 
-                        pushNamespace(ns);
+                        size_t ns_len = pushNamespace(ns);
                         for (uintptr_t iarg=0; iarg<argc; iarg++) {
                                 char* key = funcnode.funval->arguments[iarg];
                                 Object value = interpretExpression(root->operands[iarg+2].nd, ns);
@@ -489,7 +489,7 @@ static Object interpretCall(const Node* root, Namespace *const ns) {
                                 ns_set_value(ns, key, value);
                         }
                         const errcode code = _interpretStatement(funcnode.funval->body, ns);
-                        popNamespace(ns);
+                        popNamespace(ns, ns_len);
 
                         switch (code) {
                                 case OK_OK:

@@ -24,7 +24,8 @@ Namespace allocateNamespace(void) {
         new.values = calloc(sizeof(new.values[0]), ns_start_len);
         new.nb_entries = 0;
         new.len = ns_start_len;
-        new.current_level = 0;
+
+        pushNamespace(&new);
 
         return new;
 }
@@ -36,8 +37,7 @@ void freeNamespace(Namespace* ns) {
 void ns_set_value(Namespace *const ns, char *const key, Object value) {
         if (ns->len <= ns->nb_entries) growNS(ns);
 
-        ns->keys[ns->nb_entries].key = key;
-        ns->keys[ns->nb_entries].level = ns->current_level;
+        ns->keys[ns->nb_entries] = key;
         ns->values[ns->nb_entries] = value;
 
         ns->nb_entries++;
@@ -48,7 +48,7 @@ Object* ns_get_value(Namespace *const ns, const char* key) {
 
         do {
                 entry--;
-                if (ns->keys[entry].key == key) return &(ns->values[entry]);
+                if (ns->keys[entry] == key) return &(ns->values[entry]);
         } while (entry != 0);
 
         return NULL;
@@ -59,20 +59,19 @@ Object* ns_get_rw_value(Namespace *const ns, const char* key) {
 
         do {
                 entry--;
-                if (ns->keys[entry].level < ns->current_level) break;
-                if (ns->keys[entry].key == key) return &(ns->values[entry]);
+                if (ns->keys[entry] == NULL) break;
+                if (ns->keys[entry] == key) return &(ns->values[entry]);
         } while (entry != 0);
 
         return NULL;
 }
 
-void pushNamespace(Namespace *const ns) {
-        ns->current_level++;
+size_t pushNamespace(Namespace *const ns) {
+        if (ns->len <= ns->nb_entries) growNS(ns);
+        ns->nb_entries++;
+        ns->keys[ns->nb_entries] = NULL;
+        return ns->nb_entries-1;
 }
-void popNamespace(Namespace *const ns) {
-        ns->current_level--;
-        while (ns->keys[ns->nb_entries-1].level > ns->current_level) {
-                ns->nb_entries--;
-        }
-        // for (ns->current_level-- ; ns->keys[ns->nb_entries-1].level > ns->current_level ; ns->nb_entries--);
+void popNamespace(Namespace *const ns, size_t restore) {
+        ns->nb_entries = restore;
 }
