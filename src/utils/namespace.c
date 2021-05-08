@@ -35,6 +35,17 @@ void freeNamespace(Namespace* ns) {
 }
 
 void ns_set_value(Namespace *const ns, char *const key, Object value) {
+        // tunable according to your cache size
+        static const unsigned lookupbuffer = 64/(2*sizeof(ns->keys[0]));
+
+        for (unsigned i=0; i<lookupbuffer; i++) {
+                if (ns->keys[ns->nb_entries-1-i] == NULL) break;
+                if (ns->keys[ns->nb_entries-1-i] == key) {
+                        ns->values[ns->nb_entries-1-i] = value;
+                        return;
+                }
+        }
+
         if (ns->len <= ns->nb_entries) growNS(ns);
 
         ns->keys[ns->nb_entries] = key;
