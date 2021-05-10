@@ -5,7 +5,7 @@
 
 #include "headers/pipeline/parser.h"
 #include "headers/utils/object.h"
-#include "headers/utils/container.h"
+#include "headers/utils/string.h"
 
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 

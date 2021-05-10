@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stddef.h>
 
-#include "headers/utils/container.h"
+#include "headers/utils/string.h"
 
 //TODO: implement a gc
 void free_string(ObjString* container) {
