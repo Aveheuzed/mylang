@@ -78,7 +78,10 @@ Object tostring(const uintptr_t argc, const Object* obj) {
                 case TYPE_STRING:
                         return *obj;
                 case TYPE_NATIVEF:
-                        len = snprintf(result, buflen, "<function>");
+                        len = snprintf(result, buflen, "<built-in function>");
+                        break;
+                case TYPE_USERF:
+                        len = snprintf(result, buflen, "<user-defined function>");
                         break;
                 default:
                         return ERROR;

@@ -6,6 +6,7 @@
 #include "headers/pipeline/parser.h"
 #include "headers/utils/object.h"
 #include "headers/utils/string.h"
+#include "headers/utils/function.h"
 
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 
@@ -40,6 +41,7 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_LITERAL_FALSE] = 0,
         [OP_LITERAL_NONE] = 0,
         [OP_LITERAL_STR] = 1,
+        [OP_LITERAL_FUNCTION] = 1,
 
         [OP_UNARY_PLUS] = 1,
         [OP_UNARY_MINUS] = 1,
@@ -199,6 +201,40 @@ static Node* identifier(parser_info *const state) {
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_VARIABLE);
         *new = (Node) {.token=consume(state), .operator=OP_VARIABLE};
         return new;
+}
+static Node* function(parser_info *const state) {
+        Node* fct = ALLOCATE_SIMPLE_NODE(OP_LITERAL_FUNCTION);
+
+        fct->token = consume(state);
+        fct->operator = OP_LITERAL_FUNCTION;
+
+        if (getTtype(state) != TOKEN_POPEN) return infixParseError(state, fct);
+        consume(state);
+
+        ObjFunction* func = createFunction(0);
+        func->arity = 0;
+
+        while (getTtype(state) != TOKEN_PCLOSE) {
+                if (getTtype(state) == TOKEN_IDENTIFIER) {
+                        func = reallocFunction(func, func->arity+1);
+                        func->arguments[func->arity++] = consume(state).tok.source;
+                }
+
+                if (getTtype(state) == TOKEN_COMMA) consume(state);
+                else if (getTtype(state) != TOKEN_PCLOSE) {
+                        free_function(func);
+                        return infixParseError(state, fct);
+                }
+        }
+        consume(state);
+
+        if ((func->body = parse_statement(state)) == NULL) {
+                freeNode(fct);
+                free_function(func);
+                return NULL;
+        }
+        fct->operands[0].obj.funval = func;
+        return fct;
 }
 
 // --------------------- infix parse functions ---------------------------------
@@ -483,6 +519,7 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                 [TOKEN_TRUE] = boolean,
                 [TOKEN_FALSE] = boolean,
                 [TOKEN_NONE] = none,
+                [TOKEN_FUNC] = function,
         };
         static const BinaryParseRule infixRules[TOKEN_EOF+1] = {
                 [TOKEN_PLUS] = {.parse_fn=binary_plus, .precedence=PREC_ADD},

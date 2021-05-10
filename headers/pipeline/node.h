@@ -6,6 +6,7 @@
 
 typedef enum {
         // no operand
+        OP_LITERAL_FUNCTION,
         OP_LITERAL_INT,
         OP_LITERAL_FLOAT,
         OP_LITERAL_TRUE,

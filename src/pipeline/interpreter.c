@@ -41,6 +41,9 @@ static Object interpretFloat(const Node* root, Namespace **const ns) {
 static Object interpretStr(const Node* root, Namespace **const ns) {
         return (Object) {.type=TYPE_STRING, .strval=root->operands[0].obj.strval};
 }
+static Object interpretFunction(const Node* root, Namespace **const ns) {
+        return (Object) {.type=TYPE_USERF, .funval=root->operands[0].obj.funval};
+}
 static Object interpretUnaryPlus(const Node* root, Namespace **const ns) {
         Object operand = interpretExpression(root->operands[0].nd, ns);
         ERROR_GUARD(operand);
@@ -457,22 +460,42 @@ static Object interpretLe(const Node* root, Namespace **const ns) {
 static Object interpretCall(const Node* root, Namespace **const ns) {
         Object funcnode = interpretExpression(root->operands[1].nd, ns);
         ERROR_GUARD(funcnode);
-        if (funcnode.type != TYPE_NATIVEF) {
-                TypeError(root->token);
-                return ERROR;
+        switch (funcnode.type) {
+                case TYPE_NATIVEF:
+                {
+                        const uintptr_t argc = root->operands[0].len-1;
+
+                        Object *const argv = alloca(argc*sizeof(Object));
+                        for (uintptr_t iarg=0; iarg<argc; iarg++) {
+                                argv[iarg] = interpretExpression(root->operands[iarg+2].nd, ns);
+                                ERROR_GUARD(argv[iarg]);
+                        }
+                        Object result = funcnode.natfunval(argc, argv);
+                        if (result.type == TYPE_ERROR) RuntimeError(root->token);
+                        return result;
+                }
+                case TYPE_USERF: {
+                        const uintptr_t argc = funcnode.funval->arity;
+                        if (argc != root->operands[0].len-1) {
+                                ArityError(argc, root->operands[0].len-1);
+                                return ERROR;
+                        }
+                        Namespace* new_ns = allocateNamespace(ns);
+                        for (uintptr_t iarg=0; iarg<argc; iarg++) {
+                                char* key = funcnode.funval->arguments[iarg];
+                                Object value = interpretExpression(root->operands[iarg+2].nd, ns);
+                                ERROR_GUARD(value);
+                                ns_set_value(&new_ns, key, value);
+                        }
+                        const int result = _interpretStatement(funcnode.funval->body, &new_ns);
+                        freeNamespace(new_ns);
+                        if (!result) return ERROR;
+                        return OBJ_NONE;
+                }
+                default:
+                        TypeError(root->token);
+                        return ERROR;
         }
-
-
-        const uintptr_t argc = root->operands[0].len-1;
-
-        Object *const argv = alloca(argc*sizeof(Object));
-        for (uintptr_t iarg=0; iarg<argc; iarg++) {
-                argv[iarg] = interpretExpression(root->operands[iarg+2].nd, ns);
-                ERROR_GUARD(argv[iarg]);
-        }
-        Object result = funcnode.natfunval(argc, argv);
-        if (result.type == TYPE_ERROR) RuntimeError(root->token);
-        return result;
 }
 static Object interpret_iadd(const Node* root, Namespace **const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
@@ -790,6 +813,7 @@ static Object interpretExpression(const Node* root, Namespace **const ns) {
         static const ExprInterpretFn interpreters[LEN_OPERATORS] = {
                 [OP_VARIABLE] = interpretVariable,
 
+                [OP_LITERAL_FUNCTION] = interpretFunction,
                 [OP_LITERAL_INT] = interpretInt,
                 [OP_LITERAL_FLOAT] = interpretFloat,
                 [OP_LITERAL_TRUE] = interpretTrue,
