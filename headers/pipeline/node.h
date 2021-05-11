@@ -40,6 +40,7 @@ typedef enum {
         OP_LE,
 
         OP_CALL,
+        OP_RETURN,
 
         OP_BLOCK,
         OP_IFELSE,

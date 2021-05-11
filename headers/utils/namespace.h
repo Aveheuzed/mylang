@@ -3,28 +3,24 @@
 
 #include <stddef.h>
 
-#include "headers/utils/hash.h"
 #include "headers/utils/object.h"
 
-typedef struct Variable {
-        /* Since identifiers are internalized, we use the pointer to the string
-        to compute the hash digest for the identifier.
-        This way, we don't need to iterate over the string.*/
-        char* key;
-        Object value;
-} Variable;
-
 typedef struct Namespace {
-        size_t len; // guaranteed to be a power of 2
+        char const** keys; // may be NULL, indicating NS push
+        Object* values;
         size_t nb_entries;
-        struct Namespace** enclosing;
-        Variable pool[];
+        size_t len;
+        Object staging;
 } Namespace;
 
-Namespace* allocateNamespace(Namespace **const enclosing);
-void freeNamespace(Namespace* pool);
+Namespace allocateNamespace(void);
+void freeNamespace(Namespace* ns);
 
-void ns_set_value(Namespace **const pool, char *const key, Object value);
-Object* ns_get_value(Namespace *const pool, const char* key);
+size_t pushNamespace(Namespace *const ns);
+void popNamespace(Namespace *const ns, size_t restore);
+
+void ns_set_value(Namespace *const ns, char *const key, Object value);
+Object* ns_get_value(Namespace *const ns, const char* key);
+Object* ns_get_rw_value(Namespace *const pool, const char* key);
 
 #endif

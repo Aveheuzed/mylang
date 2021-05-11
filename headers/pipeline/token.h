@@ -41,6 +41,7 @@ typedef enum {
         TOKEN_ELSE,
         TOKEN_WHILE,
         TOKEN_FUNC,
+        TOKEN_RETURN,
 
         TOKEN_ERROR,
         TOKEN_EOF, // please don't put new token types below here

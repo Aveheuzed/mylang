@@ -46,6 +46,7 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_UNARY_PLUS] = 1,
         [OP_UNARY_MINUS] = 1,
         [OP_INVERT] = 1,
+        [OP_RETURN] = 1,
 
         [OP_SUM] = 2,
         [OP_DIFFERENCE] = 2,
@@ -108,7 +109,7 @@ void freeNode(Node* node) {
         free(node);
 }
 inline parser_info mk_parser_info(FILE* file) {
-        return (parser_info) {.lxinfo=mk_lexer_info(file), .stale=1};
+        return (parser_info) {.lxinfo=mk_lexer_info(file), .stale=1, .func_def_depth=0};
 }
 inline void del_parser_info(parser_info prsinfo) {
         del_lexer_info(prsinfo.lxinfo);
@@ -225,11 +226,13 @@ static Node* function(parser_info *const state) {
         }
         consume(state);
 
+        state->func_def_depth++;
         if ((func->body = parse_statement(state)) == NULL) {
                 freeNode(fct);
                 free_function(func);
                 return NULL;
         }
+        state->func_def_depth--;
         fct->operands[0].obj.funval = func;
         return fct;
 }
@@ -643,6 +646,27 @@ static Node* empty_statement(parser_info *const state) {
         return new;
 }
 
+static Node* return_statement(parser_info *const state) {
+        LOG("in");
+        if (!state->func_def_depth) return prefixParseError(state);
+
+        Node* stmt = ALLOCATE_SIMPLE_NODE(OP_RETURN);
+        *stmt = (Node) {.token=state->last_produced, .operator=OP_RETURN};
+        consume(state);
+
+        Node* arg = simple_statement(state);
+        if (arg == NULL) {
+                freeNode(stmt);
+                return NULL;
+        }
+        else {
+                stmt->operands[0].nd = arg;
+                LOG("out");
+                return stmt;
+        }
+
+}
+
 // ------------------ end statement handlers -----------------------------------
 
 Node* parse_statement(parser_info *const state) {
@@ -651,6 +675,7 @@ Node* parse_statement(parser_info *const state) {
                 [TOKEN_IF] = ifelse_statement,
                 [TOKEN_WHILE] = while_statement,
                 [TOKEN_SEMICOLON] = empty_statement,
+                [TOKEN_RETURN] = return_statement,
         };
 
         LOG("Building a new statement");
