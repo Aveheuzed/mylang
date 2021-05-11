@@ -875,5 +875,7 @@ static int _interpretStatement(const Node* root, Namespace **const ns) {
 int interpretStatement(parser_info *const prsinfo, Namespace **const ns) {
         LOG("Interpreting a new statement");
         Node* root = parse_statement(prsinfo);
-        return _interpretStatement(root, ns);
+        const int status = _interpretStatement(root, ns);
+        freeNode(root);
+        return status;
 }
