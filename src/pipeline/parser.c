@@ -105,9 +105,6 @@ void freeNode(Node* node) {
 
                 for (; index<nb; index++) freeNode(node->operands[index].nd);
         }
-        else if (node->operator == OP_LITERAL_STR) {
-                free_string(node->operands[0].obj.strval);
-        }
         free(node);
 }
 inline parser_info mk_parser_info(FILE* file) {
