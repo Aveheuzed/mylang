@@ -75,8 +75,7 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
 static inline void refresh(parser_info *const prsinfo) {
         // call to guarantee the last produced token is not stale
         if (prsinfo->stale) {
-                prsinfo->last_produced.pos = prsinfo->lxinfo.pos;
-                prsinfo->last_produced.tok = lex(&(prsinfo->lxinfo));
+                prsinfo->last_produced = lex(&(prsinfo->lxinfo));
                 prsinfo->stale = 0;
         }
 }

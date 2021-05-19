@@ -16,6 +16,6 @@ lexer_info mk_lexer_info(FILE* file);
 
 void del_lexer_info(lexer_info lxinfo);
 
-Token lex(lexer_info *const state);
+LocalizedToken lex(lexer_info *const state);
 
 #endif

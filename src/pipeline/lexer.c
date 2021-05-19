@@ -226,19 +226,20 @@ Token _lex(lexer_info *const state) {
         #undef ISBLANK
 }
 
-Token lex(lexer_info *const state) {
-        Localization l = state->pos;
-        Token tk = _lex(state);
-        while (tk.type == TOKEN_ERROR) {
-                SyntaxError((LocalizedToken){.pos=l, .tok=tk});
-                tk = _lex(state);
+LocalizedToken lex(lexer_info *const state) {
+        LocalizedToken tok;
+        tok.pos = state->pos;
+        tok.tok = _lex(state);
+        while (tok.tok.type == TOKEN_ERROR) {
+                SyntaxError(tok);
+                tok.tok = _lex(state);
         }
-        intern_token(state, &tk);
-        if (tk.type == TOKEN_IDENTIFIER) {
-                detect_keywords(&tk);
+        intern_token(state, &(tok.tok));
+        if (tok.tok.type == TOKEN_IDENTIFIER) {
+                detect_keywords(&(tok.tok));
         }
 
-        LOG("Producing type-%.2d token: `%.*s`. (line %u[%u:%u])", tk.type, tk.length, tk.source, l.line, l.column, l.column+tk.length-1);
+        LOG("Producing type-%.2d token: `%.*s`. (line %u[%u:%u])", tok.tok.type, tok.tok.length, tok.tok.source, tok.pos.line, tok.pos.column, tok.pos.column+tok.tok.length-1);
 
-        return tk;
+        return tok;
 }
