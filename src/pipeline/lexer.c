@@ -231,7 +231,7 @@ LocalizedToken lex(lexer_info *const state) {
         tok.pos = state->pos;
         tok.tok = _lex(state);
         while (tok.tok.type == TOKEN_ERROR) {
-                SyntaxError(tok);
+                Error(&tok, "Syntax error: unrecognized token.\n");
                 tok.tok = _lex(state);
         }
         intern_token(state, &(tok.tok));

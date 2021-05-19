@@ -7,6 +7,7 @@
 #include "headers/utils/object.h"
 #include "headers/utils/string.h"
 #include "headers/utils/function.h"
+#include "headers/utils/error.h"
 
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 
@@ -117,8 +118,7 @@ inline void del_parser_info(parser_info prsinfo) {
 // --------------------- prefix parse functions --------------------------------
 
 static Node* prefixParseError(parser_info *const state) {
-        const LocalizedToken tk = state->last_produced;
-        fprintf(stderr, "Parse error at line %u, column %u, at \"%.*s\"\n", tk.pos.line, tk.pos.column, tk.tok.length, tk.tok.source);
+        Error(&(state->last_produced), "Syntax error: unexpected token at this place.\n");
         return NULL;
 }
 static Node* unary_plus(parser_info *const state) {
@@ -239,9 +239,7 @@ static Node* function(parser_info *const state) {
 // --------------------- infix parse functions ---------------------------------
 
 static Node* infixParseError(parser_info *const state, Node *const root) {
-        const LocalizedToken tk = state->last_produced;
-        fprintf(stderr, "Parse error at line %u, column %u, at \"%.*s\"\n", tk.pos.line, tk.pos.column, tk.tok.length, tk.tok.source);
-        freeNode(root);
+        Error(&(state->last_produced), "Syntax error: unexpected token at this place.\n");
         return NULL;
 }
 static Node* binary_plus(parser_info *const state, Node *const root) {
@@ -545,21 +543,16 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
 
         Node* root;
 
-        {
-                const UnaryParseFn prefrule = prefixRules[getTtype(state)];
-                if (prefrule == NULL) return prefixParseError(state);
-                else root = prefrule(state);
-        }
+        const UnaryParseFn prefrule = prefixRules[getTtype(state)];
+        if (prefrule == NULL) return prefixParseError(state);
+        else root = prefrule(state);
 
-        {
-                BinaryParseRule rule;
-                while (root != NULL
-                        && precedence < (rule=infixRules[getTtype(state)]).precedence
-                ) {
-                        if (rule.parse_fn == NULL) return infixParseError(state, root); // should be unreachable?
-                        root = rule.parse_fn(state, root);
+        BinaryParseRule rule;
+        while (root != NULL
+                && precedence < (rule=infixRules[getTtype(state)]).precedence) {
+                if (rule.parse_fn == NULL) return infixParseError(state, root);
+                root = rule.parse_fn(state, root);
         }
-}
 
         return root;
 }
@@ -570,8 +563,7 @@ static Node* simple_statement(parser_info *const state) {
         Node* stmt = parseExpression(state, PREC_NONE);
         if (stmt == NULL) return NULL;
         if (getTtype(state) != TOKEN_SEMICOLON) {
-                LocalizedToken tk = state->last_produced;
-                fprintf(stderr, "line %u, column %u, at \"%.*s\": expected ';'.\n", tk.pos.line, tk.pos.column, tk.tok.length, tk.tok.source);
+                Error(&(state->last_produced), "Syntax error: expected a `;`.\n");
                 freeNode(stmt);
                 stmt = NULL;
         } else {

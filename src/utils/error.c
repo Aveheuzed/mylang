@@ -1,16 +1,20 @@
 #include <stdio.h>
+#include <stdarg.h>
 
 #include "headers/utils/error.h"
 
-void TypeError(const LocalizedToken t) {
-        fprintf(stderr, "Incompatible types for %s.\n", t.tok.source);
+void Error(const LocalizedToken* where, const char* message, ...) {
+        va_list params;
+        va_start(params, message);
+        fprintf(stderr, "Error at line %u, column %u, at `%s`: ", where->pos.line, where->pos.column, where->tok.source);
+        vfprintf(stderr, message, params);
+        va_end(params);
 }
-void SyntaxError(const LocalizedToken t) {
-        fprintf(stderr, "Invalid syntax on line %u at \"%*s\".\n", t.pos.line, t.tok.length, t.tok.source);
-}
-void RuntimeError(const LocalizedToken t) {
-        fprintf(stderr, "Runtime error on line %u at \"%*s\".\n", t.pos.line, t.tok.length, t.tok.source);
-}
-void ArityError(const uintptr_t expected, const uintptr_t actual) {
-        fprintf(stderr, "Arity error : expected %lu argument(s), got %lu.\n", expected, actual);
+
+void Warning(const LocalizedToken* where, const char* message, ...) {
+        va_list params;
+        va_start(params, message);
+        fprintf(stderr, "Warning at line %u, column %u, at `%s`: ", where->pos.line, where->pos.column, where->tok.source);
+        vfprintf(stderr, message, params);
+        va_end(params);
 }

@@ -24,10 +24,7 @@ Object print_value(const uintptr_t argc, const Object* obj) {
 }
 
 Object native_clock(const uintptr_t argc, const Object* obj) {
-        if (argc) {
-                ArityError(0, argc);
-                return ERROR;
-        }
+        if (argc) return ERROR;
         return (Object) {.type=TYPE_FLOAT, .floatval=((double)clock())/(CLOCKS_PER_SEC)};
 }
 
@@ -47,7 +44,6 @@ Object input(const uintptr_t argc, const Object* obj) {
                         free(string);
                         break;
                 default:
-                        ArityError(0, argc);
                         break;
         }
         return result;
@@ -55,10 +51,7 @@ Object input(const uintptr_t argc, const Object* obj) {
 }
 
 Object tostring(const uintptr_t argc, const Object* obj) {
-        if (argc != 1) {
-                ArityError(0, argc);
-                return ERROR;
-        }
+        if (argc != 1) return ERROR;
         static const size_t buflen = 256;
         char result[buflen];
         int len;
@@ -89,10 +82,7 @@ Object tostring(const uintptr_t argc, const Object* obj) {
         return (Object){.type=TYPE_STRING, .strval=makeString(result, len)};
 }
 Object tobool(const uintptr_t argc, const Object* obj) {
-        if (argc != 1) {
-                ArityError(0, argc);
-                return ERROR;
-        }
+        if (argc != 1) return ERROR;
         switch (obj->type) {
                 case TYPE_INT:
                         return obj->intval ? OBJ_TRUE : OBJ_FALSE;
@@ -111,10 +101,7 @@ Object tobool(const uintptr_t argc, const Object* obj) {
         }
 }
 Object toint(const uintptr_t argc, const Object* obj) {
-        if (argc != 1) {
-                ArityError(0, argc);
-                return ERROR;
-        }
+        if (argc != 1) return ERROR;
         switch (obj->type) {
                 case TYPE_INT:
                         return *obj;
@@ -140,10 +127,7 @@ Object toint(const uintptr_t argc, const Object* obj) {
         }
 }
 Object tofloat(const uintptr_t argc, const Object* obj) {
-        if (argc != 1) {
-                ArityError(0, argc);
-                return ERROR;
-        }
+        if (argc != 1) return ERROR;
         switch (obj->type) {
                 case TYPE_INT:
                         return (Object) {.type=TYPE_FLOAT, .floatval=obj->intval};

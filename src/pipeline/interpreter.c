@@ -18,7 +18,7 @@ typedef errcode (*StmtInterpretFn)(const Node* root, Namespace *const ns);
 static Object interpretVariable(const Node* root, Namespace *const ns) {
         Object* obj = ns_get_value(ns, root->token.tok.source);
         if (obj == NULL) {
-                RuntimeError(root->token);
+                Error(&(root->token), "Undefined variable.\n");
                 return ERROR;
         }
         else return *obj;
@@ -54,8 +54,11 @@ static Object interpretUnaryPlus(const Node* root, Namespace *const ns) {
                 case TYPE_FLOAT:
                         return operand;
                 case TYPE_STRING:
-                        TypeError(root->token); return ERROR;
-                default: TypeError(root->token); return ERROR;
+                        Error(&(root->token), "TypeError: +str is illegal.\n");
+                        return ERROR;
+                default:
+                        Error(&(root->token), "TypeError: +___ is illegal.\n");
+                        return ERROR;
         }
 }
 static Object interpretUnaryMinus(const Node* root, Namespace *const ns) {
@@ -71,8 +74,11 @@ static Object interpretUnaryMinus(const Node* root, Namespace *const ns) {
                         operand.floatval *= -1;
                         return operand;
                 case TYPE_STRING:
-                        TypeError(root->token); return ERROR;
-                default: TypeError(root->token); return ERROR;
+                        Error(&(root->token), "TypeError: -str is illegal.\n");
+                        return ERROR;
+                default:
+                        Error(&(root->token), "TypeError: -___ is illegal.\n");
+                        return ERROR;
         }
 }
 static Object interpretSum(const Node* root, Namespace *const ns) {
@@ -123,7 +129,8 @@ static Object interpretSum(const Node* root, Namespace *const ns) {
         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval+opB.floatval)};
 
         error:
-        TypeError(root->token); return ERROR;
+        Error(&(root->token), "TypeError: ___+___ is illegal.\n");
+        return ERROR;
 }
 static Object interpretDifference(const Node* root, Namespace *const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
@@ -167,7 +174,8 @@ static Object interpretDifference(const Node* root, Namespace *const ns) {
         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval-opB.floatval)};
 
         error:
-        TypeError(root->token); return ERROR;
+        Error(&(root->token), "TypeError: ___-___ is illegal.\n");
+        return ERROR;
 }
 static Object interpretProduct(const Node* root, Namespace *const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
@@ -225,7 +233,8 @@ static Object interpretProduct(const Node* root, Namespace *const ns) {
         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval*opB.floatval)};
 
         error:
-        TypeError(root->token); return ERROR;
+        Error(&(root->token), "TypeError: ___*___ is illegal.\n");
+        return ERROR;
 }
 static Object interpretDivision(const Node* root, Namespace *const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
@@ -269,7 +278,8 @@ static Object interpretDivision(const Node* root, Namespace *const ns) {
         return (Object) {.type=TYPE_FLOAT, .floatval=(opA.floatval/opB.floatval)};
 
         error:
-        TypeError(root->token); return ERROR;
+        Error(&(root->token), "TypeError: ___/___ is illegal.\n");
+        return ERROR;
 }
 static Object interpretAffect(const Node* root, Namespace *const ns) {
         Object obj = interpretExpression(root->operands[1].nd, ns);
@@ -287,10 +297,14 @@ static Object interpretInvert(const Node* root, Namespace *const ns) {
                         operand.intval = !operand.intval;
                         return operand;
                 case TYPE_FLOAT:
-                        TypeError(root->token); return ERROR;
+                        Error(&(root->token), "TypeError: !float is illegal.\n");
+                        return ERROR;
                 case TYPE_STRING:
-                        TypeError(root->token); return ERROR;
-                default: TypeError(root->token); return ERROR;
+                        Error(&(root->token), "TypeError: !str is illegal.\n");
+                        return ERROR;
+                default:
+                        Error(&(root->token), "TypeError: !___ is illegal.\n");
+                        return ERROR;
         }
 }
 static Object interpretAnd(const Node* root, Namespace *const ns) {
@@ -298,14 +312,16 @@ static Object interpretAnd(const Node* root, Namespace *const ns) {
         ERROR_GUARD(operand);
         Object op_is_true = tobool(1, &operand);
         if (op_is_true.type == TYPE_ERROR) {
-                TypeError(root->token); return ERROR;
+                Error(&(root->token), "TypeError: can't cast ___ to bool.\n");
+                return ERROR;
         }
         else if (!op_is_true.intval) return operand;
         else {
                 operand = interpretExpression(root->operands[1].nd, ns);
                 ERROR_GUARD(operand);
                 if (tobool(1, &operand).type == TYPE_ERROR) {
-                        TypeError(root->token); return ERROR;
+                        Error(&(root->token), "TypeError: can't cast ___ to bool.\n");
+                        return ERROR;
                 }
                 return operand;
         }
@@ -315,14 +331,16 @@ static Object interpretOr(const Node* root, Namespace *const ns) {
         ERROR_GUARD(operand);
         Object op_is_true = tobool(1, &operand);
         if (op_is_true.type == TYPE_ERROR) {
-                TypeError(root->token); return ERROR;
+                Error(&(root->token), "TypeError: can't cast ___ to bool.\n");
+                return ERROR;
         }
         else if (op_is_true.intval) return operand;
         else {
                 operand = interpretExpression(root->operands[1].nd, ns);
                 ERROR_GUARD(operand);
                 if (tobool(1, &operand).type == TYPE_ERROR) {
-                        TypeError(root->token); return ERROR;
+                        Error(&(root->token), "TypeError: can't cast ___ to bool.\n");
+                        return ERROR;
                 }
                 return operand;
         }
@@ -411,7 +429,8 @@ static Object interpretLt(const Node* root, Namespace *const ns) {
         return (Object) {.type=TYPE_BOOL, .intval=(opA.floatval<opB.floatval)};
 
         error:
-        TypeError(root->token); return ERROR;
+        Error(&(root->token), "TypeError: can't compare ___ with ___.\n");
+        return ERROR;
 }
 static Object interpretLe(const Node* root, Namespace *const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] = {
@@ -455,7 +474,8 @@ static Object interpretLe(const Node* root, Namespace *const ns) {
         return (Object) {.type=TYPE_BOOL, .intval=(opA.floatval<=opB.floatval)};
 
         error:
-        TypeError(root->token); return ERROR;
+        Error(&(root->token), "TypeError: can't compare ___ with ___.\n");
+        return ERROR;
 }
 static Object interpretCall(const Node* root, Namespace *const ns) {
         Object funcnode = interpretExpression(root->operands[1].nd, ns);
@@ -471,13 +491,13 @@ static Object interpretCall(const Node* root, Namespace *const ns) {
                                 ERROR_GUARD(argv[iarg]);
                         }
                         Object result = funcnode.natfunval(argc, argv);
-                        if (result.type == TYPE_ERROR) RuntimeError(root->token);
+                        if (result.type == TYPE_ERROR) Error(&(root->token), "Fatal error during call.\n");
                         return result;
                 }
                 case TYPE_USERF: {
                         const uintptr_t argc = funcnode.funval->arity;
                         if (argc != root->operands[0].len-1) {
-                                ArityError(argc, root->operands[0].len-1);
+                                Error(&(root->token), "ArityError: expected %lu parameters, got %lu\n.", argc, root->operands[0].len-1);
                                 return ERROR;
                         }
 
@@ -501,7 +521,7 @@ static Object interpretCall(const Node* root, Namespace *const ns) {
                         }
                 }
                 default:
-                        TypeError(root->token);
+                        Error(&(root->token), "TypeError: can't call a non-function.\n");
                         return ERROR;
         }
 }
@@ -529,7 +549,7 @@ static Object interpret_iadd(const Node* root, Namespace *const ns) {
 
         Object* target = ns_get_rw_value(ns, root->operands[0].nd->token.tok.source);
         if (target == NULL) {
-                RuntimeError(root->token);
+                Error(&(root->operands[0].nd->token), "Undefined variable.\n");
                 return ERROR;
         }
 
@@ -569,7 +589,8 @@ static Object interpret_iadd(const Node* root, Namespace *const ns) {
         // ns_set_value(ns, root->operands[0].nd->token.tok.source, *target);
 
         error:
-        TypeError(root->token); return ERROR;
+        Error(&(root->token), "TypeError: ___+=___ is illegal.\n");
+        return ERROR;
 }
 static Object interpret_isub(const Node* root, Namespace *const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
@@ -592,7 +613,7 @@ static Object interpret_isub(const Node* root, Namespace *const ns) {
 
         Object* target = ns_get_rw_value(ns, root->operands[0].nd->token.tok.source);
         if (target == NULL) {
-                RuntimeError(root->token);
+                Error(&(root->operands[0].nd->token), "Undefined variable.\n");
                 return ERROR;
         }
 
@@ -628,7 +649,8 @@ static Object interpret_isub(const Node* root, Namespace *const ns) {
         // ns_set_value(ns, root->operands[0].nd->token.tok.source, *target);
 
         error:
-        TypeError(root->token); return ERROR;
+        Error(&(root->token), "TypeError: ___-=___ is illegal.\n");
+        return ERROR;
 }
 static Object interpret_imul(const Node* root, Namespace *const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
@@ -657,7 +679,7 @@ static Object interpret_imul(const Node* root, Namespace *const ns) {
 
         Object* target = ns_get_rw_value(ns, root->operands[0].nd->token.tok.source);
         if (target == NULL) {
-                RuntimeError(root->token);
+                Error(&(root->operands[0].nd->token), "Undefined variable.\n");
                 return ERROR;
         }
 
@@ -704,7 +726,8 @@ static Object interpret_imul(const Node* root, Namespace *const ns) {
         // ns_set_value(ns, root->operands[0].nd->token.tok.source, *target);
 
         error:
-        TypeError(root->token); return ERROR;
+        Error(&(root->token), "TypeError: ___*=___ is illegal.\n");
+        return ERROR;
 }
 static Object interpret_idiv(const Node* root, Namespace *const ns) {
         static const void* dispatcher[LEN_OBJTYPES][LEN_OBJTYPES] =  {
@@ -727,7 +750,7 @@ static Object interpret_idiv(const Node* root, Namespace *const ns) {
 
         Object* target = ns_get_rw_value(ns, root->operands[0].nd->token.tok.source);
         if (target == NULL) {
-                RuntimeError(root->token);
+                Error(&(root->operands[0].nd->token), "Undefined variable.\n");
                 return ERROR;
         }
 
@@ -763,7 +786,8 @@ static Object interpret_idiv(const Node* root, Namespace *const ns) {
         // ns_set_value(ns, root->operands[0].nd->token.tok.source, *target);
 
         error:
-        TypeError(root->token); return ERROR;
+        Error(&(root->token), "TypeError: ___/=___ is illegal.\n");
+        return ERROR;
 }
 
 static errcode interpretBlock(const Node* root, Namespace *const ns) {
@@ -842,7 +866,7 @@ static Object interpretExpression(const Node* root, Namespace *const ns) {
 
         const ExprInterpretFn handler = interpreters[root->operator];
         if (handler == NULL) {
-                RuntimeError(root->token);
+                Error(&(root->token), "Fatal error.\n");
                 return ERROR;
         }
         return handler(root, ns);
