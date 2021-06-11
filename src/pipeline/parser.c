@@ -18,7 +18,6 @@ typedef enum Precedence {
         PREC_OR,
         PREC_AND,
         PREC_COMPARISON,
-        PREC_AFFECT,
         PREC_ADD,
         PREC_MUL,
         PREC_UNARY,
@@ -37,8 +36,9 @@ typedef struct ResolverRecord {
 
 typedef Node* (*StatementHandler)(parser_info *const state);
 typedef Node* (*UnaryParseFn)(parser_info *const state);
+typedef Node* (*BinaryParseFunction)(parser_info *const state, Node *const root);
 typedef struct BinaryParseRule {
-        Node* (*parse_fn)(parser_info *const state, Node *const root);
+        BinaryParseFunction parse_fn;
         Precedence precedence;
 } BinaryParseRule;
 
@@ -174,6 +174,22 @@ void mk_parser_info(parser_info *const prsinfo) {
 }
 void del_parser_info(parser_info *const prsinfo) {
         free_record(prsinfo->resolv);
+}
+
+static inline int is_affectation_target(const Node* node) {
+        return node->token.tok.type == TOKEN_IDENTIFIER;
+}
+
+static inline Node* semicolon_or_error(parser_info *const state, Node *const stmt) {
+        if (getTtype(state) != TOKEN_SEMICOLON) {
+                LocalizedToken tk = state->last_produced;
+                fprintf(stderr, "line %u, column %u, at \"%.*s\": expected ';'.\n", tk.pos.line, tk.pos.column, tk.tok.length, tk.tok.source);
+                freeNode(stmt);
+                return NULL;
+        } else {
+                consume(state);
+                return stmt;
+        }
 }
 
 // --------------------- prefix parse functions --------------------------------
@@ -471,7 +487,7 @@ static Node* affect(parser_info *const state, Node *const root) {
         if (root->operator != OP_VARIABLE) return infixParseError(state, root);
 
         const LocalizedToken operator = consume(state);
-        Node* operand = parseExpression(state, PREC_AFFECT-1);
+        Node* operand = parseExpression(state, PREC_NONE);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -522,7 +538,7 @@ static Node* iadd(parser_info *const state, Node *const root) {
         if (root->operator != OP_VARIABLE) return infixParseError(state, root);
 
         const LocalizedToken operator = consume(state);
-        Node* operand = parseExpression(state, PREC_ADD);
+        Node* operand = parseExpression(state, PREC_NONE);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -540,7 +556,7 @@ static Node* isub(parser_info *const state, Node *const root) {
         if (root->operator != OP_VARIABLE) return infixParseError(state, root);
 
         const LocalizedToken operator = consume(state);
-        Node* operand = parseExpression(state, PREC_ADD);
+        Node* operand = parseExpression(state, PREC_NONE);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -560,7 +576,7 @@ static Node* imul(parser_info *const state, Node *const root) {
         if (root->operator != OP_VARIABLE) return infixParseError(state, root);
 
         const LocalizedToken operator = consume(state);
-        Node* operand = parseExpression(state, PREC_MUL);
+        Node* operand = parseExpression(state, PREC_NONE);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -578,7 +594,7 @@ static Node* idiv(parser_info *const state, Node *const root) {
         if (root->operator != OP_VARIABLE) return infixParseError(state, root);
 
         const LocalizedToken operator = consume(state);
-        Node* operand = parseExpression(state, PREC_MUL);
+        Node* operand = parseExpression(state, PREC_NONE);
         if (operand == NULL) {
                 freeNode(root);
                 return NULL;
@@ -616,11 +632,6 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
                 [TOKEN_GT] = {.parse_fn=gt, .precedence=PREC_COMPARISON},
                 [TOKEN_LT] = {.parse_fn=lt, .precedence=PREC_COMPARISON},
                 [TOKEN_POPEN] = {.parse_fn=call, .precedence=PREC_CALL},
-                [TOKEN_EQUAL] = {.parse_fn=affect, .precedence=PREC_AFFECT},
-                [TOKEN_IADD] = {.parse_fn=iadd, .precedence=PREC_AFFECT},
-                [TOKEN_ISUB] = {.parse_fn=isub, .precedence=PREC_AFFECT},
-                [TOKEN_IMUL] = {.parse_fn=imul, .precedence=PREC_AFFECT},
-                [TOKEN_IDIV] = {.parse_fn=idiv, .precedence=PREC_AFFECT},
         };
 
         Node* root;
@@ -646,17 +657,21 @@ static Node* parseExpression(parser_info *const state, const Precedence preceden
 // ------------------ begin statement handlers ---------------------------------
 
 static Node* simple_statement(parser_info *const state) {
+        static const BinaryParseFunction rules[TOKEN_EOF+1] = {
+                [TOKEN_EQUAL] = affect,
+                [TOKEN_IADD] = iadd,
+                [TOKEN_ISUB] = isub,
+                [TOKEN_IMUL] = imul,
+                [TOKEN_IDIV] = idiv,
+        };
+
         Node* stmt = parseExpression(state, PREC_NONE);
         if (stmt == NULL) return NULL;
-        if (getTtype(state) != TOKEN_SEMICOLON) {
-                LocalizedToken tk = state->last_produced;
-                fprintf(stderr, "line %u, column %u, at \"%.*s\": expected ';'.\n", tk.pos.line, tk.pos.column, tk.tok.length, tk.tok.source);
-                freeNode(stmt);
-                stmt = NULL;
-        } else {
-                consume(state);
+        if (is_affectation_target(stmt) && rules[getTtype(state)] != NULL) {
+                stmt = rules[getTtype(state)](state, stmt);
         }
-        return stmt;
+
+        return semicolon_or_error(state, stmt);
 }
 
 static Node* declare_statement(parser_info *const state) {
@@ -666,7 +681,7 @@ static Node* declare_statement(parser_info *const state) {
         };
         Node* new = NULL;
 
-        if (types[getTtype(state)] != 0) {
+        if (types[getTtype(state)] != TYPEERROR) {
                 new = ALLOCATE_SIMPLE_NODE(OP_DECLARE);
                 new->type = types[getTtype(state)];
                 new->token = consume(state);
@@ -681,8 +696,7 @@ static Node* declare_statement(parser_info *const state) {
                 *(new->operands[0].nd) = (Node) {.token=consume(state), .operator=OP_VARIABLE};
         }
         else {
-                freeNode(new);
-                return NULL;
+                return infixParseError(state, new);
         }
 
         if (getTtype(state) == TOKEN_EQUAL) {
@@ -699,14 +713,9 @@ static Node* declare_statement(parser_info *const state) {
                 }
         }
 
-        if (getTtype(state) != TOKEN_SEMICOLON) {
-                LocalizedToken tk = state->last_produced;
-                fprintf(stderr, "line %u, column %u, at \"%.*s\": expected ';'.\n", tk.pos.line, tk.pos.column, tk.tok.length, tk.tok.source);
-                freeNode(new);
-                return NULL;
+        if ((new = semicolon_or_error(state, new)) != NULL) {
+                state->resolv = record_variable(state->resolv, new->operands[0].nd->token.tok.source, SIZE_MAX, new->type);
         }
-
-        state->resolv = record_variable(state->resolv, new->operands[0].nd->token.tok.source, SIZE_MAX, new->type);
 
         return new;
 }
@@ -786,7 +795,8 @@ static Node* dowhile_statement(parser_info *const state) {
 
         const LocalizedToken whiletk = consume(state);
 
-        new->operands[1].nd = simple_statement(state); // we get the expression + semicolon done
+        new->operands[1].nd = parseExpression(state, PREC_NONE);
+
         if (new->operands[1].nd == NULL) {
                 freeNode(new);
                 return NULL;
@@ -797,7 +807,7 @@ static Node* dowhile_statement(parser_info *const state) {
                 return NULL;
         }
 
-        return new;
+        return semicolon_or_error(state, new);
 }
 
 // ------------------ end statement handlers -----------------------------------

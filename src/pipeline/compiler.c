@@ -185,7 +185,7 @@ static int compile_binary_minus(compiler_info *const state, const Node* node, co
            compile_expression(state, node->operands[0].nd, target)
         && compile_expression(state, node->operands[1].nd, (Target) {.pos=target.pos, .weight=-target.weight});
 }
-static int compile_affect(compiler_info *const state, const Node* node, const Target target) {
+static int compile_affect(compiler_info *const state, const Node* node) {
         const Variable v = getVariable(state, node->operands[0].nd->token.tok.source);
 
         const Value temp = BF_allocate(state, v.val.type);
@@ -194,7 +194,6 @@ static int compile_affect(compiler_info *const state, const Node* node, const Ta
                 return 0;
         }
         const Target tgts[] = {
-                target,
                 {.pos=v.val.pos, .weight=1}
         };
         reset(state, v.val.pos);
@@ -323,7 +322,6 @@ static int compile_expression(compiler_info *const state, const Node* node, cons
                 [OP_UNARY_MINUS] = compile_unary_minus,
                 [OP_SUM] = compile_binary_plus,
                 [OP_DIFFERENCE] = compile_binary_minus,
-                [OP_AFFECT] = compile_affect,
                 [OP_CALL] = compile_call,
                 [OP_PRODUCT] = compile_multiply,
         };
@@ -345,6 +343,7 @@ static int _compile_statement(compiler_info *const state, const Node* node) {
                 [OP_DECLARE] = compileDeclaration,
                 [OP_IFELSE] = compileIfElse,
                 [OP_DOWHILE] = compileDoWhile,
+                [OP_AFFECT] = compile_affect,
         };
 
         const StmtCompilationHandler handler = handlers[node->operator];
