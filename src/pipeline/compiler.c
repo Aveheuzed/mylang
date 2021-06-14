@@ -143,6 +143,14 @@ static int compileDoWhile(compiler_info *const state, const Node* node) {
         return status;
 }
 
+static int compile_iadd(compiler_info *const state, const Node* node) {
+        const Variable v = getVariable(state, node->operands[0].nd->token.tok.source);
+        return compile_expression(state, node->operands[1].nd, (Target) {.pos=v.val.pos, .weight=1});
+}
+static int compile_isub(compiler_info *const state, const Node* node) {
+        const Variable v = getVariable(state, node->operands[0].nd->token.tok.source);
+        return compile_expression(state, node->operands[1].nd, (Target) {.pos=v.val.pos, .weight=-1});
+}
 
 // ------------------------ statement handlers -------------------------------
 // ------------------------ expression handlers -------------------------------
@@ -344,6 +352,8 @@ static int _compile_statement(compiler_info *const state, const Node* node) {
                 [OP_IFELSE] = compileIfElse,
                 [OP_DOWHILE] = compileDoWhile,
                 [OP_AFFECT] = compile_affect,
+                [OP_IADD] = compile_iadd,
+                [OP_ISUB] = compile_isub,
         };
 
         const StmtCompilationHandler handler = handlers[node->operator];
