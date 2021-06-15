@@ -140,3 +140,6 @@ jumptable:
         .quad .op_ncrbr
 
 .size jumptable, .-jumptable
+
+        .section .note.GNU-stack, "", @progbits
+        .section .note.gnu.property, "a"
