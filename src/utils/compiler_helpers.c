@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
+#include <limits.h>
 
 #include "utils/compiler_helpers.h"
 #include "pipeline/state.h"
@@ -89,7 +90,7 @@ int addVariable(compiler_info *const state, Variable v) {
 
         return 1;
 }
-Variable getVariable(compiler_info *const state, char const* name) {
+Variable* getVariable(compiler_info *const state, char const* name) {
         // this function is guaranteed to return; any nonexistent variables
         // raise errors on parsing, so we're safe here at compiler level.
         for (BFNamespace* ns=state->currentNS; ns!=NULL; ns=ns->enclosing) {
@@ -100,11 +101,11 @@ Variable getVariable(compiler_info *const state, char const* name) {
                         index = hash(name) & mask;
                         ns->dict[index].name != NULL;
                         index = (index+1)&mask
-                ) if (ns->dict[index].name == name) return ns->dict[index];
+                ) if (ns->dict[index].name == name) return &(ns->dict[index]);
         }
 
         // just there so as not to trigger GCC
-        return (Variable){.name=NULL, .val.pos=SIZE_MAX, .val.type=TYPEERROR};
+        return NULL;
 }
 
 // --------------------------- emitXXX helpers ---------------------------------
@@ -228,10 +229,12 @@ void emitOutput(compiler_info *const state) {
         state->program = _emitNonCompressible(state->program, BF_OUTPUT);
 }
 void openJump(compiler_info *const state) {
+        state->code_isnonlinear++;
         state->program = _emitOpeningBracket(state->program);
 }
 void closeJump(compiler_info *const state) {
         state->program = _emitClosingBracket(state->program);
+        state->code_isnonlinear--;
 }
 
 // ----------------------- end emitXXX helpers ---------------------------------

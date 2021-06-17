@@ -25,6 +25,7 @@ void mk_compiler_info(compiler_info *const cmpinfo) {
         cmpinfo->memstate = createMemoryView();
         cmpinfo->currentNS = NULL;
         cmpinfo->current_pos = 0;
+        cmpinfo->code_isnonlinear = 0;
 
         pushNamespace(cmpinfo);
         for (size_t i = 0; i < nb_builtins; i++) {
@@ -98,17 +99,14 @@ static int compileIfElse(compiler_info *const state, const Node* node) {
                 return 0;
         }
 
-        int status;
-        {
-                seekpos(state, condition.pos);
-                openJump(state);
-                reset(state, condition.pos);
-                seekpos(state, notCondition.pos);
-                emitMinus(state, 1);
-                status = _compile_statement(state, node->operands[1].nd);
-                seekpos(state, condition.pos);
-                closeJump(state);
-        }
+        seekpos(state, condition.pos);
+        openJump(state);
+        reset(state, condition.pos);
+        seekpos(state, notCondition.pos);
+        emitMinus(state, 1);
+        int status = _compile_statement(state, node->operands[1].nd);
+        seekpos(state, condition.pos);
+        closeJump(state);
 
         BF_free(state, condition);
 
@@ -144,12 +142,33 @@ static int compileDoWhile(compiler_info *const state, const Node* node) {
 }
 
 static int compile_iadd(compiler_info *const state, const Node* node) {
-        const Variable v = getVariable(state, node->operands[0].nd->token.tok.source);
-        return compile_expression(state, node->operands[1].nd, (Target) {.pos=v.val.pos, .weight=1});
+        const Variable* v = getVariable(state, node->operands[0].nd->token.tok.source);
+        return compile_expression(state, node->operands[1].nd, (Target) {.pos=v->val.pos, .weight=1});
 }
 static int compile_isub(compiler_info *const state, const Node* node) {
-        const Variable v = getVariable(state, node->operands[0].nd->token.tok.source);
-        return compile_expression(state, node->operands[1].nd, (Target) {.pos=v.val.pos, .weight=-1});
+        const Variable* v = getVariable(state, node->operands[0].nd->token.tok.source);
+        return compile_expression(state, node->operands[1].nd, (Target) {.pos=v->val.pos, .weight=-1});
+}
+static int compile_affect(compiler_info *const state, const Node* node) {
+        const Variable* v = getVariable(state, node->operands[0].nd->token.tok.source);
+
+        const Value temp = BF_allocate(state, v->val.type);
+        if (!compile_expression(state, node->operands[1].nd, (Target) {.pos=temp.pos, .weight=1})) {
+                BF_free(state, temp);
+                return 0;
+        }
+        const Target tgts[] = {
+                {.pos=v->val.pos, .weight=1}
+        };
+        reset(state, v->val.pos);
+        transfer(state, temp.pos, sizeof(tgts)/sizeof(*tgts), tgts);
+        BF_free(state, temp);
+        return 1;
+
+        // can't do that because the variable might be used to compute the lhs.
+        /*
+        reset(state, v->val.pos);
+        return compile_expression(state, node->operands[1].nd, (Target){.pos=v->val.pos, .weight=1});*/
 }
 
 // ------------------------ statement handlers -------------------------------
@@ -165,15 +184,22 @@ static int compile_literal_int(compiler_info *const state, const Node* node, con
 static int compile_variable(compiler_info *const state, const Node* node, const Target target) {
         if (target.weight == 0) return 1;
 
-        const Variable v = getVariable(state, node->token.tok.source);
-        Value temp = BF_allocate(state, v.val.type);
+        Variable *const v = getVariable(state, node->token.tok.source);
+        Value copy = BF_allocate(state, v->val.type);
         const Target targets[] = {
                 target,
-                {.pos=temp.pos, .weight=1}
+                {.pos=copy.pos, .weight=1}
         };
-        transfer(state, v.val.pos, sizeof(targets)/sizeof(*targets), targets);
-        transfer(state, temp.pos, 1, &((Target){.pos=v.val.pos, .weight=1}));
-        BF_free(state, temp);
+        transfer(state, v->val.pos, sizeof(targets)/sizeof(*targets), targets);
+        if (state->code_isnonlinear) {
+                transfer(state, copy.pos, 1, &((Target){.pos=v->val.pos, .weight=1}));
+                BF_free(state, copy);
+        }
+        else {
+                Value oldvariable = v->val;
+                v->val.pos = copy.pos;
+                BF_free(state, oldvariable);
+        }
         return 1;
 }
 
@@ -193,29 +219,8 @@ static int compile_binary_minus(compiler_info *const state, const Node* node, co
            compile_expression(state, node->operands[0].nd, target)
         && compile_expression(state, node->operands[1].nd, (Target) {.pos=target.pos, .weight=-target.weight});
 }
-static int compile_affect(compiler_info *const state, const Node* node) {
-        const Variable v = getVariable(state, node->operands[0].nd->token.tok.source);
-
-        const Value temp = BF_allocate(state, v.val.type);
-        if (!compile_expression(state, node->operands[1].nd, (Target) {.pos=temp.pos, .weight=1})) {
-                BF_free(state, temp);
-                return 0;
-        }
-        const Target tgts[] = {
-                {.pos=v.val.pos, .weight=1}
-        };
-        reset(state, v.val.pos);
-        transfer(state, temp.pos, sizeof(tgts)/sizeof(*tgts), tgts);
-        BF_free(state, temp);
-        return 1;
-
-        // can't do that because the variable might be used to compute the lhs.
-        /*
-        reset(state, v->val.pos);
-        return compile_expression(state, node->operands[1].nd, (Target){.pos=v->val.pos, .weight=1});*/
-}
 static int compile_call(compiler_info *const state, const Node* node, const Target target) {
-        BuiltinFunctionHandler called = getVariable(state, node->operands[1].nd->token.tok.source).func->handler;
+        BuiltinFunctionHandler called = getVariable(state, node->operands[1].nd->token.tok.source)->func->handler;
 
         Value arguments[node->operands[0].len-1];
 

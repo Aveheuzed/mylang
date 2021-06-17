@@ -34,6 +34,7 @@ struct pipeline_state {
                 struct BFMemoryView* memstate;
                 struct BFNamespace* currentNS;
                 size_t current_pos; // not necessarily enough (var len str)
+                unsigned int code_isnonlinear;
         } cmpinfo;
 };
 
