@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
+#include <limits.h>
 
 #include "utils/compiler_helpers.h"
 #include "pipeline/state.h"
@@ -228,10 +229,12 @@ void emitOutput(compiler_info *const state) {
         state->program = _emitNonCompressible(state->program, BF_OUTPUT);
 }
 void openJump(compiler_info *const state) {
+        state->code_isnonlinear++;
         state->program = _emitOpeningBracket(state->program);
 }
 void closeJump(compiler_info *const state) {
         state->program = _emitClosingBracket(state->program);
+        state->code_isnonlinear--;
 }
 
 // ----------------------- end emitXXX helpers ---------------------------------
