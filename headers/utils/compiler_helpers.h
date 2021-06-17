@@ -33,7 +33,7 @@ void freeProgram(CompiledProgram* pgm);
 
 void pushNamespace(compiler_info *const state);
 void popNamespace(compiler_info *const state);
-Variable getVariable(compiler_info *const state, char const* name);
+Variable* getVariable(compiler_info *const state, char const* name);
 
 // returns zero on failure
 int addVariable(compiler_info *const state, Variable v);
