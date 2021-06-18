@@ -4,11 +4,11 @@
 #include <stddef.h>
 
 #include "pipeline/state.h"
-#include "utils/mm.h"
 #include "utils/compiler_helpers.h"
+#include "pipeline/node.h"
 #include "utils/runtime_types.h"
 
-typedef int (*BuiltinFunctionHandler)(compiler_info *const state, const Value argv[], const Target target);
+typedef int (*BuiltinFunctionHandler)(compiler_info *const state, struct Node *const argv[], const Target target);
 
 typedef struct BuiltinFunction {
         BuiltinFunctionHandler handler;
