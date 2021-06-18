@@ -222,26 +222,7 @@ static int compile_binary_minus(compiler_info *const state, const Node* node, co
 static int compile_call(compiler_info *const state, const Node* node, const Target target) {
         BuiltinFunctionHandler called = getVariable(state, node->operands[1].nd->token.tok.source)->func->handler;
 
-        Value arguments[node->operands[0].len-1];
-
-        // node structure :
-        // [len, funcname, args…]
-
-        for (size_t i = 0; i < sizeof(arguments)/sizeof(*arguments); i++) {
-                arguments[i] = BF_allocate(state, node->operands[i+2].nd->type);
-                if (!compile_expression(state, node->operands[i+2].nd, (Target) {.pos=arguments[i].pos, .weight=1})) {
-                        return 0;
-                }
-        }
-
-        const int status = called(state, arguments, target);
-
-        for (size_t i = 0; i < sizeof(arguments)/sizeof(*arguments); i++) {
-                BF_free(state, arguments[i]);
-        }
-
-        return status;
-
+        return called(state, &(node->operands[2].nd), target);
 }
 static int compile_multiply(compiler_info *const state, const Node* node, const Target target) {
         const Node* opA = node->operands[0].nd;
@@ -370,3 +351,47 @@ int compile_statement(compiler_info *const state) {
         if (node == NULL) return 0;
         else return _compile_statement(state, node);
 }
+
+
+// ---------------------- built-in functions -----------------------------------
+
+static int builtin_print_int(compiler_info *const state, const struct Node* arg) {
+        if (arg->operator == OP_VARIABLE) {
+                Value val = getVariable(state, arg->token.tok.source)->val;
+                seekpos(state, val.pos);
+                emitOutput(state);
+                return 1;
+        }
+        else {
+                Value val = BF_allocate(state, arg->type);
+                Target t = {.pos=val.pos, .weight=1};
+                int status = compile_expression(state, arg, t);
+                if (status) {
+                        seekpos(state, val.pos);
+                        emitOutput(state);
+                }
+                BF_free(state, val);
+                return status;
+        }
+}
+
+static int builtin_print(compiler_info *const state, struct Node *const argv[], const Target target) {
+        switch (argv[0]->type) {
+                case TYPE_INT:
+                        return builtin_print_int(state, argv[0]);
+                default:
+                        return 0;
+        }
+}
+
+BuiltinFunction builtins[] = {
+        {
+                .handler=builtin_print,
+                .name="print", // don't forget to internalize this (and therefore strdup' it)
+                .arity=1,
+                .returnType=TYPE_VOID
+        }
+};
+const size_t nb_builtins = sizeof(builtins)/sizeof(*builtins);
+
+// ---------------------- built-in functions -----------------------------------
