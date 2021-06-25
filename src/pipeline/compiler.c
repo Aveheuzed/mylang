@@ -110,7 +110,7 @@ static int compileIfElse(compiler_info *const state, const Node* node) {
 
         BF_free(state, condition);
 
-        if (status) {
+        if (status && node->operands[2].nd != NULL) {
                 seekpos(state, notCondition.pos);
                 openJump(state);
                 reset(state, notCondition.pos);
