@@ -140,6 +140,28 @@ static int compileDoWhile(compiler_info *const state, const Node* node) {
         BF_free(state, condition);
         return status;
 }
+static int compileWhile(compiler_info *const state, const Node* node) {
+        // condition[action reset condition]
+        Value condition = BF_allocate(state, node->operands[0].nd->type);
+        if (!compile_expression(state, node->operands[0].nd, (Target){.pos=condition.pos, .weight=1})) {
+                BF_free(state, condition);
+                return 0;
+        }
+        seekpos(state, condition.pos);
+        openJump(state);
+        if (!_compile_statement(state, node->operands[1].nd)) {
+                closeJump(state);
+                BF_free(state, condition);
+                return 0;
+        }
+        reset(state, condition.pos);
+        compile_expression(state, node->operands[0].nd, (Target){.pos=condition.pos, .weight=1});
+        seekpos(state, condition.pos);
+        closeJump(state);
+
+        BF_free(state, condition);
+        return 1;
+}
 
 static int compile_iadd(compiler_info *const state, const Node* node) {
         const Variable* v = getVariable(state, node->operands[0].nd->token.tok.source);
@@ -337,6 +359,7 @@ static int _compile_statement(compiler_info *const state, const Node* node) {
                 [OP_DECLARE] = compileDeclaration,
                 [OP_IFELSE] = compileIfElse,
                 [OP_DOWHILE] = compileDoWhile,
+                [OP_WHILE] = compileWhile,
                 [OP_AFFECT] = compile_affect,
                 [OP_IADD] = compile_iadd,
                 [OP_ISUB] = compile_isub,

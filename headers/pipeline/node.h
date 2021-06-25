@@ -39,6 +39,7 @@ typedef enum {
 
         OP_IFELSE,
         OP_DOWHILE,
+        OP_WHILE,
 
         OP_BLOCK,
 
