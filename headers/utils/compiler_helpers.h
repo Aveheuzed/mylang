@@ -57,5 +57,6 @@ void closeJump(compiler_info *const state);
 void seekpos(compiler_info *const state, const size_t i);
 void transfer(compiler_info *const state, const size_t pos, const int nb_targets, const Target targets[]);
 void reset(compiler_info *const state, const size_t i);
+void runtime_mul_int(compiler_info *const state, const Target target, const size_t xpos, const size_t ypos);
 
 #endif

@@ -271,6 +271,29 @@ void reset(compiler_info *const state, const size_t i) {
         // [-]
         transfer(state, i, 0, NULL);
 }
+
+void runtime_mul_int(compiler_info *const state, const Target target, const size_t xpos, const size_t ypos) {
+        Value yclone = BF_allocate(state, TYPE_INT);
+
+        seekpos(state, xpos);
+        openJump(state);
+        emitMinus(state, 1); // loop: do <X> times:
+
+        const Target forth[] = {
+                target,
+                {.pos=yclone.pos, .weight=1},
+        }; // transfer Y onto these
+        const Target back[] = {
+                {.pos=ypos, .weight=1},
+        }; // then transfer Y' back on Y
+        transfer(state, ypos, sizeof(forth)/sizeof(*forth), forth);
+        transfer(state, yclone.pos, sizeof(back)/sizeof(*back), back);
+
+        seekpos(state, xpos); // the loop is on X ; don't forget to jump back there before closing the jump!
+        closeJump(state);
+
+        BF_free(state, yclone);
+}
 // ---------------------- end core helpers -------------------------------------
 
 

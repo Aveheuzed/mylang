@@ -149,6 +149,41 @@ static int compile_isub(compiler_info *const state, const Node* node) {
         const Variable* v = getVariable(state, node->operands[0].nd->token.tok.source);
         return compile_expression(state, node->operands[1].nd, (Target) {.pos=v->val.pos, .weight=-1});
 }
+static int compile_imul(compiler_info *const state, const Node* node) {
+        Value temp;
+        Variable* v;
+        if (node->operands[1].nd->operator == OP_INT) {
+                v = getVariable(state, node->operands[0].nd->token.tok.source);
+                temp = BF_allocate(state, v->val.type);
+                transfer(state, v->val.pos, 1, &((Target){.pos=temp.pos, .weight=atoi(node->operands[1].nd->token.tok.source)}));
+        }
+        else {
+                const Value multiplier = BF_allocate(state, node->operands[1].nd->type);
+                if (!compile_expression(state, node->operands[1].nd, (Target){.pos=multiplier.pos, .weight=1})) {
+                        BF_free(state, multiplier);
+                        return 0;
+                }
+
+                // important: get the variable _after_ evaluating the right operand
+                // if the code is linear and the variable is referenced in the right operand,
+                // it might get moved as a side-effect.
+                v = getVariable(state, node->operands[0].nd->token.tok.source);
+                temp = BF_allocate(state, v->val.type);
+
+                runtime_mul_int(state, (Target){.pos=temp.pos, .weight=1}, v->val.pos, multiplier.pos);
+                BF_free(state, multiplier);
+        }
+
+        if (state->code_isnonlinear) {
+                transfer(state, temp.pos, 1, &((Target){.pos=v->val.pos, .weight=1}));
+                BF_free(state, temp);
+        }
+        else {
+                BF_free(state, v->val);
+                v->val = temp;
+        }
+        return 1;
+}
 static int compile_affect(compiler_info *const state, const Node* node) {
         const Variable* v = getVariable(state, node->operands[0].nd->token.tok.source);
 
@@ -279,28 +314,7 @@ static int compile_multiply(compiler_info *const state, const Node* node, const 
                                 BF_free(state, yval);
                                 return 0;
                         }
-                        Value yclone = BF_allocate(state, yval.type);
-
-                        seekpos(state, xval.pos);
-                        openJump(state);
-                        emitMinus(state, 1); // loop: do <X> times:
-
-                        const Target forth[] = {
-                                target,
-                                {.pos=yclone.pos, .weight=1},
-                        }; // transfer Y onto these
-                        const Target back[] = {
-                                {.pos=yval.pos, .weight=1},
-                        }; // then transfer Y' back on Y
-                        transfer(state, yval.pos, sizeof(forth)/sizeof(*forth), forth);
-                        transfer(state, yclone.pos, sizeof(back)/sizeof(*back), back);
-
-                        seekpos(state, xval.pos); // the loop is on X ; don't forget to jump back there before closing the jump!
-                        closeJump(state);
-
-                        BF_free(state, xval);
-                        BF_free(state, yval);
-                        BF_free(state, yclone);
+                        runtime_mul_int(state, target, xval.pos, yval.pos);
                         return 1;
                 }
         }
@@ -340,6 +354,7 @@ static int _compile_statement(compiler_info *const state, const Node* node) {
                 [OP_AFFECT] = compile_affect,
                 [OP_IADD] = compile_iadd,
                 [OP_ISUB] = compile_isub,
+                [OP_IMUL] = compile_imul,
         };
 
         const StmtCompilationHandler handler = handlers[node->operator];
