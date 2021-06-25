@@ -31,7 +31,7 @@ typedef enum {
         OP_IDIV,
         OP_AND,
         OP_OR,
-        OP_EQ,
+        OP_NE,
         OP_LT,
         OP_LE,
 
@@ -39,6 +39,7 @@ typedef enum {
 
         OP_IFELSE,
         OP_DOWHILE,
+        OP_WHILE,
 
         OP_BLOCK,
 

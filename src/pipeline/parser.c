@@ -62,7 +62,7 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
         [OP_AFFECT] = 2,
         [OP_AND] = 2,
         [OP_OR] = 2,
-        [OP_EQ] = 2,
+        [OP_NE] = 2,
         [OP_LT] = 2,
         [OP_LE] = 2,
         [OP_IADD] = 2,
@@ -74,6 +74,7 @@ static const uintptr_t nb_operands[LEN_OPERATORS] = {
 
         [OP_IFELSE] = 3, // condition, consequence, else
         [OP_DOWHILE] = 2, // body, condition
+        [OP_WHILE] = 2, // condition, body
 
         [OP_CALL] = UINTPTR_MAX,
 
@@ -445,7 +446,7 @@ static Node* ge(parser_info *const state, Node *const root) {
         new->operands[0].nd = operand;
         return new;
 }
-static Node* eq(parser_info *const state, Node *const root) {
+static Node* ne(parser_info *const state, Node *const root) {
         static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
                 [TYPE_INT][TYPE_INT]=TYPE_INT,
                 [TYPE_STR][TYPE_STR]=TYPE_INT,
@@ -456,22 +457,22 @@ static Node* eq(parser_info *const state, Node *const root) {
                 freeNode(root);
                 return NULL;
         }
-        Node *const new = ALLOCATE_SIMPLE_NODE(OP_EQ);
-        *new = (Node) {.token=operator, .operator=OP_EQ, .type=types[root->type][operand->type]};
+        Node *const new = ALLOCATE_SIMPLE_NODE(OP_NE);
+        *new = (Node) {.token=operator, .operator=OP_NE, .type=types[root->type][operand->type]};
         new->operands[0].nd = root;
         new->operands[1].nd = operand;
         return new;
 }
-static Node* ne(parser_info *const state, Node *const root) {
+static Node* eq(parser_info *const state, Node *const root) {
         static const RuntimeType types[LEN_TYPES][LEN_TYPES] = {
                 [TYPE_INT][TYPE_INT]=TYPE_INT,
                 [TYPE_STR][TYPE_STR]=TYPE_INT,
         };
-        // != is implemented as !(==)
+        // == is implemented as !(!=)
         refresh(state);
         // not how we DON'T consume the token; `eq` will do it
         const LocalizedToken operator = state->last_produced;
-        Node* operand = eq(state, root);
+        Node* operand = ne(state, root);
         if (operand == NULL) return NULL;
 
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_INVERT);
@@ -810,6 +811,27 @@ static Node* dowhile_statement(parser_info *const state) {
         return semicolon_or_error(state, new);
 }
 
+static Node* while_statement(parser_info *const state) {
+        Node* new = ALLOCATE_SIMPLE_NODE(OP_WHILE);
+        new->token = consume(state);
+        new->operator = OP_WHILE;
+        new->type = TYPE_VOID;
+        if ((new->operands[0].nd = parseExpression(state, PREC_NONE)) == NULL) {
+                freeNode(new);
+                return NULL;
+        }
+        if (new->operands[0].nd->type != TYPE_INT) {
+                TypeError(new->token);
+                freeNode(new);
+                return NULL;
+        }
+        if ((new->operands[1].nd = parse_statement(state)) == NULL) {
+                freeNode(new);
+                return NULL;
+        }
+        return new;
+}
+
 // ------------------ end statement handlers -----------------------------------
 
 Node* parse_statement(parser_info *const state) {
@@ -820,6 +842,7 @@ Node* parse_statement(parser_info *const state) {
                 [TOKEN_SEMICOLON] = empty_statement,
                 [TOKEN_IF] = if_statement,
                 [TOKEN_DO] = dowhile_statement,
+                [TOKEN_WHILE] = while_statement,
         };
 
         if (getTtype(state) == TOKEN_EOF || getTtype(state) == TOKEN_ERROR) return NULL;

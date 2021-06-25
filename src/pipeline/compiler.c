@@ -110,7 +110,7 @@ static int compileIfElse(compiler_info *const state, const Node* node) {
 
         BF_free(state, condition);
 
-        if (status) {
+        if (status && node->operands[2].nd != NULL) {
                 seekpos(state, notCondition.pos);
                 openJump(state);
                 reset(state, notCondition.pos);
@@ -139,6 +139,28 @@ static int compileDoWhile(compiler_info *const state, const Node* node) {
         closeJump(state);
         BF_free(state, condition);
         return status;
+}
+static int compileWhile(compiler_info *const state, const Node* node) {
+        // condition[action reset condition]
+        Value condition = BF_allocate(state, node->operands[0].nd->type);
+        if (!compile_expression(state, node->operands[0].nd, (Target){.pos=condition.pos, .weight=1})) {
+                BF_free(state, condition);
+                return 0;
+        }
+        seekpos(state, condition.pos);
+        openJump(state);
+        if (!_compile_statement(state, node->operands[1].nd)) {
+                closeJump(state);
+                BF_free(state, condition);
+                return 0;
+        }
+        reset(state, condition.pos);
+        compile_expression(state, node->operands[0].nd, (Target){.pos=condition.pos, .weight=1});
+        seekpos(state, condition.pos);
+        closeJump(state);
+
+        BF_free(state, condition);
+        return 1;
 }
 
 static int compile_iadd(compiler_info *const state, const Node* node) {
@@ -319,6 +341,26 @@ static int compile_multiply(compiler_info *const state, const Node* node, const 
                 }
         }
 }
+static int compile_not(compiler_info *const state, const Node* node, const Target target) {
+        Value temp = BF_allocate(state, node->type);
+        int status = compile_expression(state, node->operands[0].nd, (Target){.weight=1, .pos=temp.pos});
+
+        if (status) {
+                seekpos(state, target.pos);
+                emitPlus(state, 1);
+
+                seekpos(state, temp.pos);
+                openJump(state);
+                reset(state, temp.pos);
+                seekpos(state, target.pos);
+                emitMinus(state, 1);
+                seekpos(state, temp.pos);
+                closeJump(state);
+        }
+        BF_free(state, temp);
+        return status;
+
+}
 
 // ------------------------ end compilation handlers ---------------------------
 
@@ -330,8 +372,10 @@ static int compile_expression(compiler_info *const state, const Node* node, cons
                 [OP_UNARY_MINUS] = compile_unary_minus,
                 [OP_SUM] = compile_binary_plus,
                 [OP_DIFFERENCE] = compile_binary_minus,
+                [OP_NE] = compile_binary_minus,
                 [OP_CALL] = compile_call,
                 [OP_PRODUCT] = compile_multiply,
+                [OP_INVERT] = compile_not,
         };
 
         const ExprCompilationHandler handler = handlers[node->operator];
@@ -351,6 +395,7 @@ static int _compile_statement(compiler_info *const state, const Node* node) {
                 [OP_DECLARE] = compileDeclaration,
                 [OP_IFELSE] = compileIfElse,
                 [OP_DOWHILE] = compileDoWhile,
+                [OP_WHILE] = compileWhile,
                 [OP_AFFECT] = compile_affect,
                 [OP_IADD] = compile_iadd,
                 [OP_ISUB] = compile_isub,
