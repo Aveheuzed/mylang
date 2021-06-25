@@ -52,6 +52,7 @@ Value BF_allocate(compiler_info *const state, const RuntimeType type) {
                 case TYPE_INT:
                         return (Value) {.pos=BF_allocate_number(state), .type=type};
                 default:
+                        LOG("Warning : can't allocate type %d", type);
                         return (Value){.pos=SIZE_MAX, .type=type};
         }
 }
