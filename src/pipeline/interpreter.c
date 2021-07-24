@@ -3,10 +3,10 @@
 #include <string.h>
 #include <alloca.h>
 
-#include "headers/pipeline/interpreter.h"
-#include "headers/pipeline/node.h"
-#include "headers/utils/error.h"
-#include "headers/utils/builtins.h"
+#include "pipeline/interpreter.h"
+#include "pipeline/node.h"
+#include "utils/error.h"
+#include "utils/builtins.h"
 
 
 static Object interpretExpression(const Node* root, Namespace *const ns);

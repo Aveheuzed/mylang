@@ -1,8 +1,8 @@
 #ifndef node_h
 #define node_h
 
-#include "headers/pipeline/token.h"
-#include "headers/utils/object.h"
+#include "pipeline/token.h"
+#include "utils/object.h"
 
 typedef enum {
         // no operand

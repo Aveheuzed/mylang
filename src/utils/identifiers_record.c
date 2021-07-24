@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "headers/utils/identifiers_record.h"
+#include "utils/identifiers_record.h"
 
 #define GROW_THRESHHOLD (0.8) // TODO: benchmark this value
 

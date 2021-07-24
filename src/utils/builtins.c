@@ -2,8 +2,8 @@
 #include <time.h>
 #include <stdlib.h>
 
-#include "headers/utils/builtins.h"
-#include "headers/utils/error.h"
+#include "utils/builtins.h"
+#include "utils/error.h"
 
 Object print_value(const uintptr_t argc, const Object* obj) {
         for (uintptr_t iarg=0; iarg<argc; iarg++) {

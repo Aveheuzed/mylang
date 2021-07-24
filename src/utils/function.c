@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
-#include "headers/pipeline/node.h"
-#include "headers/utils/function.h"
+#include "pipeline/node.h"
+#include "utils/function.h"
 
 ObjFunction* createFunction(const size_t arity) {
         return malloc(offsetof(ObjFunction, arguments) + sizeof(char*)*arity);

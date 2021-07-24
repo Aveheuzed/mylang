@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "headers/utils/namespace.h"
+#include "utils/namespace.h"
 
 static void growNS(Namespace* ns) {
         const size_t new_size = ns->len * 2;

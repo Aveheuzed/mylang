@@ -3,10 +3,10 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "headers/pipeline/lexer.h"
-#include "headers/pipeline/parser.h"
-#include "headers/pipeline/interpreter.h"
-#include "headers/utils/builtins.h"
+#include "pipeline/lexer.h"
+#include "pipeline/parser.h"
+#include "pipeline/interpreter.h"
+#include "utils/builtins.h"
 
 
 static inline void declare_variable(parser_info *const prsinfo, Namespace *const ns, const char* key, Object value) {

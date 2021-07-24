@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "headers/utils/error.h"
+#include "utils/error.h"
 
 void Error(const LocalizedToken* where, const char* message, ...) {
         va_list params;

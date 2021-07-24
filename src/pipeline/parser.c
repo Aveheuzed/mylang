@@ -3,11 +3,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "headers/pipeline/parser.h"
-#include "headers/utils/object.h"
-#include "headers/utils/string.h"
-#include "headers/utils/function.h"
-#include "headers/utils/error.h"
+#include "pipeline/parser.h"
+#include "utils/object.h"
+#include "utils/string.h"
+#include "utils/function.h"
+#include "utils/error.h"
 
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 
