@@ -5,10 +5,14 @@
 # *.[oa]
 # *~
 
-# track only .c and .h files, plus /.gitignore and /.gitattributes
-/*
+# track only .c and .h files, plus config files at root
+**/*
+!/**/
+
+!/dodo.py
 !/.gitignore
 !/.gitattributes
-!/makefile
-!/**/
-/**/*.[^chs]
+
+!*.c
+!*.h
+!*.s
