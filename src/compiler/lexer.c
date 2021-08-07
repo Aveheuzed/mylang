@@ -1,18 +1,26 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "headers/pipeline/lexer.h"
-#include "headers/utils/identifiers_record.h"
-#include "headers/utils/error.h"
+#include "pipeline/lexer.h"
+#include "utils/identifiers_record.h"
+#include "utils/error.h"
+#include "utils/builtins.h"
 
-inline lexer_info mk_lexer_info(FILE* file) {
-        lexer_info lxinfo = (lexer_info) {.file=file, .pos.line=1, .pos.column=1};
-        lxinfo.record = allocateRecord();
-        return lxinfo;
+void mk_lexer_info(lexer_info *const lxinfo, FILE* file) {
+        lxinfo->file = file;
+        lxinfo->pos.line = 1;
+        lxinfo->pos.column = 1;
+
+        IdentifiersRecord* record = allocateRecord();
+
+        for (size_t i = 0; i < nb_builtins; i++) {
+                builtins[i].name = internalize(&record, strdup(builtins[i].name), strlen(builtins[i].name));
+        }
+
+        lxinfo->record = record;
 }
-inline void del_lexer_info(lexer_info lxinfo) {
-        fclose(lxinfo.file);
-        freeRecord(lxinfo.record);
+void del_lexer_info(lexer_info *const lxinfo) {
+        freeRecord(lxinfo->record);
 }
 
 /*
@@ -30,11 +38,11 @@ static inline void intern_token(lexer_info *const lxinfo, Token *const token) {
 
 static inline void detect_keywords(Token *const token) {
         static const struct {char* source; TokenType type;} keywords[] = {
-                {"true", TOKEN_TRUE},
-                {"false", TOKEN_FALSE},
-                {"none", TOKEN_NONE},
+                {"int", TOKEN_KW_INT},
+                {"str", TOKEN_KW_STR},
                 {"if", TOKEN_IF},
                 {"else", TOKEN_ELSE},
+                {"do", TOKEN_DO},
                 {"while", TOKEN_WHILE},
 
                 {NULL, 0}
@@ -125,16 +133,25 @@ Token _lex(lexer_info *const state) {
         switch(staging = pull_char(state)) {
                 case EOF: target.type = TOKEN_EOF; break;
 
-                case '+': COMMIT(staging); target.type = TOKEN_PLUS; break;
-                case '-': COMMIT(staging); target.type = TOKEN_MINUS; break;
-                case '*': COMMIT(staging); target.type = TOKEN_STAR; break;
-                case '/': COMMIT(staging); target.type = TOKEN_SLASH; break;
                 case '(': COMMIT(staging); target.type = TOKEN_POPEN; break;
                 case ')': COMMIT(staging); target.type = TOKEN_PCLOSE; break;
                 case ';': COMMIT(staging); target.type = TOKEN_SEMICOLON; break;
                 case ',': COMMIT(staging); target.type = TOKEN_COMMA; break;
                 case '{': COMMIT(staging); target.type = TOKEN_BOPEN; break;
                 case '}': COMMIT(staging); target.type = TOKEN_BCLOSE; break;
+
+                case '+':
+                        target.type = EQUAL_FOLLOWS(TOKEN_IADD, TOKEN_PLUS);
+                        break;
+                case '-':
+                        target.type = EQUAL_FOLLOWS(TOKEN_ISUB, TOKEN_MINUS);
+                        break;
+                case '*':
+                        target.type = EQUAL_FOLLOWS(TOKEN_IMUL, TOKEN_STAR);
+                        break;
+                case '/':
+                        target.type = EQUAL_FOLLOWS(TOKEN_IDIV, TOKEN_SLASH);
+                        break;
 
                 case '=':
                         target.type = EQUAL_FOLLOWS(TOKEN_EQ, TOKEN_EQUAL);
@@ -162,13 +179,6 @@ Token _lex(lexer_info *const state) {
                                 target.type = TOKEN_INT;
                                 while (ISDIGIT(PEEK())) {
                                         COMMIT(pull_char(state));
-                                }
-                                if (PEEK() == '.') {
-                                        COMMIT(pull_char(state));
-                                        target.type = TOKEN_FLOAT;
-                                        while (ISDIGIT(PEEK())) {
-                                                COMMIT(pull_char(state));
-                                        }
                                 }
                                 break;
                         }

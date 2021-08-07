@@ -87,7 +87,7 @@ def generic_build(build_name, srcdir, objdir, compileopt, linkopt, objsuffix=".o
 
 
 src = Path("src/")
-headers = Path("./")
+headers = Path("headers/")
 debug = Path("headers/utils/debug.h")
 buildpath = Path("build/")
 
@@ -121,4 +121,4 @@ def task_debug() :
 def task_release() :
     yield from generic_build("release", src, buildpath, GCC_MAIN, GCC_OPT)
 
-DOIT_CONFIG = {'default_tasks': ['interpreter@debug']}
+DOIT_CONFIG = {'default_tasks': ['compiler@debug']}

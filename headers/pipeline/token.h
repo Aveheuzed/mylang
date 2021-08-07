@@ -2,6 +2,11 @@
 #define token_h
 
 typedef enum {
+        TOKEN_IADD,
+        TOKEN_ISUB,
+        TOKEN_IMUL,
+        TOKEN_IDIV,
+
         TOKEN_PLUS,
         TOKEN_MINUS,
         TOKEN_STAR,
@@ -26,14 +31,14 @@ typedef enum {
 
         TOKEN_IDENTIFIER,
         TOKEN_INT,
-        TOKEN_FLOAT,
         TOKEN_STR,
-        TOKEN_TRUE,
-        TOKEN_FALSE,
-        TOKEN_NONE,
+
+        TOKEN_KW_INT,
+        TOKEN_KW_STR,
 
         TOKEN_IF,
         TOKEN_ELSE,
+        TOKEN_DO,
         TOKEN_WHILE,
 
         TOKEN_ERROR,

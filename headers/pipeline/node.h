@@ -1,16 +1,18 @@
 #ifndef node_h
 #define node_h
 
-#include "headers/pipeline/token.h"
+#include <stdint.h>
+
+#include "pipeline/token.h"
+#include "utils/runtime_types.h"
 
 typedef enum {
         // no operand
         OP_VARIABLE,
         OP_INT,
-        OP_BOOL,
-        OP_FLOAT,
         OP_STR,
-        OP_NONE,
+
+        OP_DECLARE,
 
         // one operand
         OP_UNARY_PLUS,
@@ -23,17 +25,25 @@ typedef enum {
         OP_PRODUCT,
         OP_DIVISION,
         OP_AFFECT,
+        OP_IADD,
+        OP_ISUB,
+        OP_IMUL,
+        OP_IDIV,
         OP_AND,
         OP_OR,
-        OP_EQ,
+        OP_NE,
         OP_LT,
         OP_LE,
 
         OP_CALL,
 
-        OP_BLOCK,
         OP_IFELSE,
+        OP_DOWHILE,
         OP_WHILE,
+
+        OP_BLOCK,
+
+        OP_NOP,
 
         LEN_OPERATORS // do NOT add anything below this line!
 } Operator;
@@ -41,10 +51,15 @@ typedef enum {
 typedef struct Node {
         LocalizedToken token;
         Operator operator;
+        RuntimeType type;
+
         /*note about the f.a.m.:
-        For nodes that don't have a fixed number of children, the first element of this array MUST be cast to an uintptr_t that will indicate the number of children this array contains. In that case, the first child (if present) will be found at index 1.
+        For nodes that don't have a fixed number of children, the first element of this array is an uintptr_t that will indicate the number of children this array contains. In that case, the first child (if present) will be found at index 1.
         */
-        struct Node* operands[];
+        union {
+                struct Node* nd;
+                uintptr_t len;
+        } operands[];
 } Node;
 
 void freeNode(Node* node);

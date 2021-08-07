@@ -1,15 +1,23 @@
 #ifndef builtins_h
 #define builtins_h
 
-#include "headers/utils/object.h"
+#include <stddef.h>
 
-Object print_value(const uintptr_t argc, const Object* obj);
-Object native_clock(const uintptr_t argc, const Object* obj);
-Object input(const uintptr_t argc, const Object* obj);
+#include "pipeline/state.h"
+#include "utils/compiler_helpers.h"
+#include "pipeline/node.h"
+#include "utils/runtime_types.h"
 
-Object tostring(const uintptr_t argc, const Object* obj);
-Object tobool(const uintptr_t argc, const Object* obj);
-Object toint(const uintptr_t argc, const Object* obj);
-Object tofloat(const uintptr_t argc, const Object* obj);
+typedef int (*BuiltinFunctionHandler)(compiler_info *const state, struct Node *const argv[], const Target target);
+
+typedef struct BuiltinFunction {
+        BuiltinFunctionHandler handler;
+        char* name;
+        size_t arity;
+        RuntimeType returnType;
+} BuiltinFunction;
+
+extern BuiltinFunction builtins[];
+extern const size_t nb_builtins;
 
 #endif
