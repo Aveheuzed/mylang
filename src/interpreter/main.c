@@ -3,13 +3,13 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "headers/pipeline/lexer.h"
-#include "headers/pipeline/parser.h"
-#include "headers/pipeline/interpreter.h"
-#include "headers/utils/builtins.h"
+#include "pipeline/lexer.h"
+#include "pipeline/parser.h"
+#include "pipeline/interpreter.h"
+#include "utils/builtins.h"
 
 
-static inline void declare_variable(parser_info *const prsinfo, Namespace **const ns, const char* key, Object value) {
+static inline void declare_variable(parser_info *const prsinfo, Namespace *const ns, const char* key, Object value) {
         ns_set_value(
                 ns,
                 internalize(&(prsinfo->lxinfo.record), strdup(key), strlen(key)),
@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
                         return EXIT_FAILURE;
         }
         parser_info psinfo = mk_parser_info(source_code);
-        Namespace* ns = allocateNamespace(NULL);
+        Namespace ns = allocateNamespace();
 
         declare_variable(&psinfo, &ns, "print", (Object){.type=TYPE_NATIVEF, .natfunval=&print_value});
         declare_variable(&psinfo, &ns, "clock", (Object){.type=TYPE_NATIVEF, .natfunval=&native_clock});
@@ -42,8 +42,9 @@ int main(int argc, char* argv[]) {
         // no input in REPL, because reading tokens and input from the same source cases havroc
         if (argc == 2) declare_variable(&psinfo, &ns, "input", (Object){.type=TYPE_NATIVEF, .natfunval=&input});
 
-        while (interpretStatement(&psinfo, &ns));
+        while (interpretStatement(&psinfo, &ns) == OK_OK);
 
+        freeNamespace(&ns);
         del_parser_info(psinfo);
 
         return EXIT_SUCCESS;

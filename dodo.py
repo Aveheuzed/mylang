@@ -87,7 +87,7 @@ def generic_build(build_name, srcdir, objdir, compileopt, linkopt, objsuffix=".o
 
 
 src = Path("src/")
-headers = Path("./")
+headers = Path("headers/")
 debug = Path("headers/utils/debug.h")
 buildpath = Path("build/")
 

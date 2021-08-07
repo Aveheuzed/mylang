@@ -1,9 +1,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "headers/pipeline/lexer.h"
-#include "headers/utils/identifiers_record.h"
-#include "headers/utils/error.h"
+#include "pipeline/lexer.h"
+#include "utils/identifiers_record.h"
+#include "utils/error.h"
 
 inline lexer_info mk_lexer_info(FILE* file) {
         lexer_info lxinfo = (lexer_info) {.file=file, .pos.line=1, .pos.column=1};
@@ -36,6 +36,8 @@ static inline void detect_keywords(Token *const token) {
                 {"if", TOKEN_IF},
                 {"else", TOKEN_ELSE},
                 {"while", TOKEN_WHILE},
+                {"function", TOKEN_FUNC},
+                {"return", TOKEN_RETURN},
 
                 {NULL, 0}
         };
@@ -125,16 +127,25 @@ Token _lex(lexer_info *const state) {
         switch(staging = pull_char(state)) {
                 case EOF: target.type = TOKEN_EOF; break;
 
-                case '+': COMMIT(staging); target.type = TOKEN_PLUS; break;
-                case '-': COMMIT(staging); target.type = TOKEN_MINUS; break;
-                case '*': COMMIT(staging); target.type = TOKEN_STAR; break;
-                case '/': COMMIT(staging); target.type = TOKEN_SLASH; break;
                 case '(': COMMIT(staging); target.type = TOKEN_POPEN; break;
                 case ')': COMMIT(staging); target.type = TOKEN_PCLOSE; break;
                 case ';': COMMIT(staging); target.type = TOKEN_SEMICOLON; break;
                 case ',': COMMIT(staging); target.type = TOKEN_COMMA; break;
                 case '{': COMMIT(staging); target.type = TOKEN_BOPEN; break;
                 case '}': COMMIT(staging); target.type = TOKEN_BCLOSE; break;
+
+                case '+':
+                        target.type = EQUAL_FOLLOWS(TOKEN_IADD, TOKEN_PLUS);
+                        break;
+                case '-':
+                        target.type = EQUAL_FOLLOWS(TOKEN_ISUB, TOKEN_MINUS);
+                        break;
+                case '*':
+                        target.type = EQUAL_FOLLOWS(TOKEN_IMUL, TOKEN_STAR);
+                        break;
+                case '/':
+                        target.type = EQUAL_FOLLOWS(TOKEN_IDIV, TOKEN_SLASH);
+                        break;
 
                 case '=':
                         target.type = EQUAL_FOLLOWS(TOKEN_EQ, TOKEN_EQUAL);
@@ -215,19 +226,20 @@ Token _lex(lexer_info *const state) {
         #undef ISBLANK
 }
 
-Token lex(lexer_info *const state) {
-        Localization l = state->pos;
-        Token tk = _lex(state);
-        while (tk.type == TOKEN_ERROR) {
-                SyntaxError((LocalizedToken){.pos=l, .tok=tk});
-                tk = _lex(state);
+LocalizedToken lex(lexer_info *const state) {
+        LocalizedToken tok;
+        tok.pos = state->pos;
+        tok.tok = _lex(state);
+        while (tok.tok.type == TOKEN_ERROR) {
+                Error(&tok, "Syntax error: unrecognized token.\n");
+                tok.tok = _lex(state);
         }
-        intern_token(state, &tk);
-        if (tk.type == TOKEN_IDENTIFIER) {
-                detect_keywords(&tk);
+        intern_token(state, &(tok.tok));
+        if (tok.tok.type == TOKEN_IDENTIFIER) {
+                detect_keywords(&(tok.tok));
         }
 
-        LOG("Producing type-%.2d token: `%.*s`. (line %u[%u:%u])", tk.type, tk.length, tk.source, l.line, l.column, l.column+tk.length-1);
+        LOG("Producing type-%.2d token: `%.*s`. (line %u[%u:%u])", tok.tok.type, tok.tok.length, tok.tok.source, tok.pos.line, tok.pos.column, tok.pos.column+tok.tok.length-1);
 
-        return tk;
+        return tok;
 }

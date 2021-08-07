@@ -1,16 +1,9 @@
 #ifndef error_h
 #define error_h
 
-#include <stdio.h>
-#include <stddef.h>
-#include <stdint.h>
+#include "pipeline/token.h"
 
-#include "headers/pipeline/token.h"
-
-
-void TypeError(const LocalizedToken t);
-void SyntaxError(const LocalizedToken t);
-void RuntimeError(const LocalizedToken t);
-void ArityError(const size_t expected, const size_t actual);
+void Error(const LocalizedToken* where, const char* message, ...) __attribute__((format(printf, 2, 3)));
+void Warning(const LocalizedToken* where, const char* message, ...) __attribute__((format(printf, 2, 3)));
 
 #endif

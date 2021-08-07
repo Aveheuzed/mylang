@@ -3,7 +3,8 @@
 
 #include <stdint.h>
 
-#include "headers/utils/container.h"
+#include "utils/string.h"
+#include "utils/function.h"
 
 typedef struct Object Object;
 
@@ -17,9 +18,18 @@ typedef enum ObjType {
         TYPE_FLOAT,
         TYPE_STRING,
         TYPE_NATIVEF,
+        TYPE_USERF,
 
         LEN_OBJTYPES // do NOT add anything below this line!
 } ObjType;
+
+typedef union ObjectCore {
+        intmax_t intval;
+        double floatval;
+        ObjString* strval;
+        ObjFunction* funval;
+        native_function* natfunval;
+} ObjectCore;
 
 struct Object {
         ObjType type;
@@ -27,6 +37,7 @@ struct Object {
                 intmax_t intval;
                 double floatval;
                 ObjString* strval;
+                ObjFunction* funval;
                 native_function* natfunval;
         };
 };

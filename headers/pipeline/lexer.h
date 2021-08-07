@@ -3,8 +3,8 @@
 
 #include <stdio.h>
 
-#include "headers/pipeline/token.h"
-#include "headers/utils/identifiers_record.h"
+#include "pipeline/token.h"
+#include "utils/identifiers_record.h"
 
 typedef struct lexer_info {
         FILE* file;
@@ -16,6 +16,6 @@ lexer_info mk_lexer_info(FILE* file);
 
 void del_lexer_info(lexer_info lxinfo);
 
-Token lex(lexer_info *const state);
+LocalizedToken lex(lexer_info *const state);
 
 #endif
