@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stddef.h>
 
-#include "pipeline/bf.h"
+#include "compiler/compile/bf.h"
 
 typedef uint8_t Word;
 

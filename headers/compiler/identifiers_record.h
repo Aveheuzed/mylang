@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#include "utils/hash.h"
+#include "compiler/hash.h"
 
 typedef struct Identifier {
         char* source;

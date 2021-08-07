@@ -2,7 +2,7 @@
 #define shellio_h
 
 #include <stdio.h>
-#include "pipeline/bytecode.h"
+#include "compiler/compile/bytecode.h"
 
 void output_bf(FILE* file, const CompiledProgram* pgm);
 void output_cbf(FILE* file, const CompiledProgram* pgm);

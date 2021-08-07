@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "pipeline/token.h"
+#include "compiler/token.h"
 
 
 void TypeError(const LocalizedToken t);

@@ -1,10 +1,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "pipeline/lexer.h"
-#include "utils/identifiers_record.h"
-#include "utils/error.h"
-#include "utils/builtins.h"
+#include "compiler/lexer.h"
+#include "compiler/identifiers_record.h"
+#include "compiler/error.h"
+#include "compiler/altvm/builtins.h"
 
 void mk_lexer_info(lexer_info *const lxinfo, FILE* file) {
         lxinfo->file = file;

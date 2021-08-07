@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <stddef.h>
 
-#include "pipeline/state.h"
-#include "pipeline/bytecode_altvm.h"
+#include "compiler/state.h"
+#include "compiler/compile/bytecode.h"
 
 void mk_compiler_info(compiler_info *const cmpinfo);
 void del_compiler_info(compiler_info *const cmpinfo);

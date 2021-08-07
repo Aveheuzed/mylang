@@ -2,14 +2,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "pipeline/node.h"
-#include "pipeline/parser.h"
-#include "pipeline/compiler_altvm.h"
+#include "compiler/node.h"
+#include "compiler/parser.h"
+#include "compiler/altvm/compiler.h"
 
-#include "utils/compiler_helpers_altvm.h"
-#include "utils/mm.h"
-#include "utils/error.h"
-#include "utils/builtins.h"
+#include "compiler/altvm/compiler_helpers.h"
+#include "compiler/mm.h"
+#include "compiler/error.h"
+#include "compiler/altvm/builtins.h"
 
 
 // return SUCCESS (1) or FAILURE (0)

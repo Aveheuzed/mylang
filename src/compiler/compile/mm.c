@@ -2,11 +2,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "pipeline/state.h"
+#include "compiler/state.h"
 
-#include "utils/compiler_helpers.h"
-#include "utils/runtime_types.h"
-#include "utils/mm.h"
+#include "compiler/compile/compiler_helpers.h"
+#include "compiler/runtime_types.h"
+#include "compiler/mm.h"
 
 BFMemoryView* createMemoryView(void) {
         BFMemoryView* ret = malloc(offsetof(BFMemoryView, band) + sizeof(BFState)*16);

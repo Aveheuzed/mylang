@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stddef.h>
 
-#include "pipeline/bf_altvm.h"
+#include "compiler/altvm/bf.h"
 
 typedef uint8_t Word;
 

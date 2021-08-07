@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stddef.h>
 
-#include "pipeline/state.h"
+#include "compiler/state.h"
 
-#include "pipeline/lexer.h"
-#include "pipeline/parser.h"
-#include "pipeline/compiler.h"
+#include "compiler/lexer.h"
+#include "compiler/parser.h"
+#include "compiler/altvm/compiler.h"
 
 void mk_pipeline(pipeline_state *const state, FILE* file) {
         mk_lexer_info(&(state->cmpinfo.prsinfo.lxinfo), file);

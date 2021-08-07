@@ -2,14 +2,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "pipeline/node.h"
-#include "pipeline/parser.h"
-#include "pipeline/compiler.h"
+#include "compiler/node.h"
+#include "compiler/parser.h"
+#include "compiler/compile/compiler.h"
 
-#include "utils/compiler_helpers.h"
-#include "utils/mm.h"
-#include "utils/error.h"
-#include "utils/builtins.h"
+#include "compiler/compile/compiler_helpers.h"
+#include "compiler/mm.h"
+#include "compiler/error.h"
+#include "compiler/compile/builtins.h"
 
 
 // return SUCCESS (1) or FAILURE (0)

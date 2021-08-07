@@ -3,9 +3,9 @@
 #include <unistd.h>
 #include <string.h>
 
-#include "pipeline/bytecode_altvm.h"
-#include "pipeline/bf_altvm.h"
-#include "utils/shellio_altvm.h"
+#include "compiler/altvm/bytecode.h"
+#include "compiler/altvm/bf.h"
+#include "compiler/altvm/shellio.h"
 
 int main(int argc, char *const argv[]) {
         static const char helpstring[] = "\n\

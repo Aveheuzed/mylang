@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 
-#include "pipeline/token.h"
-#include "utils/runtime_types.h"
+#include "compiler/token.h"
+#include "compiler/runtime_types.h"
 
 typedef enum {
         // no operand

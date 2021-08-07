@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stddef.h>
 
-#include "pipeline/token.h"
+#include "compiler/token.h"
 
 typedef struct pipeline_state   pipeline_state;
 
