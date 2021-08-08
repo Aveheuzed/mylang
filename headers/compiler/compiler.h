@@ -5,14 +5,15 @@
 #include <stddef.h>
 
 #include "compiler/state.h"
-#include "compiler/compile/bytecode.h"
+
+struct CompiledProgram;
 
 void mk_compiler_info(compiler_info *const cmpinfo);
 void del_compiler_info(compiler_info *const cmpinfo);
 
 int compile_statement(compiler_info *const state);
 
-CompiledProgram* get_bytecode(pipeline_state *const state);
+struct CompiledProgram* get_bytecode(pipeline_state *const state);
 
 
 #endif

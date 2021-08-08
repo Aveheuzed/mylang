@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "compiler/compile/compiler.h"
+#include "compiler/compiler.h"
 #include "compiler/state.h"
 
 #include "compiler/compile/shellio.h"

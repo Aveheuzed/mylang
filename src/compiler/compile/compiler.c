@@ -4,7 +4,7 @@
 
 #include "compiler/node.h"
 #include "compiler/parser.h"
-#include "compiler/compile/compiler.h"
+#include "compiler/compiler.h"
 
 #include "compiler/compile/compiler_helpers.h"
 #include "compiler/mm.h"

@@ -5,7 +5,7 @@
 
 #include "compiler/lexer.h"
 #include "compiler/parser.h"
-#include "compiler/altvm/compiler.h"
+#include "compiler/compiler.h"
 
 void mk_pipeline(pipeline_state *const state, FILE* file) {
         mk_lexer_info(&(state->cmpinfo.prsinfo.lxinfo), file);
