@@ -1,5 +1,8 @@
-#ifndef bytecode_h
-#define bytecode_h
+#ifndef bytecode_h__sub
+#define bytecode_h__sub
+// this is the more refined version of bytecode.h in headers/compiler/
+// contains the innner structures of the bytecode
+#include "compiler/bytecode.h"
 
 typedef enum BFOperator {
         BF_PLUS,
@@ -23,12 +26,11 @@ typedef enum BFOperator {
 RLE compression.
 A CBFO with run=0 signals EOF
 */
+
 typedef struct CompressedBFOperator {
         BFOperator operator :3;
         unsigned char run :5;
 } CompressedBFOperator;
-
-#define BF_MAX_RUN ((1<<5)-1)
 
 typedef struct CompiledProgram {
         struct CompiledProgram* up;
@@ -37,6 +39,4 @@ typedef struct CompiledProgram {
         CompressedBFOperator bytecode[];
 } CompiledProgram;
 
-
-
-#endif
+#endif /* end of include guard: bytecode_h__sub */

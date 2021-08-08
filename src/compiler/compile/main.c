@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#include "compiler/compile/bytecode.h"
+#include "compiler/bytecode.h"
 #include "compiler/compile/bf.h"
 #include "compiler/shellio.h"
 

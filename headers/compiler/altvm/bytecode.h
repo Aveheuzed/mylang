@@ -1,5 +1,11 @@
-#ifndef bytecode_h
-#define bytecode_h
+#ifndef bytecode_h__sub
+#define bytecode_h__sub
+// this is the more refined version of bytecode.h in headers/compiler/
+// contains the innner structures of the bytecode
+
+#include <stdint.h>
+
+#include "compiler/bytecode.h"
 
 typedef enum BFMode {
         MODE_COMPUTE=0,
@@ -35,7 +41,10 @@ typedef union Bytecode {
         ControlByte control;
 } Bytecode;
 
-#define BF_MAX_RUN ((1<<5)-1)
+typedef struct RawComputationArray {
+        unsigned char len; // number of completed [(</>) (+/-)] pairs
+        int8_t bytecode[BF_MAX_RUN][2];
+} RawComputationArray;
 
 typedef struct CompiledProgram {
         struct CompiledProgram* up;
@@ -45,5 +54,4 @@ typedef struct CompiledProgram {
         Bytecode bytecode[];
 } CompiledProgram;
 
-
-#endif
+#endif /* end of include guard: bytecode_h__sub */

@@ -1,28 +1,8 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
-#include <limits.h>
 
-#include "compiler/compiler_helpers.h"
-#include "compiler/state.h"
 #include "compiler/altvm/bytecode.h"
-#include "compiler/mm.h"
-#include "compiler/hash.h"
-
-#define GROW_THRESHHOLD (0.8) // TODO: benchmark this value
-
-typedef struct RawComputationArray {
-        unsigned char len; // number of completed [(</>) (+/-)] pairs
-        int8_t bytecode[BF_MAX_RUN][2];
-} RawComputationArray;
-
-static inline hash_t hash(const char* key) {
-        /* we have to remove the least significant bits, because that pointer
-        was returned by `malloc`, and is therefore aligned for the largest types
-        available. We take 16 bytes for "largest type available", to be safe.
-        */
-        return ((hash_t) key) >> 4;
-}
 
 CompiledProgram* createProgram(void) {
         CompiledProgram* ret = malloc(offsetof(CompiledProgram, bytecode) + sizeof(Bytecode)*16);
@@ -81,82 +61,7 @@ static CompiledProgram* ensure_computarr(CompiledProgram* ptr) {
         return ptr;
 }
 
-void pushNamespace(compiler_info *const state) {
-        BFNamespace* ns = malloc(offsetof(BFNamespace, dict) + sizeof(Variable)*16);
-        ns->allocated = 16;
-        ns->len = 0;
-        ns->enclosing = state->currentNS;
-        state->currentNS = ns;
-        for (int i=0; i < ns->allocated; i++) {
-                ns->dict[i].name = NULL;
-        }
-}
-void popNamespace(compiler_info *const state) {
-        BFNamespace* ns = state->currentNS;
-        state->currentNS = ns->enclosing;
-
-        for (size_t i=0 ; i<ns->allocated; i++) {
-                Variable v = ns->dict[i];
-                if (v.name != NULL) BF_free(state, v.val);
-        }
-        free(ns);
-}
-
-// do not use on a non-toplevel namespace, that would break the ns chain
-static BFNamespace* growNamespace(BFNamespace* ns) {
-        const size_t oldsize = ns->allocated;
-        ns->allocated *= 2;
-        ns = realloc(ns, offsetof(BFNamespace, dict) + sizeof(Variable)*(ns->allocated));
-        for (int i=oldsize; i < ns->allocated; i++) {
-                ns->dict[i].name = NULL;
-        }
-        return ns;
-
-}
-
-// returns nonzero on failure
-// len must be 1 when allocating a !TYPE_VSTRING
-int addVariable(compiler_info *const state, Variable v) {
-        if (state->currentNS->allocated*GROW_THRESHHOLD < state->currentNS->len) {
-                state->currentNS = growNamespace(state->currentNS);
-        }
-
-        BFNamespace *const ns = state->currentNS;
-
-        const hash_t mask = ns->allocated - 1;
-
-        hash_t index;
-        for (
-                index = hash(v.name) & mask;
-                ns->dict[index].name != NULL;
-                index = (index+1)&mask
-        ) if (ns->dict[index].name == v.name) return 0;
-
-        ns->dict[index] = v;
-
-        return 1;
-}
-Variable* getVariable(compiler_info *const state, char const* name) {
-        // this function is guaranteed to return; any nonexistent variables
-        // raise errors on parsing, so we're safe here at compiler level.
-        for (BFNamespace* ns=state->currentNS; ns!=NULL; ns=ns->enclosing) {
-                const hash_t mask = ns->allocated - 1;
-
-                hash_t index;
-                for (
-                        index = hash(name) & mask;
-                        ns->dict[index].name != NULL;
-                        index = (index+1)&mask
-                ) if (ns->dict[index].name == name) return &(ns->dict[index]);
-        }
-
-        // just there so as not to trigger GCC
-        return NULL;
-}
-
-// --------------------------- emitXXX helpers ---------------------------------
-
-CompiledProgram* _emitLeftRight(CompiledProgram* program, ssize_t amount) {
+CompiledProgram* emitLeftRight(CompiledProgram* program, ssize_t amount) {
         program = ensure_computarr(program);
 
         RawComputationArray *const arr = program->comput_arr;
@@ -178,9 +83,9 @@ CompiledProgram* _emitLeftRight(CompiledProgram* program, ssize_t amount) {
                 amount += INT8_MIN + already_there;
                 arr->bytecode[arr->len++][0] = INT8_MIN;
         }
-        return _emitLeftRight(program, amount);
+        return emitLeftRight(program, amount);
 }
-CompiledProgram* _emitPlusMinus(CompiledProgram* program, ssize_t amount) {
+CompiledProgram* emitPlusMinus(CompiledProgram* program, ssize_t amount) {
         program = ensure_computarr(program);
 
         RawComputationArray *const arr = program->comput_arr;
@@ -200,9 +105,9 @@ CompiledProgram* _emitPlusMinus(CompiledProgram* program, ssize_t amount) {
                 amount += INT8_MIN + already_there;
                 arr->bytecode[arr->len++][1] = INT8_MIN;
         }
-        return _emitPlusMinus(program, amount);
+        return emitPlusMinus(program, amount);
 }
-CompiledProgram* _emitIn(CompiledProgram* program) {
+CompiledProgram* emitIn(CompiledProgram* program) {
         program = ensure_no_computarr(program);
 
         if (program->len >= program->maxlen)
@@ -210,7 +115,7 @@ CompiledProgram* _emitIn(CompiledProgram* program) {
         program->bytecode[program->len++].control.mode = MODE_IN;
         return program;
 }
-CompiledProgram* _emitOut(CompiledProgram* program) {
+CompiledProgram* emitOut(CompiledProgram* program) {
         program = ensure_no_computarr(program);
 
         if (program->len >= program->maxlen)
@@ -218,7 +123,7 @@ CompiledProgram* _emitOut(CompiledProgram* program) {
         program->bytecode[program->len++].control.mode = MODE_OUT;
         return program;
 }
-CompiledProgram* _emitEnd(CompiledProgram* program) {
+CompiledProgram* emitEnd(CompiledProgram* program) {
         program = ensure_no_computarr(program);
 
         if (program->up != NULL) {
@@ -233,13 +138,13 @@ CompiledProgram* _emitEnd(CompiledProgram* program) {
         return program;
 }
 
-CompiledProgram* _emitOpeningBracket(CompiledProgram* program) {
+CompiledProgram* emitOpeningBracket(CompiledProgram* program) {
         program = ensure_no_computarr(program);
         CompiledProgram *const new = createProgram();
         new->up = program;
         return new;
 }
-CompiledProgram* _emitClosingBracket(CompiledProgram* program) {
+CompiledProgram* emitClosingBracket(CompiledProgram* program) {
         CompiledProgram* up = program->up;
         if (up == NULL) {
                 LOG("Error: trying to close a bracket on top-level.");
@@ -317,91 +222,99 @@ CompiledProgram* _emitClosingBracket(CompiledProgram* program) {
         return up;
 }
 
-void emitPlus(compiler_info *const state, const size_t amount) {
-        state->program = _emitPlusMinus(state->program, amount);
-}
-void emitMinus(compiler_info *const state, const size_t amount) {
-        state->program = _emitPlusMinus(state->program, -amount);
-}
-void emitLeft(compiler_info *const state, const size_t amount) {
-        state->program = _emitLeftRight(state->program, -amount);
-}
-void emitRight(compiler_info *const state, const size_t amount) {
-        state->program = _emitLeftRight(state->program, amount);
-}
-void emitInput(compiler_info *const state) {
-        state->program = _emitIn(state->program);
-}
-void emitOutput(compiler_info *const state) {
-        state->program = _emitOut(state->program);
-}
-void openJump(compiler_info *const state) {
-        state->code_isnonlinear++;
-        state->program = _emitOpeningBracket(state->program);
-}
-void closeJump(compiler_info *const state) {
-        state->program = _emitClosingBracket(state->program);
-        state->code_isnonlinear--;
-}
 
-// ----------------------- end emitXXX helpers ---------------------------------
-
-// ---------------------- core helpers -----------------------------------------
-
-void seekpos(compiler_info *const state, const size_t i) {
-        if (state->current_pos < i) emitRight(state, i-state->current_pos);
-        else if (state->current_pos > i) emitLeft(state, state->current_pos-i);
-        state->current_pos = i;
-}
-void transfer(compiler_info *const state, const size_t pos, const int nb_targets, const Target targets[]) {
-        seekpos(state, pos);
-        openJump(state);
-        for (int i=0; i<nb_targets; i++) {
-                const Target t = targets[i];
-                if (pos == t.pos) {
-                        LOG("Warning: linear transformation onto oneself might result in an infinite loop");
-                }
-                seekpos(state, t.pos);
-                if (t.weight > 0) {
-                        emitPlus(state, t.weight);
-                } else if (t.weight < 0) {
-                        emitMinus(state, -t.weight);
-                } else {
-                        LOG("Warning: Target with weight 0");
+void output_bf(FILE* file, const CompiledProgram* pgm) {
+        for (size_t i=0; i<pgm->len; i++) {
+                const ControlByte op = pgm->bytecode[i].control;
+                switch (op.mode) {
+                case MODE_COMPUTE:
+                        for (uint8_t l=0; l<op.length; l++) {
+                                int8_t run = pgm->bytecode[++i].byte;
+                                for (; run>0; run--) fputc('>', file);
+                                for (; run<0; run++) fputc('<', file);
+                                run = pgm->bytecode[++i].byte;
+                                for (; run>0; run--) fputc('+', file);
+                                for (; run<0; run++) fputc('-', file);
+                        }
+                        break;
+                case MODE_END:
+                        return;
+                case MODE_IN:
+                        fputc(',', file);
+                        break;
+                case MODE_OUT:
+                        fputc('.', file);
+                        break;
+                case MODE_CJUMPFWD:
+                        fputc('[', file);
+                        break;
+                case MODE_CJUMPBWD:
+                        fputc(']', file);
+                        break;
+                case MODE_NCJUMPFWD:
+                        fputc('[', file);
+                        i += sizeof(size_t)/sizeof(int8_t);
+                        break;
+                case MODE_NCJUMPBWD:
+                        fputc(']', file);
+                        i += sizeof(size_t)/sizeof(int8_t);
+                        break;
                 }
         }
-        seekpos(state, pos);
-        emitMinus(state, 1);
-        closeJump(state);
 }
-void reset(compiler_info *const state, const size_t i) {
-        // [-]
-        transfer(state, i, 0, NULL);
+void output_cbf(FILE* file, const CompiledProgram* pgm) {
+        fwrite(pgm->bytecode, sizeof(pgm->bytecode[0]), pgm->len, file);
 }
 
-void runtime_mul_int(compiler_info *const state, const Target target, const size_t xpos, const size_t ypos) {
-        Value yclone = BF_allocate(state, TYPE_INT);
-
-        seekpos(state, xpos);
-        openJump(state);
-        emitMinus(state, 1); // loop: do <X> times:
-
-        const Target forth[] = {
-                target,
-                {.pos=yclone.pos, .weight=1},
-        }; // transfer Y onto these
-        const Target back[] = {
-                {.pos=ypos, .weight=1},
-        }; // then transfer Y' back on Y
-        transfer(state, ypos, sizeof(forth)/sizeof(*forth), forth);
-        transfer(state, yclone.pos, sizeof(back)/sizeof(*back), back);
-
-        seekpos(state, xpos); // the loop is on X ; don't forget to jump back there before closing the jump!
-        closeJump(state);
-
-        BF_free(state, yclone);
+CompiledProgram* input_bf(FILE* file) {
+        CompiledProgram* pgm = createProgram();
+        while (1) switch (getc(file)) {
+                case EOF:
+                        return emitEnd(pgm);
+                case '<':
+                        pgm = emitLeftRight(pgm, -1);
+                        break;
+                case '>':
+                        pgm = emitLeftRight(pgm, +1);
+                        break;
+                case '+':
+                        pgm = emitPlusMinus(pgm, 1);
+                        break;
+                case '-':
+                        pgm = emitPlusMinus(pgm, -1);
+                        break;
+                case '.':
+                        pgm = emitOut(pgm);
+                        break;
+                case ',':
+                        pgm = emitIn(pgm);
+                        break;
+                case '[':
+                        pgm = emitOpeningBracket(pgm);
+                        break;
+                case ']':
+                        pgm = emitClosingBracket(pgm);
+                        if (pgm == NULL) {
+                                fputs("Malformation detected in input file!\n", stderr);
+                                return NULL;
+                        }
+                        break;
+                default:
+                        break;
+        }
 }
-// ---------------------- end core helpers -------------------------------------
+CompiledProgram* input_cbf(FILE* file) {
+        const long startpos = ftell(file);
+        fseek(file, 0, SEEK_END);
+        const long len = ftell(file) - startpos;
+        fseek(file, startpos, SEEK_SET);
 
+        CompiledProgram *const pgm = malloc(offsetof(CompiledProgram, bytecode) + len);
+        pgm->len = pgm->maxlen = len;
+        const size_t actual_len = fread(pgm->bytecode, 1, len, file);
+        if (actual_len != len) {
+                LOG("Warning: expected to read %lu bytes, got %lu", len, actual_len);
+        }
 
-#undef GROW_THRESHHOLD
+        return pgm;
+}

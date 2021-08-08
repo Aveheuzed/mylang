@@ -7,8 +7,6 @@
 #include "compiler/runtime_types.h"
 #include "compiler/mm.h"
 
-struct CompiledProgram;
-typedef struct CompiledProgram CompiledProgram;
 
 typedef struct Target {
         size_t pos;
@@ -29,8 +27,14 @@ typedef struct BFNamespace {
         Variable dict[];
 } BFNamespace;
 
-CompiledProgram* createProgram(void);
-void freeProgram(CompiledProgram* pgm);
+#define EMIT_PLUS(state, amount) (state->program = emitPlusMinus(state->program, amount))
+#define EMIT_MINUS(state, amount) (state->program = emitPlusMinus(state->program, -amount))
+#define EMIT_LEFT(state, amount) (state->program = emitLeftRight(state->program, -amount))
+#define EMIT_RIGHT(state, amount) (state->program = emitLeftRight(state->program, amount))
+#define OPEN_JUMP(state) (state->program = emitOpeningBracket(state->program))
+#define CLOSE_JUMP(state) (state->program = emitClosingBracket(state->program))
+#define EMIT_INPUT(state) (state->program = emitIn(state->program))
+#define EMIT_OUTPUT(state) (state->program = emitOut(state->program))
 
 void pushNamespace(compiler_info *const state);
 void popNamespace(compiler_info *const state);
@@ -38,25 +42,6 @@ Variable* getVariable(compiler_info *const state, char const* name);
 
 // returns zero on failure
 int addVariable(compiler_info *const state, Variable v);
-
-CompiledProgram* _emitPlusMinus(CompiledProgram* program, ssize_t amount);
-CompiledProgram* _emitLeftRight(CompiledProgram* program, ssize_t amount);
-CompiledProgram* _emitIn(CompiledProgram* program);
-CompiledProgram* _emitOut(CompiledProgram* program);
-CompiledProgram* _emitOpeningBracket(CompiledProgram* program);
-CompiledProgram* _emitClosingBracket(CompiledProgram* program);
-CompiledProgram* _emitEnd(CompiledProgram* program);
-
-void emitPlus(compiler_info *const state, const size_t amount);
-void emitMinus(compiler_info *const state, const size_t amount);
-void emitLeft(compiler_info *const state, const size_t amount);
-void emitRight(compiler_info *const state, const size_t amount);
-void emitInput(compiler_info *const state);
-void emitOutput(compiler_info *const state);
-
-void openJump(compiler_info *const state);
-void closeJump(compiler_info *const state);
-
 
 void seekpos(compiler_info *const state, const size_t i);
 void transfer(compiler_info *const state, const size_t pos, const int nb_targets, const Target targets[]);

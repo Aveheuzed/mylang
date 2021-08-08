@@ -5,7 +5,7 @@
 #include "compiler/node.h"
 #include "compiler/parser.h"
 #include "compiler/compiler.h"
-
+#include "compiler/bytecode.h"
 #include "compiler/compiler_helpers.h"
 #include "compiler/mm.h"
 #include "compiler/error.h"
@@ -47,7 +47,7 @@ void del_compiler_info(compiler_info *const cmpinfo) {
 CompiledProgram* get_bytecode(pipeline_state *const state) {
         CompiledProgram *const pgm = state->cmpinfo.program;
         state->cmpinfo.program = NULL;
-        return _emitEnd(pgm);
+        return emitEnd(pgm);
 }
 
 // ------------------------ compilation handlers -------------------------------
@@ -91,7 +91,7 @@ static int compileIfElse(compiler_info *const state, const Node* node) {
         Value condition = BF_allocate(state, node->operands[0].nd->type);
         Value notCondition = BF_allocate(state, TYPE_INT);
         seekpos(state, notCondition.pos);
-        emitPlus(state, 1);
+        EMIT_PLUS(state, 1);
 
         if (!compile_expression(state, node->operands[0].nd, (Target){.pos=condition.pos, .weight=1})) {
                 BF_free(state, condition);
@@ -100,23 +100,23 @@ static int compileIfElse(compiler_info *const state, const Node* node) {
         }
 
         seekpos(state, condition.pos);
-        openJump(state);
+        OPEN_JUMP(state);
         reset(state, condition.pos);
         seekpos(state, notCondition.pos);
-        emitMinus(state, 1);
+        EMIT_MINUS(state, 1);
         int status = _compile_statement(state, node->operands[1].nd);
         seekpos(state, condition.pos);
-        closeJump(state);
+        CLOSE_JUMP(state);
 
         BF_free(state, condition);
 
         if (status && node->operands[2].nd != NULL) {
                 seekpos(state, notCondition.pos);
-                openJump(state);
+                OPEN_JUMP(state);
                 reset(state, notCondition.pos);
                 status = _compile_statement(state, node->operands[2].nd);
                 seekpos(state, notCondition.pos);
-                closeJump(state);
+                CLOSE_JUMP(state);
         }
 
         BF_free(state, notCondition);
@@ -126,17 +126,17 @@ static int compileIfElse(compiler_info *const state, const Node* node) {
 static int compileDoWhile(compiler_info *const state, const Node* node) {
         Value condition = BF_allocate(state, node->operands[1].nd->type);
         seekpos(state, condition.pos);
-        emitPlus(state, 1);
-        openJump(state);
+        EMIT_PLUS(state, 1);
+        OPEN_JUMP(state);
         reset(state, condition.pos);
         if (!_compile_statement(state, node->operands[0].nd)) {
-                closeJump(state);
+                CLOSE_JUMP(state);
                 BF_free(state, condition);
                 return 0;
         }
         const int status = compile_expression(state, node->operands[1].nd, (Target){.weight=1, .pos=condition.pos});
         seekpos(state, condition.pos);
-        closeJump(state);
+        CLOSE_JUMP(state);
         BF_free(state, condition);
         return status;
 }
@@ -148,16 +148,16 @@ static int compileWhile(compiler_info *const state, const Node* node) {
                 return 0;
         }
         seekpos(state, condition.pos);
-        openJump(state);
+        OPEN_JUMP(state);
         if (!_compile_statement(state, node->operands[1].nd)) {
-                closeJump(state);
+                CLOSE_JUMP(state);
                 BF_free(state, condition);
                 return 0;
         }
         reset(state, condition.pos);
         compile_expression(state, node->operands[0].nd, (Target){.pos=condition.pos, .weight=1});
         seekpos(state, condition.pos);
-        closeJump(state);
+        CLOSE_JUMP(state);
 
         BF_free(state, condition);
         return 1;
@@ -234,8 +234,8 @@ static int compile_affect(compiler_info *const state, const Node* node) {
 static int compile_literal_int(compiler_info *const state, const Node* node, const Target target) {
         seekpos(state, target.pos);
         const ssize_t value = atoi(node->token.tok.source)*target.weight;
-        if (value > 0) emitPlus(state, value);
-        else emitMinus(state, -value);
+        if (value > 0) EMIT_PLUS(state, value);
+        else EMIT_MINUS(state, -value);
         return 1;
 }
 static int compile_variable(compiler_info *const state, const Node* node, const Target target) {
@@ -295,7 +295,7 @@ static int compile_multiply(compiler_info *const state, const Node* node, const 
                         // easy case: multiply an interger literal with another
                         // we can compute that at compile-time
                         seekpos(state, target.pos);
-                        emitPlus(state,
+                        EMIT_PLUS(state,
                                  atoi(opA->token.tok.source)
                                 *atoi(opB->token.tok.source)
                         );
@@ -347,15 +347,15 @@ static int compile_not(compiler_info *const state, const Node* node, const Targe
 
         if (status) {
                 seekpos(state, target.pos);
-                emitPlus(state, 1);
+                EMIT_PLUS(state, 1);
 
                 seekpos(state, temp.pos);
-                openJump(state);
+                OPEN_JUMP(state);
                 reset(state, temp.pos);
                 seekpos(state, target.pos);
-                emitMinus(state, 1);
+                EMIT_MINUS(state, 1);
                 seekpos(state, temp.pos);
-                closeJump(state);
+                CLOSE_JUMP(state);
         }
         BF_free(state, temp);
         return status;
@@ -419,7 +419,7 @@ static int builtin_print_int(compiler_info *const state, const struct Node* arg)
         if (arg->operator == OP_VARIABLE) {
                 Value val = getVariable(state, arg->token.tok.source)->val;
                 seekpos(state, val.pos);
-                emitOutput(state);
+                EMIT_OUTPUT(state);
                 return 1;
         }
         else {
@@ -428,7 +428,7 @@ static int builtin_print_int(compiler_info *const state, const struct Node* arg)
                 int status = compile_expression(state, arg, t);
                 if (status) {
                         seekpos(state, val.pos);
-                        emitOutput(state);
+                        EMIT_OUTPUT(state);
                 }
                 BF_free(state, val);
                 return status;
