@@ -5,9 +5,9 @@
 #include "compiler/compiler.h"
 #include "compiler/state.h"
 
-#include "compiler/compile/shellio.h"
+#include "compiler/shellio.h"
 #include "compiler/compiler_helpers.h"
-
+#include "compiler/compile/bytecode.h"
 
 void output_bf(FILE* file, const CompiledProgram* pgm) {
         static const char operators[] = {

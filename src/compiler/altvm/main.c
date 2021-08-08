@@ -5,7 +5,7 @@
 
 #include "compiler/altvm/bytecode.h"
 #include "compiler/altvm/bf.h"
-#include "compiler/altvm/shellio.h"
+#include "compiler/shellio.h"
 
 int main(int argc, char *const argv[]) {
         static const char helpstring[] = "\n\
