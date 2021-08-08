@@ -10,8 +10,8 @@ with the caveat that picking an option is mandatory
 You can think of them as alternate implementations of the same thing, or
 as optional features.
 
-All headers are located at the same place, in the headers/ folder.
-There is no build-related meaning to subdirectories of headers/.
+The headers folder follow the same structure as the source folder.
+Source files MAY include any header, but SHOULD NOT include headers of a sibling directory.
 
 Example :
 src
@@ -28,6 +28,10 @@ The compiler comes in 3 flavors :
 
 Files in src/ are needed to build anything, whereas files in src/compiler/
 are only be needed by compiler builds.
+
+Source files in altvm_c may include headers from headers/, headers/compiler/,
+headers/compiler/altvm_c, but should not include headers from headers/interpreter or
+headers/compiler/compiler.
 
 
 Build process :
@@ -88,7 +92,7 @@ def generic_build(build_name, srcdir, objdir, compileopt, linkopt, objsuffix=".o
 
 src = Path("src/")
 headers = Path("headers/")
-debug = Path("headers/utils/debug.h")
+debug = Path("headers/debug.h")
 buildpath = Path("build/")
 
 COMPILER = ["gcc"]

@@ -1,8 +1,8 @@
 #ifndef interpreter_h
 #define interpreter_h
 
-#include "pipeline/parser.h"
-#include "utils/namespace.h"
+#include "interpreter/parser.h"
+#include "interpreter/namespace.h"
 
 typedef enum {
         OK_OK,

@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 
-#include "utils/string.h"
-#include "utils/function.h"
+#include "interpreter/string.h"
+#include "interpreter/function.h"
 
 typedef struct Object Object;
 

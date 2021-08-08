@@ -3,8 +3,8 @@
 
 #include <stdint.h> // for the uintptr_t, may be needed in the use of Nodes
 
-#include "pipeline/lexer.h"
-#include "pipeline/node.h"
+#include "interpreter/lexer.h"
+#include "interpreter/node.h"
 
 typedef struct parser_info {
         lexer_info lxinfo;

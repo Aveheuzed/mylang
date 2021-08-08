@@ -3,8 +3,8 @@
 
 #include <stdio.h>
 
-#include "pipeline/token.h"
-#include "utils/identifiers_record.h"
+#include "interpreter/token.h"
+#include "interpreter/identifiers_record.h"
 
 typedef struct lexer_info {
         FILE* file;

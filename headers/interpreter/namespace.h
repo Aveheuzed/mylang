@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#include "utils/object.h"
+#include "interpreter/object.h"
 
 typedef struct Namespace {
         char const** keys; // may be NULL, indicating NS push
