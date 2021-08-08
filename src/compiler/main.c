@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include "compiler/bytecode.h"
-#include "compiler/compile/bf.h"
 #include "compiler/shellio.h"
 
 int main(int argc, char *const argv[]) {
@@ -125,7 +124,7 @@ When specifying several times the same option, the last one takes precedence.\n\
                 fclose(file);
         }
         if (output_method&(1<<3)) {
-                interpretBF(pgm->bytecode, pgm->bytecode + pgm->len);
+                execute(pgm);
         }
 
         free(pgm);

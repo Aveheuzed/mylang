@@ -26,4 +26,6 @@ void output_cbf(FILE* file, const CompiledProgram* pgm);
 CompiledProgram* input_bf(FILE* file);
 CompiledProgram* input_cbf(FILE* file);
 
+void execute(const CompiledProgram* pgm);
+
 #endif

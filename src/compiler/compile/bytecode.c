@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "compiler/compile/bytecode.h"
+#include "compiler/compile/bf.h"
 
 CompiledProgram* createProgram(void) {
         CompiledProgram* ret = malloc(offsetof(CompiledProgram, bytecode) + sizeof(CompressedBFOperator)*16);
@@ -214,4 +215,8 @@ CompiledProgram* input_cbf(FILE* file) {
         }
 
         return pgm;
+}
+
+void execute(const CompiledProgram* pgm) {
+        return interpretBF(pgm->bytecode, pgm->bytecode + pgm->len);
 }
