@@ -9,7 +9,7 @@
 
 #include "compiler/runtime_types.h"
 #include "compiler/error.h"
-#include "compiler/altvm/builtins.h"
+#include "compiler/builtins.h"
 
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 

@@ -3,12 +3,13 @@
 
 #include <stddef.h>
 
-#include "compiler/state.h"
-#include "compiler/altvm/compiler_helpers.h"
-#include "compiler/node.h"
 #include "compiler/runtime_types.h"
 
-typedef int (*BuiltinFunctionHandler)(compiler_info *const state, struct Node *const argv[], const Target target);
+struct Target;
+struct Node;
+struct compiler_info;
+
+typedef int (*BuiltinFunctionHandler)(struct compiler_info *const state, struct Node *const argv[], const struct Target target);
 
 typedef struct BuiltinFunction {
         BuiltinFunctionHandler handler;

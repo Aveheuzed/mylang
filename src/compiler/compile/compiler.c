@@ -9,7 +9,7 @@
 #include "compiler/compile/compiler_helpers.h"
 #include "compiler/mm.h"
 #include "compiler/error.h"
-#include "compiler/compile/builtins.h"
+#include "compiler/builtins.h"
 
 
 // return SUCCESS (1) or FAILURE (0)

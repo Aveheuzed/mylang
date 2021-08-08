@@ -4,7 +4,7 @@
 #include "compiler/lexer.h"
 #include "compiler/identifiers_record.h"
 #include "compiler/error.h"
-#include "compiler/altvm/builtins.h"
+#include "compiler/builtins.h"
 
 void mk_lexer_info(lexer_info *const lxinfo, FILE* file) {
         lxinfo->file = file;
