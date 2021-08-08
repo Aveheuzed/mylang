@@ -6,7 +6,7 @@
 #include "compiler/state.h"
 
 #include "compiler/compile/shellio.h"
-#include "compiler/compile/compiler_helpers.h"
+#include "compiler/compiler_helpers.h"
 
 
 void output_bf(FILE* file, const CompiledProgram* pgm) {
@@ -39,24 +39,24 @@ CompiledProgram* input_bf(FILE* file) {
         CompiledProgram* pgm = createProgram();
         while (1) switch (getc(file)) {
                 case EOF:
-                        return pgm;
+                        return _emitEnd(pgm);
                 case '<':
-                        pgm = _emitCompressible(pgm, BF_LEFT, 1);
+                        pgm = _emitLeftRight(pgm, -1);
                         break;
                 case '>':
-                        pgm = _emitCompressible(pgm, BF_RIGHT, 1);
+                        pgm = _emitLeftRight(pgm, +1);
                         break;
                 case '+':
-                        pgm = _emitCompressible(pgm, BF_PLUS, 1);
+                        pgm = _emitPlusMinus(pgm, 1);
                         break;
                 case '-':
-                        pgm = _emitCompressible(pgm, BF_MINUS, 1);
+                        pgm = _emitPlusMinus(pgm, -1);
                         break;
                 case '.':
-                        pgm = _emitNonCompressible(pgm, BF_OUTPUT);
+                        pgm = _emitOut(pgm);
                         break;
                 case ',':
-                        pgm = _emitCompressible(pgm, BF_INPUT, 1);
+                        pgm = _emitIn(pgm);
                         break;
                 case '[':
                         pgm = _emitOpeningBracket(pgm);
@@ -71,7 +71,6 @@ CompiledProgram* input_bf(FILE* file) {
                 default:
                         break;
         }
-        return pgm;
 }
 
 CompiledProgram* input_cbf(FILE* file) {

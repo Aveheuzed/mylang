@@ -3,7 +3,7 @@
 #include <string.h>
 #include <limits.h>
 
-#include "compiler/altvm/compiler_helpers.h"
+#include "compiler/compiler_helpers.h"
 #include "compiler/state.h"
 #include "compiler/altvm/bytecode.h"
 #include "compiler/mm.h"

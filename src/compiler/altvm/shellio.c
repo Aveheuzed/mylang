@@ -6,7 +6,7 @@
 #include "compiler/state.h"
 
 #include "compiler/altvm/shellio.h"
-#include "compiler/altvm/compiler_helpers.h"
+#include "compiler/compiler_helpers.h"
 
 
 void output_bf(FILE* file, const CompiledProgram* pgm) {

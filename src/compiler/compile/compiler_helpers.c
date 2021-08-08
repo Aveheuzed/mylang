@@ -3,7 +3,7 @@
 #include <string.h>
 #include <limits.h>
 
-#include "compiler/compile/compiler_helpers.h"
+#include "compiler/compiler_helpers.h"
 #include "compiler/state.h"
 #include "compiler/compile/bytecode.h"
 #include "compiler/mm.h"
@@ -110,7 +110,7 @@ Variable* getVariable(compiler_info *const state, char const* name) {
 
 // --------------------------- emitXXX helpers ---------------------------------
 
-CompiledProgram* _emitCompressible(CompiledProgram* program, BFOperator op, size_t amount) {
+static CompiledProgram* _emitCompressible(CompiledProgram* program, BFOperator op, size_t amount) {
         if (op > BF_CANCOMPRESS) {
                 LOG("Error : trying to compress operator %hu", op);
                 return program;
@@ -143,7 +143,7 @@ CompiledProgram* _emitCompressible(CompiledProgram* program, BFOperator op, size
 
         return program;
 }
-CompiledProgram* _emitNonCompressible(CompiledProgram* program, BFOperator op) {
+static CompiledProgram* _emitNonCompressible(CompiledProgram* program, BFOperator op) {
         if (op <= BF_CANCOMPRESS) {
                 LOG("Warning : trying to not compress operator %hu", op);
         }
@@ -209,24 +209,43 @@ CompiledProgram* _emitClosingBracket(CompiledProgram* program) {
         freeProgram(program);
         return up;
 }
+CompiledProgram* _emitPlusMinus(CompiledProgram* program, ssize_t amount) {
+        if (amount < 0) return _emitCompressible(program, BF_MINUS, llabs(amount));
+        if (amount > 0) return _emitCompressible(program, BF_PLUS, llabs(amount));
+        return program;
+}
+CompiledProgram* _emitLeftRight(CompiledProgram* program, ssize_t amount) {
+        if (amount < 0) return _emitCompressible(program, BF_LEFT, llabs(amount));
+        if (amount > 0) return _emitCompressible(program, BF_RIGHT, llabs(amount));
+        return program;
+}
+CompiledProgram* _emitIn(CompiledProgram* program) {
+        return _emitNonCompressible(program, BF_INPUT);
+}
+CompiledProgram* _emitOut(CompiledProgram* program) {
+        return _emitNonCompressible(program, BF_OUTPUT);
+}
+CompiledProgram* _emitEnd(CompiledProgram* program) {
+        return program;
+}
 
 void emitPlus(compiler_info *const state, const size_t amount) {
-        state->program = _emitCompressible(state->program, BF_PLUS, amount);
+        state->program = _emitPlusMinus(state->program, amount);
 }
 void emitMinus(compiler_info *const state, const size_t amount) {
-        state->program = _emitCompressible(state->program, BF_MINUS, amount);
+        state->program = _emitPlusMinus(state->program, -amount);
 }
 void emitLeft(compiler_info *const state, const size_t amount) {
-        state->program = _emitCompressible(state->program, BF_LEFT, amount);
+        state->program = _emitLeftRight(state->program, -amount);
 }
 void emitRight(compiler_info *const state, const size_t amount) {
-        state->program = _emitCompressible(state->program, BF_RIGHT, amount);
+        state->program = _emitLeftRight(state->program, amount);
 }
 void emitInput(compiler_info *const state) {
-        state->program = _emitNonCompressible(state->program, BF_INPUT);
+        state->program = _emitIn(state->program);
 }
 void emitOutput(compiler_info *const state) {
-        state->program = _emitNonCompressible(state->program, BF_OUTPUT);
+        state->program = _emitOut(state->program);
 }
 void openJump(compiler_info *const state) {
         state->code_isnonlinear++;

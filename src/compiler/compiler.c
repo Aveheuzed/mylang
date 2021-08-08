@@ -6,7 +6,7 @@
 #include "compiler/parser.h"
 #include "compiler/compiler.h"
 
-#include "compiler/compile/compiler_helpers.h"
+#include "compiler/compiler_helpers.h"
 #include "compiler/mm.h"
 #include "compiler/error.h"
 #include "compiler/builtins.h"
@@ -47,7 +47,7 @@ void del_compiler_info(compiler_info *const cmpinfo) {
 CompiledProgram* get_bytecode(pipeline_state *const state) {
         CompiledProgram *const pgm = state->cmpinfo.program;
         state->cmpinfo.program = NULL;
-        return pgm;
+        return _emitEnd(pgm);
 }
 
 // ------------------------ compilation handlers -------------------------------

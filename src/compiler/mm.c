@@ -4,7 +4,7 @@
 
 #include "compiler/state.h"
 
-#include "compiler/compile/compiler_helpers.h"
+#include "compiler/compiler_helpers.h"
 #include "compiler/runtime_types.h"
 #include "compiler/mm.h"
 

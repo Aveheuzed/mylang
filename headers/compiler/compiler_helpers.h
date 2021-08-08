@@ -6,8 +6,9 @@
 #include "compiler/state.h"
 #include "compiler/runtime_types.h"
 #include "compiler/mm.h"
-#include "compiler/altvm/bytecode.h"
 
+struct CompiledProgram;
+typedef struct CompiledProgram CompiledProgram;
 
 typedef struct Target {
         size_t pos;
