@@ -164,43 +164,6 @@ void output_cbf(FILE* file, const CompiledProgram* pgm) {
         fwrite(pgm->bytecode, sizeof(pgm->bytecode[0]), pgm->len, file);
 }
 
-CompiledProgram* input_bf(FILE* file) {
-        CompiledProgram* pgm = createProgram();
-        while (1) switch (getc(file)) {
-                case EOF:
-                        return emitEnd(pgm);
-                case '<':
-                        pgm = emitLeftRight(pgm, -1);
-                        break;
-                case '>':
-                        pgm = emitLeftRight(pgm, +1);
-                        break;
-                case '+':
-                        pgm = emitPlusMinus(pgm, 1);
-                        break;
-                case '-':
-                        pgm = emitPlusMinus(pgm, -1);
-                        break;
-                case '.':
-                        pgm = emitOut(pgm);
-                        break;
-                case ',':
-                        pgm = emitIn(pgm);
-                        break;
-                case '[':
-                        pgm = emitOpeningBracket(pgm);
-                        break;
-                case ']':
-                        pgm = emitClosingBracket(pgm);
-                        if (pgm == NULL) {
-                                fputs("Malformation detected in input file!\n", stderr);
-                                return NULL;
-                        }
-                        break;
-                default:
-                        break;
-        }
-}
 CompiledProgram* input_cbf(FILE* file) {
         const long startpos = ftell(file);
         fseek(file, 0, SEEK_END);

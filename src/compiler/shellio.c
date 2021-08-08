@@ -17,3 +17,41 @@ CompiledProgram* input_highlevel(FILE* file) {
 
         return pgm;
 }
+
+CompiledProgram* input_bf(FILE* file) {
+        CompiledProgram* pgm = createProgram();
+        while (1) switch (getc(file)) {
+                case EOF:
+                        return emitEnd(pgm);
+                case '<':
+                        pgm = emitLeftRight(pgm, -1);
+                        break;
+                case '>':
+                        pgm = emitLeftRight(pgm, +1);
+                        break;
+                case '+':
+                        pgm = emitPlusMinus(pgm, 1);
+                        break;
+                case '-':
+                        pgm = emitPlusMinus(pgm, -1);
+                        break;
+                case '.':
+                        pgm = emitOut(pgm);
+                        break;
+                case ',':
+                        pgm = emitIn(pgm);
+                        break;
+                case '[':
+                        pgm = emitOpeningBracket(pgm);
+                        break;
+                case ']':
+                        pgm = emitClosingBracket(pgm);
+                        if (pgm == NULL) {
+                                fputs("Malformation detected in input file!\n", stderr);
+                                return NULL;
+                        }
+                        break;
+                default:
+                        break;
+        }
+}
