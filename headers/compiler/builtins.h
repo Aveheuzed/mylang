@@ -4,10 +4,9 @@
 #include <stddef.h>
 
 #include "compiler/runtime_types.h"
-
-struct Target;
-struct Node;
-struct compiler_info;
+#include "compiler/state.h"
+#include "compiler/node.h"
+#include "compiler/compiler_helpers.h"
 
 typedef int (*BuiltinFunctionHandler)(struct compiler_info *const state, struct Node *const argv[], const struct Target target);
 
