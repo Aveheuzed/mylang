@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "interpreter/lexer.h"
-#include "interpreter/identifiers_record.h"
+#include "identifiers_record.h"
 #include "interpreter/error.h"
 
 inline lexer_info mk_lexer_info(FILE* file) {

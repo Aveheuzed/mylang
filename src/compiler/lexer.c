@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "compiler/lexer.h"
-#include "compiler/identifiers_record.h"
+#include "identifiers_record.h"
 #include "compiler/error.h"
 #include "compiler/builtins.h"
 
