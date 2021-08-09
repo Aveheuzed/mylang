@@ -45,17 +45,21 @@ Build process :
 *     Link everything together in the cwd, producing the final executable
 """
 
-def generic_build(build_name, srcdir, objdir, compileopt, linkopt, objsuffix=".o", linkwith=[]) :
+def generic_build(srcdir, objdir, compileopt, linkopt, mangler="", linkwith=[]) :
+    dot_mangler = mangler and ('.' + mangler)
+    mangler_dash = mangler and (mangler + '-')
+    hidden_mangler = '_' + mangler
+
     subfiles = list()
     flavors = list()
     for path in srcdir.iterdir() :
         if path.is_dir() :
             flavors.append(path)
         elif path.is_file() :
-            dst = objdir / f"{srcdir.name}__{path.name}{objsuffix}"
+            dst = objdir / f"{srcdir.name}__{path.name}{dot_mangler}.o"
             subfiles.append(dst)
             yield {
-                "basename" : f"_{srcdir.stem}@{build_name}", # internal task, starts with '_'
+                "basename" : hidden_mangler, # internal task, starts with '_'
                 "name" : dst.name,
                 "targets" : [dst],
                 "file_dep" : [path],
@@ -64,10 +68,10 @@ def generic_build(build_name, srcdir, objdir, compileopt, linkopt, objsuffix=".o
             }
 
     if len(subfiles) :
-        target = objdir / f"{srcdir.name}{objsuffix}"
+        target = objdir / f"{srcdir.name}{dot_mangler}.o"
         linkwith.append(target)
         yield {
-            "basename" : f"_{srcdir.stem}@{build_name}", # internal task, starts with '_'
+            "basename" : hidden_mangler, # internal task, starts with '_'
             "name" : target.name,
             "targets" : [target],
             "file_dep" : subfiles,
@@ -77,11 +81,10 @@ def generic_build(build_name, srcdir, objdir, compileopt, linkopt, objsuffix=".o
 
     if len(flavors) :
         for sub in flavors :
-            yield from generic_build(build_name, sub, objdir, compileopt, linkopt, objsuffix, linkwith.copy())
+            yield from generic_build(sub, objdir, compileopt, linkopt,  mangler, linkwith.copy())
     else :
-        target = Path(f"./{build_name}_{srcdir.stem}")
+        target = Path(f"{mangler_dash}{srcdir.stem}")
         yield {
-            "basename" : f"{srcdir.stem}@{build_name}",
             "name" : target,
             "targets" : [target],
             "file_dep" : linkwith,
@@ -120,9 +123,9 @@ GCC_MAIN = _GCC_COMPILEOPT + ["-O3"]
 
 
 def task_debug() :
-    yield from generic_build("debug", src, buildpath, GCC_DEBUG, GCC_OPT, ".dbg.o")
+    yield from generic_build(src, buildpath, GCC_DEBUG, GCC_OPT, "dbg")
 
 def task_release() :
-    yield from generic_build("release", src, buildpath, GCC_MAIN, GCC_OPT)
+    yield from generic_build(src, buildpath, GCC_MAIN, GCC_OPT)
 
-DOIT_CONFIG = {'default_tasks': ['*@debug']}
+DOIT_CONFIG = {'default_tasks': ['debug']}
