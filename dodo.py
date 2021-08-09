@@ -77,7 +77,7 @@ def generic_build(build_name, srcdir, objdir, compileopt, linkopt, objsuffix=".o
 
     if len(flavors) :
         for sub in flavors :
-            yield from generic_build(build_name, sub, objdir, compileopt, linkopt, objsuffix, linkwith)
+            yield from generic_build(build_name, sub, objdir, compileopt, linkopt, objsuffix, linkwith.copy())
     else :
         target = Path(f"./{build_name}_{srcdir.stem}")
         yield {
@@ -125,4 +125,4 @@ def task_debug() :
 def task_release() :
     yield from generic_build("release", src, buildpath, GCC_MAIN, GCC_OPT)
 
-DOIT_CONFIG = {'default_tasks': ['interpreter@debug']}
+DOIT_CONFIG = {'default_tasks': ['*@debug']}
