@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-#include "compiler/token.h"
+#include "token.h"
 #include "compiler/state.h"
 
 void mk_lexer_info(lexer_info *const lxinfo, FILE* file);
