@@ -7,7 +7,7 @@
 #include "compiler/state.h"
 #include "compiler/bytecode.h"
 #include "compiler/mm.h"
-#include "compiler/hash.h"
+#include "hash.h"
 
 #define GROW_THRESHHOLD (0.8) // TODO: benchmark this value
 
