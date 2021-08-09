@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
                 case 2:
                         source_code = fopen(argv[1], "r"); break;
                 default:
-                        puts("Invalid number of arguments.\nUsage : mylang [file]");
+                        printf("Invalid number of arguments.\nUsage : %s [file]", argv[0]);
                         return EXIT_FAILURE;
         }
         parser_info psinfo = mk_parser_info(source_code);
