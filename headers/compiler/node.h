@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "compiler/token.h"
+#include "token.h"
 #include "compiler/runtime_types.h"
 
 typedef enum {

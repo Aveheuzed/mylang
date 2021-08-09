@@ -7,7 +7,7 @@
 #include "interpreter/object.h"
 #include "interpreter/string.h"
 #include "interpreter/function.h"
-#include "interpreter/error.h"
+#include "error.h"
 
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
 

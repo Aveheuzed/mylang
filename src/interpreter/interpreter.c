@@ -5,7 +5,7 @@
 
 #include "interpreter/interpreter.h"
 #include "interpreter/node.h"
-#include "interpreter/error.h"
+#include "error.h"
 #include "interpreter/builtins.h"
 
 

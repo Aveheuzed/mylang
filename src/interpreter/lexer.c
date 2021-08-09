@@ -2,8 +2,8 @@
 #include <stdlib.h>
 
 #include "interpreter/lexer.h"
-#include "interpreter/identifiers_record.h"
-#include "interpreter/error.h"
+#include "identifiers_record.h"
+#include "error.h"
 
 inline lexer_info mk_lexer_info(FILE* file) {
         lexer_info lxinfo = (lexer_info) {.file=file, .pos.line=1, .pos.column=1};

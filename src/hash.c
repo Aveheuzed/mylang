@@ -1,4 +1,4 @@
-#include "interpreter/hash.h"
+#include "hash.h"
 
 // constants for FNV-1A
 #ifdef __GNUC__ // GCC defines convenient macros, let's use them!

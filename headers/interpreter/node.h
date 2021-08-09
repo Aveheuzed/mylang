@@ -1,7 +1,7 @@
 #ifndef node_h
 #define node_h
 
-#include "interpreter/token.h"
+#include "token.h"
 #include "interpreter/object.h"
 
 typedef enum {

@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "compiler/identifiers_record.h"
+#include "identifiers_record.h"
 
 #define GROW_THRESHHOLD (0.8) // TODO: benchmark this value
 
@@ -18,6 +18,8 @@ static void put_identifier(IdentifiersRecord *const pool, Identifier id) {
 
 static IdentifiersRecord* growRecord(IdentifiersRecord* pool) {
         const size_t new_size = pool->len * 2;
+
+        LOG("Record grows from %lu to %lu entries", pool->len, new_size);
 
         IdentifiersRecord *new_pool = calloc(offsetof(IdentifiersRecord, pool) + sizeof(Identifier)*new_size, 1);
         new_pool->len = new_size;

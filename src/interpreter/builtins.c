@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 #include "interpreter/builtins.h"
-#include "interpreter/error.h"
+#include "error.h"
 
 Object print_value(const uintptr_t argc, const Object* obj) {
         for (uintptr_t iarg=0; iarg<argc; iarg++) {

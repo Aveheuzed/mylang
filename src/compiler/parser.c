@@ -8,7 +8,7 @@
 #include "compiler/node.h"
 
 #include "compiler/runtime_types.h"
-#include "compiler/error.h"
+#include "error.h"
 #include "compiler/builtins.h"
 
 #define ALLOCATE_SIMPLE_NODE(operator) (allocateNode(nb_operands[operator]))
@@ -261,7 +261,7 @@ static Node* identifier(parser_info *const state) {
         Node *const new = ALLOCATE_SIMPLE_NODE(OP_VARIABLE);
         *new = (Node) {.token=consume(state), .operator=OP_VARIABLE};
         if ((new->type = resolve_variable(state->resolv, new->token.tok.source)) == TYPEERROR) {
-                TypeError(new->token);
+                Error(&(new->token), "Can't resolve identifier %s.\n", new->token.tok.source);
                 freeNode(new);
                 return NULL;
         }
@@ -272,7 +272,7 @@ static Node* identifier(parser_info *const state) {
 
 static Node* infixParseError(parser_info *const state, Node *const root) {
         const LocalizedToken tk = state->last_produced;
-        fprintf(stderr, "Parse error at line %u, column %u, at \"%.*s\"\n", tk.pos.line, tk.pos.column, tk.tok.length, tk.tok.source);
+        Error(&tk, "ParseError.\n");
         freeNode(root);
         return NULL;
 }
@@ -524,7 +524,7 @@ static Node* call(parser_info *const state, Node *const root) {
         consume(state);
         new->operands[0].len = count;
         if ((new->type = resolve_function(state->resolv, new->operands[1].nd->token.tok.source, count-1)) == TYPEERROR) {
-                TypeError(new->token);
+                Error(&(new->token), "TypeError : %s is not callable.\n", new->operands[1].nd->token.tok.source);
                 freeNode(new);
                 return NULL;
         }
@@ -708,7 +708,7 @@ static Node* declare_statement(parser_info *const state) {
                         return NULL;
                 }
                 if (new->operands[1].nd->type != new->type) {
-                        TypeError(new->token);
+                        Error(&(new->token), "TypeError: type mismatch at declaration.\n");
                         freeNode(new);
                         return NULL;
                 }
@@ -764,7 +764,7 @@ static Node* if_statement(parser_info *const state) {
                 return NULL;
         }
         if (new->operands[0].nd->type != TYPE_INT) {
-                TypeError(new->token);
+                Error(&(new->operands[0].nd->token), "TypeError: can't cast to boolean.\n");
                 return NULL;
         }
         if ((new->operands[1].nd = parse_statement(state)) == NULL) {
@@ -794,7 +794,7 @@ static Node* dowhile_statement(parser_info *const state) {
                 return infixParseError(state, new);
         }
 
-        const LocalizedToken whiletk = consume(state);
+        consume(state); // `while` token
 
         new->operands[1].nd = parseExpression(state, PREC_NONE);
 
@@ -803,7 +803,7 @@ static Node* dowhile_statement(parser_info *const state) {
                 return NULL;
         }
         if (new->operands[1].nd->type != TYPE_INT) {
-                TypeError(whiletk);
+                Error(&(new->operands[1].nd->token), "TypeError: can't cast to boolean.\n");
                 freeNode(new);
                 return NULL;
         }
@@ -821,7 +821,7 @@ static Node* while_statement(parser_info *const state) {
                 return NULL;
         }
         if (new->operands[0].nd->type != TYPE_INT) {
-                TypeError(new->token);
+                Error(&(new->operands[0].nd->token), "TypeError: can't cast to boolean.\n");
                 freeNode(new);
                 return NULL;
         }
