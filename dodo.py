@@ -102,7 +102,12 @@ COMPILER = ["gcc"]
 
 # general options for GCC
 GCC_OPT = [
+"-Wall",
 "-flto",
+"-fcf-protection=full",
+]
+
+GCC_LINKOPT = GCC_OPT + [
 "-Wl,-z,now",
 "-Wl,-z,relro",
 "-Wl,-z,notext",
@@ -115,17 +120,17 @@ _GCC_COMPILEOPT = GCC_OPT + [
 "-iquote", headers,
 "-fshort-enums",
 "-fstack-protector-strong",
+"-fstack-clash-protection",
 "-D_FORTIFY_SOURCE=2",
-"-fcf-protection",
 ]
 GCC_DEBUG = _GCC_COMPILEOPT + ["-D", "DEBUG", "-Og", "-Wall"]
 GCC_MAIN = _GCC_COMPILEOPT + ["-O3"]
 
 
 def task_debug() :
-    yield from generic_build(src, buildpath, GCC_DEBUG, GCC_OPT, "dbg")
+    yield from generic_build(src, buildpath, GCC_DEBUG, GCC_LINKOPT, "dbg")
 
 def task_release() :
-    yield from generic_build(src, buildpath, GCC_MAIN, GCC_OPT)
+    yield from generic_build(src, buildpath, GCC_MAIN, GCC_LINKOPT)
 
 DOIT_CONFIG = {'default_tasks': ['debug']}
