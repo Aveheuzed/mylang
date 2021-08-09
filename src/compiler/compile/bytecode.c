@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "compiler/compile/bytecode.h"
-#include "compiler/compile/bf.h"
+#include "compiler/compile/vm.h"
 
 CompiledProgram* createProgram(void) {
         CompiledProgram* ret = malloc(offsetof(CompiledProgram, bytecode) + sizeof(CompressedBFOperator)*16);

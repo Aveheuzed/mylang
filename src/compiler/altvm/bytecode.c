@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "compiler/altvm/bytecode.h"
-#include "compiler/altvm/bf.h"
+#include "compiler/altvm/vm.h"
 
 CompiledProgram* createProgram(void) {
         CompiledProgram* ret = malloc(offsetof(CompiledProgram, bytecode) + sizeof(Bytecode)*16);
