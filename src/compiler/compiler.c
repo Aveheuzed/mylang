@@ -8,7 +8,7 @@
 #include "compiler/bytecode.h"
 #include "compiler/compiler_helpers.h"
 #include "compiler/mm.h"
-#include "compiler/error.h"
+#include "error.h"
 #include "compiler/builtins.h"
 
 
@@ -285,7 +285,7 @@ static int compile_multiply(compiler_info *const state, const Node* node, const 
         const Node* opA = node->operands[0].nd;
         const Node* opB = node->operands[1].nd;
         if ((opA->type != TYPE_INT) || (opB->type != TYPE_INT)) {
-                TypeError(node->token);
+                Error(&(node->token), "TypeError: Can't multiply non-integers.\n");
                 return 0;
         }
 
@@ -381,7 +381,7 @@ static int compile_expression(compiler_info *const state, const Node* node, cons
         const ExprCompilationHandler handler = handlers[node->operator];
         if (handler == NULL) {
                 LOG("Operand not (yet) implemented");
-                SyntaxError(node->token);
+                Error(&(node->token), "SyntaxError: invalid syntax.\n");
                 return 0;
         }
 

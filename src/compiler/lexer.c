@@ -3,7 +3,7 @@
 
 #include "compiler/lexer.h"
 #include "identifiers_record.h"
-#include "compiler/error.h"
+#include "error.h"
 #include "compiler/builtins.h"
 
 void mk_lexer_info(lexer_info *const lxinfo, FILE* file) {
@@ -226,18 +226,20 @@ Token _lex(lexer_info *const state) {
 }
 
 Token lex(lexer_info *const state) {
-        Localization l = state->pos;
-        Token tk = _lex(state);
-        while (tk.type == TOKEN_ERROR) {
-                SyntaxError((LocalizedToken){.pos=l, .tok=tk});
-                tk = _lex(state);
+        LocalizedToken ltk;
+        ltk.pos = state->pos; // careful: position first, token second
+        ltk.tok = _lex(state);
+        while (ltk.tok.type == TOKEN_ERROR) {
+                Error(&(ltk), "SyntaxError: unrecognized character.\n");
+                ltk.pos = state->pos;
+                ltk.tok = _lex(state);
         }
-        intern_token(state, &tk);
-        if (tk.type == TOKEN_IDENTIFIER) {
-                detect_keywords(&tk);
+        intern_token(state, &(ltk.tok));
+        if (ltk.tok.type == TOKEN_IDENTIFIER) {
+                detect_keywords(&(ltk.tok));
         }
 
-        LOG("Producing type-%.2d token: `%.*s`. (line %u[%u:%u])", tk.type, tk.length, tk.source, l.line, l.column, l.column+tk.length-1);
+        LOG("Producing type-%.2d token: `%.*s`. (line %u[%u:%u])", ltk.tok.type, ltk.tok.length, ltk.tok.source, ltk.pos.line, ltk.pos.column, ltk.pos.column+ltk.tok.length-1);
 
-        return tk;
+        return ltk.tok;
 }
