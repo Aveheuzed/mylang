@@ -13,8 +13,8 @@ typedef struct parser_info {
         char stale; // state of the token, 1 if it needs to be refreshed
 } parser_info;
 
-parser_info mk_parser_info(FILE* file);
-void del_parser_info(parser_info prsinfo);
+void mk_parser_info(parser_info *const prsinfo);
+void del_parser_info(parser_info *const prsinfo);
 
 Node* parse_statement(parser_info *const state);
 

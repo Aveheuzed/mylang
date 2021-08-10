@@ -5,14 +5,15 @@
 #include "identifiers_record.h"
 #include "error.h"
 
-inline lexer_info mk_lexer_info(FILE* file) {
-        lexer_info lxinfo = (lexer_info) {.file=file, .pos.line=1, .pos.column=1};
-        lxinfo.record = allocateRecord();
-        return lxinfo;
+void mk_lexer_info(lexer_info *const lxinfo, FILE* file) {
+        lxinfo->file = file;
+        lxinfo->pos.line = 1;
+        lxinfo->pos.column = 1;
+
+        lxinfo->record = allocateRecord();
 }
-inline void del_lexer_info(lexer_info lxinfo) {
-        fclose(lxinfo.file);
-        freeRecord(lxinfo.record);
+void del_lexer_info(lexer_info *const lxinfo) {
+        freeRecord(lxinfo->record);
 }
 
 /*

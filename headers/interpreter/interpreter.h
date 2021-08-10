@@ -10,6 +10,16 @@ typedef enum {
         ERROR_ABORT,
 } errcode;
 
-errcode interpretStatement(parser_info *const prsinfo, Namespace *const ns);
+typedef struct interpreter_info interpreter_info;
+
+struct interpreter_info {
+        parser_info prsinfo;
+        Namespace ns;
+};
+
+void mk_interpreter_info(interpreter_info *const interp);
+void del_interpreter_info(interpreter_info *const interp);
+
+errcode interpretStatement(interpreter_info *const interpinfo);
 
 #endif
