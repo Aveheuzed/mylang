@@ -44,11 +44,6 @@ void del_compiler_info(compiler_info *const cmpinfo) {
         freeMemoryView(cmpinfo->memstate);
         freeProgram(cmpinfo->program);
 }
-CompiledProgram* get_bytecode(pipeline_state *const state) {
-        CompiledProgram *const pgm = state->cmpinfo.program;
-        state->cmpinfo.program = NULL;
-        return emitEnd(pgm);
-}
 
 // ------------------------ compilation handlers -------------------------------
 

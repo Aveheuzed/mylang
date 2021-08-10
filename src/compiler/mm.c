@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "compiler/state.h"
+#include "compiler/compiler.h"
 
 #include "compiler/compiler_helpers.h"
 #include "compiler/runtime_types.h"

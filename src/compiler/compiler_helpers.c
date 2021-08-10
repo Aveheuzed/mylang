@@ -4,7 +4,7 @@
 #include <limits.h>
 
 #include "compiler/compiler_helpers.h"
-#include "compiler/state.h"
+#include "compiler/compiler.h"
 #include "compiler/bytecode.h"
 #include "compiler/mm.h"
 #include "hash.h"

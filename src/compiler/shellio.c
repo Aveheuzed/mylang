@@ -1,8 +1,7 @@
 #include <stdio.h>
 
 #include "compiler/compiler.h"
-#include "compiler/state.h"
-
+#include "compiler/pipeline.h"
 #include "compiler/shellio.h"
 #include "compiler/bytecode.h"
 

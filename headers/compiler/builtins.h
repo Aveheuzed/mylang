@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 #include "compiler/runtime_types.h"
-#include "compiler/state.h"
+#include "compiler/compiler.h"
 #include "compiler/node.h"
 #include "compiler/compiler_helpers.h"
 
