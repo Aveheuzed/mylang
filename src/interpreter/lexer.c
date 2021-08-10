@@ -227,19 +227,20 @@ Token _lex(lexer_info *const state) {
 }
 
 LocalizedToken lex(lexer_info *const state) {
-        LocalizedToken tok;
-        tok.pos = state->pos;
-        tok.tok = _lex(state);
-        while (tok.tok.type == TOKEN_ERROR) {
-                Error(&tok, "Syntax error: unrecognized token.\n");
-                tok.tok = _lex(state);
+        LocalizedToken ltk;
+        ltk.pos = state->pos; // careful: position first, token second
+        ltk.tok = _lex(state);
+        while (ltk.tok.type == TOKEN_ERROR) {
+                Error(&(ltk), "SyntaxError: unrecognized character.\n");
+                ltk.pos = state->pos;
+                ltk.tok = _lex(state);
         }
-        intern_token(state, &(tok.tok));
-        if (tok.tok.type == TOKEN_IDENTIFIER) {
-                detect_keywords(&(tok.tok));
+        intern_token(state, &(ltk.tok));
+        if (ltk.tok.type == TOKEN_IDENTIFIER) {
+                detect_keywords(&(ltk.tok));
         }
 
-        LOG("Producing type-%.2d token: `%.*s`. (line %u[%u:%u])", tok.tok.type, tok.tok.length, tok.tok.source, tok.pos.line, tok.pos.column, tok.pos.column+tok.tok.length-1);
+        LOG("Producing type-%.2d token: `%.*s`. (line %u[%u:%u])", ltk.tok.type, ltk.tok.length, ltk.tok.source, ltk.pos.line, ltk.pos.column, ltk.pos.column+ltk.tok.length-1);
 
-        return tok;
+        return ltk;
 }

@@ -225,7 +225,7 @@ Token _lex(lexer_info *const state) {
         #undef ISBLANK
 }
 
-Token lex(lexer_info *const state) {
+LocalizedToken lex(lexer_info *const state) {
         LocalizedToken ltk;
         ltk.pos = state->pos; // careful: position first, token second
         ltk.tok = _lex(state);
@@ -241,5 +241,5 @@ Token lex(lexer_info *const state) {
 
         LOG("Producing type-%.2d token: `%.*s`. (line %u[%u:%u])", ltk.tok.type, ltk.tok.length, ltk.tok.source, ltk.pos.line, ltk.pos.column, ltk.pos.column+ltk.tok.length-1);
 
-        return ltk.tok;
+        return ltk;
 }
