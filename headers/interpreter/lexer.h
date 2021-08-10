@@ -12,9 +12,8 @@ typedef struct lexer_info {
         Localization pos;
 } lexer_info;
 
-lexer_info mk_lexer_info(FILE* file);
-
-void del_lexer_info(lexer_info lxinfo);
+void mk_lexer_info(lexer_info *const lxinfo, FILE* file);
+void del_lexer_info(lexer_info *const lxinfo);
 
 LocalizedToken lex(lexer_info *const state);
 

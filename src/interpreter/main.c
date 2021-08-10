@@ -3,16 +3,17 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "interpreter/pipeline.h"
 #include "interpreter/lexer.h"
 #include "interpreter/parser.h"
 #include "interpreter/interpreter.h"
 #include "interpreter/builtins.h"
 
 
-static inline void declare_variable(parser_info *const prsinfo, Namespace *const ns, const char* key, Object value) {
+static inline void declare_variable(pipeline_state *const pipeline, const char* key, Object value) {
         ns_set_value(
-                ns,
-                internalize(&(prsinfo->lxinfo.record), strdup(key), strlen(key)),
+                &(pipeline->interpinfo.ns),
+                internalize(&(pipeline->interpinfo.prsinfo.lxinfo.record), strdup(key), strlen(key)),
                 value
         );
 }
@@ -28,24 +29,23 @@ int main(int argc, char* argv[]) {
                         printf("Invalid number of arguments.\nUsage : %s [file]", argv[0]);
                         return EXIT_FAILURE;
         }
-        parser_info psinfo = mk_parser_info(source_code);
-        Namespace ns = allocateNamespace();
+        pipeline_state state;
+        mk_pipeline(&state, source_code);
 
-        declare_variable(&psinfo, &ns, "print", (Object){.type=TYPE_NATIVEF, .natfunval=&print_value});
-        declare_variable(&psinfo, &ns, "clock", (Object){.type=TYPE_NATIVEF, .natfunval=&native_clock});
+        declare_variable(&state, "print", (Object){.type=TYPE_NATIVEF, .natfunval=&print_value});
+        declare_variable(&state, "clock", (Object){.type=TYPE_NATIVEF, .natfunval=&native_clock});
 
-        declare_variable(&psinfo, &ns, "str", (Object){.type=TYPE_NATIVEF, .natfunval=&tostring});
-        declare_variable(&psinfo, &ns, "bool", (Object){.type=TYPE_NATIVEF, .natfunval=&tobool});
-        declare_variable(&psinfo, &ns, "int", (Object){.type=TYPE_NATIVEF, .natfunval=&toint});
-        declare_variable(&psinfo, &ns, "float", (Object){.type=TYPE_NATIVEF, .natfunval=&tofloat});
+        declare_variable(&state, "str", (Object){.type=TYPE_NATIVEF, .natfunval=&tostring});
+        declare_variable(&state, "bool", (Object){.type=TYPE_NATIVEF, .natfunval=&tobool});
+        declare_variable(&state, "int", (Object){.type=TYPE_NATIVEF, .natfunval=&toint});
+        declare_variable(&state, "float", (Object){.type=TYPE_NATIVEF, .natfunval=&tofloat});
 
         // no input in REPL, because reading tokens and input from the same source cases havroc
-        if (argc == 2) declare_variable(&psinfo, &ns, "input", (Object){.type=TYPE_NATIVEF, .natfunval=&input});
+        if (argc == 2) declare_variable(&state, "input", (Object){.type=TYPE_NATIVEF, .natfunval=&input});
 
-        while (interpretStatement(&psinfo, &ns) == OK_OK);
+        while (interpretStatement(&(state.interpinfo)) == OK_OK);
 
-        freeNamespace(&ns);
-        del_parser_info(psinfo);
+        del_pipeline(&state);
 
         return EXIT_SUCCESS;
 }

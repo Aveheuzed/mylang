@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#include "compiler/state.h"
+#include "compiler/compiler.h"
 #include "compiler/runtime_types.h"
 #include "compiler/mm.h"
 

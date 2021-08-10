@@ -108,11 +108,12 @@ void freeNode(Node* node) {
         }
         free(node);
 }
-inline parser_info mk_parser_info(FILE* file) {
-        return (parser_info) {.lxinfo=mk_lexer_info(file), .stale=1, .func_def_depth=0};
+void mk_parser_info(parser_info *const prsinfo) {
+        prsinfo->stale = 1;
+        prsinfo->func_def_depth = 0;
 }
-inline void del_parser_info(parser_info prsinfo) {
-        del_lexer_info(prsinfo.lxinfo);
+void del_parser_info(parser_info *const prsinfo) {
+        // nop
 }
 
 // --------------------- prefix parse functions --------------------------------

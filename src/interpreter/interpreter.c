@@ -15,6 +15,13 @@ static errcode _interpretStatement(const Node* root, Namespace *const ns);
 typedef Object (*ExprInterpretFn)(const Node* root, Namespace *const ns);
 typedef errcode (*StmtInterpretFn)(const Node* root, Namespace *const ns);
 
+void mk_interpreter_info(interpreter_info *const interp) {
+        interp->ns = allocateNamespace();
+}
+void del_interpreter_info(interpreter_info *const interp) {
+        freeNamespace(&(interp->ns));
+}
+
 static Object interpretVariable(const Node* root, Namespace *const ns) {
         Object* obj = ns_get_value(ns, root->token.tok.source);
         if (obj == NULL) {
@@ -895,10 +902,10 @@ static errcode _interpretStatement(const Node* root, Namespace *const ns) {
         }
 }
 
-errcode interpretStatement(parser_info *const prsinfo, Namespace *const ns) {
+errcode interpretStatement(interpreter_info *const interpinfo) {
         LOG("Interpreting a new statement");
-        Node* root = parse_statement(prsinfo);
-        const errcode status = _interpretStatement(root, ns);
+        Node* root = parse_statement(&(interpinfo->prsinfo));
+        const errcode status = _interpretStatement(root, &(interpinfo->ns));
         freeNode(root);
         return status;
 }
