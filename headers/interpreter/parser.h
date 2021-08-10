@@ -3,7 +3,7 @@
 
 #include <stdint.h> // for the uintptr_t, may be needed in the use of Nodes
 
-#include "interpreter/lexer.h"
+#include "lexer.h"
 #include "interpreter/node.h"
 
 typedef struct parser_info {

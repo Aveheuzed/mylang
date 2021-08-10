@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "interpreter/pipeline.h"
-#include "interpreter/lexer.h"
+#include "lexer.h"
 #include "interpreter/parser.h"
 #include "interpreter/interpreter.h"
 #include "interpreter/builtins.h"

@@ -3,7 +3,7 @@
 
 #include "compiler/pipeline.h"
 
-#include "compiler/lexer.h"
+#include "lexer.h"
 #include "compiler/parser.h"
 #include "compiler/compiler.h"
 #include "compiler/bytecode.h"

@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "compiler/lexer.h"
+#include "lexer.h"
 #include "identifiers_record.h"
 #include "error.h"
 #include "compiler/builtins.h"

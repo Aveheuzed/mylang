@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "compiler/lexer.h"
+#include "lexer.h"
 #include "compiler/parser.h"
 #include "compiler/node.h"
 

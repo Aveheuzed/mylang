@@ -1,7 +1,7 @@
 #ifndef parser_h
 #define parser_h
 
-#include "compiler/lexer.h"
+#include "lexer.h"
 #include "compiler/node.h"
 
 typedef struct parser_info parser_info;
