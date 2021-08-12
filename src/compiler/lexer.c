@@ -4,20 +4,12 @@
 #include "lexer.h"
 #include "identifiers_record.h"
 #include "error.h"
-#include "compiler/builtins.h"
 
 void mk_lexer_info(lexer_info *const lxinfo, FILE* file) {
         lxinfo->file = file;
         lxinfo->pos.line = 1;
         lxinfo->pos.column = 1;
-
-        IdentifiersRecord* record = allocateRecord();
-
-        for (size_t i = 0; i < nb_builtins; i++) {
-                builtins[i].name = internalize(&record, strdup(builtins[i].name), strlen(builtins[i].name));
-        }
-
-        lxinfo->record = record;
+        lxinfo->record = allocateRecord();
 }
 void del_lexer_info(lexer_info *const lxinfo) {
         freeRecord(lxinfo->record);

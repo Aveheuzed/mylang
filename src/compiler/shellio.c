@@ -1,13 +1,29 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "compiler/compiler.h"
 #include "compiler/pipeline.h"
 #include "compiler/shellio.h"
 #include "compiler/bytecode.h"
+#include "compiler/builtins.h"
+#include "identifiers_record.h"
+#include "compiler/namespace.h"
+
+static inline void declare_variable(pipeline_state *const pipeline,  BuiltinFunction *const function) {
+        char *const mallocd = internalize(&(pipeline->cmpinfo.prsinfo.lxinfo.record), strdup(function->name), strlen(function->name));
+
+        Variable v = (Variable) {.name=mallocd, .func=function};
+
+        addVariable(&(pipeline->cmpinfo), v);
+}
 
 CompiledProgram* input_highlevel(FILE* file) {
         pipeline_state pipeline;
         mk_pipeline(&pipeline, file);
+
+        for (size_t i=0; i<nb_builtins; i++) {
+                declare_variable(&pipeline, &(builtins[i]));
+        }
 
         while (compile_statement(&pipeline.cmpinfo));
 

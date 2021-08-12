@@ -29,10 +29,6 @@ void mk_compiler_info(compiler_info *const cmpinfo) {
         cmpinfo->code_isnonlinear = 0;
 
         pushNamespace(cmpinfo);
-        for (size_t i = 0; i < nb_builtins; i++) {
-                Variable v = (Variable) {.name=builtins[i].name, .func=&(builtins[i])};
-                addVariable(cmpinfo, v);
-        }
 }
 void del_compiler_info(compiler_info *const cmpinfo) {
         while (cmpinfo->currentNS != NULL) {
