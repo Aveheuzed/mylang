@@ -13,19 +13,6 @@ typedef struct Target {
         char weight;
 } Target;
 
-typedef struct Variable {
-        char* name;
-        union {
-                Value val;
-                struct BuiltinFunction* func; // defined in builtins.h, but *circular includes*…
-        };
-} Variable;
-
-typedef struct BFNamespace {
-        struct BFNamespace* enclosing;
-        size_t allocated, len; // `allocated` guaranteed to be a power of 2
-        Variable dict[];
-} BFNamespace;
 
 #define EMIT_PLUS(state, amount) (state->program = emitPlusMinus(state->program, amount))
 #define EMIT_MINUS(state, amount) (state->program = emitPlusMinus(state->program, -amount))
@@ -35,13 +22,6 @@ typedef struct BFNamespace {
 #define CLOSE_JUMP(state) (state->program = emitClosingBracket(state->program))
 #define EMIT_INPUT(state) (state->program = emitIn(state->program))
 #define EMIT_OUTPUT(state) (state->program = emitOut(state->program))
-
-void pushNamespace(compiler_info *const state);
-void popNamespace(compiler_info *const state);
-Variable* getVariable(compiler_info *const state, char const* name);
-
-// returns zero on failure
-int addVariable(compiler_info *const state, Variable v);
 
 void seekpos(compiler_info *const state, const size_t i);
 void transfer(compiler_info *const state, const size_t pos, const int nb_targets, const Target targets[]);

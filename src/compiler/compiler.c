@@ -10,6 +10,7 @@
 #include "compiler/mm.h"
 #include "error.h"
 #include "compiler/builtins.h"
+#include "compiler/namespace.h"
 
 
 // return SUCCESS (1) or FAILURE (0)
