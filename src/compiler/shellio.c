@@ -8,6 +8,18 @@
 #include "compiler/builtins.h"
 #include "identifiers_record.h"
 #include "compiler/namespace.h"
+#include "keywords.h"
+
+static const Keyword keywords[] = {
+        {"int", TOKEN_KW_INT},
+        {"str", TOKEN_KW_STR},
+        {"if", TOKEN_IF},
+        {"else", TOKEN_ELSE},
+        {"do", TOKEN_DO},
+        {"while", TOKEN_WHILE},
+
+        {NULL, 0}
+};
 
 static inline void declare_variable(pipeline_state *const pipeline,  BuiltinFunction *const function) {
         char *const mallocd = internalize(&(pipeline->cmpinfo.prsinfo.lxinfo.record), strdup(function->name), strlen(function->name));
@@ -19,7 +31,7 @@ static inline void declare_variable(pipeline_state *const pipeline,  BuiltinFunc
 
 CompiledProgram* input_highlevel(FILE* file) {
         pipeline_state pipeline;
-        mk_pipeline(&pipeline, file);
+        mk_pipeline(&pipeline, file, keywords);
 
         for (size_t i=0; i<nb_builtins; i++) {
                 declare_variable(&pipeline, &(builtins[i]));

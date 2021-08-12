@@ -7,9 +7,10 @@
 #include "compiler/parser.h"
 #include "compiler/compiler.h"
 #include "compiler/bytecode.h"
+#include "keywords.h"
 
-void mk_pipeline(pipeline_state *const state, FILE* file) {
-        mk_lexer_info(&(state->cmpinfo.prsinfo.lxinfo), file);
+void mk_pipeline(pipeline_state *const state, FILE* file, const Keyword* keywords) {
+        mk_lexer_info(&(state->cmpinfo.prsinfo.lxinfo), file, keywords);
         mk_parser_info(&(state->cmpinfo.prsinfo));
         mk_compiler_info(&(state->cmpinfo));
 }

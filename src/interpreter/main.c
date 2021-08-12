@@ -8,6 +8,20 @@
 #include "interpreter/parser.h"
 #include "interpreter/interpreter.h"
 #include "interpreter/builtins.h"
+#include "keywords.h"
+
+static const Keyword keywords[] = {
+        {"true", TOKEN_TRUE},
+        {"false", TOKEN_FALSE},
+        {"none", TOKEN_NONE},
+        {"if", TOKEN_IF},
+        {"else", TOKEN_ELSE},
+        {"while", TOKEN_WHILE},
+        {"function", TOKEN_FUNC},
+        {"return", TOKEN_RETURN},
+
+        {NULL, 0}
+};
 
 
 static inline void declare_variable(pipeline_state *const pipeline, const char* key, Object value) {
@@ -30,7 +44,7 @@ int main(int argc, char* argv[]) {
                         return EXIT_FAILURE;
         }
         pipeline_state state;
-        mk_pipeline(&state, source_code);
+        mk_pipeline(&state, source_code, keywords);
 
         declare_variable(&state, "print", (Object){.type=TYPE_NATIVEF, .natfunval=&print_value});
         declare_variable(&state, "clock", (Object){.type=TYPE_NATIVEF, .natfunval=&native_clock});

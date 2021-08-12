@@ -4,9 +4,11 @@
 #include "lexer.h"
 #include "identifiers_record.h"
 #include "error.h"
+#include "keywords.h"
 
-void mk_lexer_info(lexer_info *const lxinfo, FILE* file) {
+void mk_lexer_info(lexer_info *const lxinfo, FILE* file, const Keyword* keywords) {
         lxinfo->file = file;
+        lxinfo->keywords = keywords;
         lxinfo->pos.line = 1;
         lxinfo->pos.column = 1;
 
@@ -29,26 +31,13 @@ static inline void intern_token(lexer_info *const lxinfo, Token *const token) {
         token->source = internalize(&(lxinfo->record), token->source, token->length);
 }
 
-static inline void detect_keywords(Token *const token) {
-        static const struct {char* source; TokenType type;} keywords[] = {
-                {"true", TOKEN_TRUE},
-                {"false", TOKEN_FALSE},
-                {"none", TOKEN_NONE},
-                {"if", TOKEN_IF},
-                {"else", TOKEN_ELSE},
-                {"while", TOKEN_WHILE},
-                {"function", TOKEN_FUNC},
-                {"return", TOKEN_RETURN},
-
-                {NULL, 0}
-        };
-
-        for (unsigned int i=0; keywords[i].source != NULL; i++) {
+static inline void detect_keywords(const lexer_info *const lxinfo, Token *const token) {
+        for (unsigned int i=0; lxinfo->keywords[i].source != NULL; i++) {
                 if (
-                        strlen(keywords[i].source) == token->length &&
-                        !strncmp(token->source, keywords[i].source, token->length)
+                        strlen(lxinfo->keywords[i].source) == token->length &&
+                        !strncmp(token->source, lxinfo->keywords[i].source, token->length)
                 ) {
-                        token->type = keywords[i].type;
+                        token->type = lxinfo->keywords[i].type;
                         break;
                 }
         }
@@ -238,7 +227,7 @@ LocalizedToken lex(lexer_info *const state) {
         }
         intern_token(state, &(ltk.tok));
         if (ltk.tok.type == TOKEN_IDENTIFIER) {
-                detect_keywords(&(ltk.tok));
+                detect_keywords(state, &(ltk.tok));
         }
 
         LOG("Producing type-%.2d token: `%.*s`. (line %u[%u:%u])", ltk.tok.type, ltk.tok.length, ltk.tok.source, ltk.pos.line, ltk.pos.column, ltk.pos.column+ltk.tok.length-1);

@@ -6,9 +6,10 @@
 #include "lexer.h"
 #include "interpreter/parser.h"
 #include "interpreter/interpreter.h"
+#include "keywords.h"
 
-void mk_pipeline(pipeline_state *const state, FILE* file) {
-        mk_lexer_info(&(state->interpinfo.prsinfo.lxinfo), file);
+void mk_pipeline(pipeline_state *const state, FILE* file, const Keyword* keywords) {
+        mk_lexer_info(&(state->interpinfo.prsinfo.lxinfo), file, keywords);
         mk_parser_info(&(state->interpinfo.prsinfo));
         mk_interpreter_info(&(state->interpinfo));
 }
