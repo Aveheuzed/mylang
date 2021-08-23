@@ -12,6 +12,8 @@
 !/dodo.py
 !/.gitignore
 !/.gitattributes
+!/README.md
+!/LICENSE.md
 
 !*.c
 !*.h
