@@ -27,6 +27,7 @@ static inline void declare_variable(pipeline_state *const pipeline,  BuiltinFunc
         Variable v = (Variable) {.name=mallocd, .func=function};
 
         addVariable(&(pipeline->cmpinfo), v);
+        pipeline->cmpinfo.prsinfo.resolv = record_variable(pipeline->cmpinfo.prsinfo.resolv, mallocd, function->arity, function->returnType);
 }
 
 CompiledProgram* input_highlevel(FILE* file) {

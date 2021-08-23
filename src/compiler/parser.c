@@ -138,7 +138,7 @@ void freeNode(Node* node) {
         free(node);
 }
 
-static ResolverRecord* record_variable(ResolverRecord* record, char const* key, size_t arity, RuntimeType type) {
+ResolverRecord* record_variable(ResolverRecord* record, char const* key, size_t arity, RuntimeType type) {
         LOG("Recording %s as %d", key, type);
         if (record->len >= record->allocated) {
                 record = grow_record(record, record->allocated*2);
