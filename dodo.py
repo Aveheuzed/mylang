@@ -45,13 +45,15 @@ Build process :
 *     Link everything together in the cwd, producing the final executable
 """
 
-def generic_build(srcdir, objdir, compileopt, linkopt, mangler="", linkwith=[]) :
+def generic_build(srcdir, objdir, compileopt, linkopt, mangler="", linkwith=None) :
+
     dot_mangler = mangler and ('.' + mangler)
     mangler_dash = mangler and (mangler + '-')
     hidden_mangler = '_' + mangler
 
     subfiles = list()
     flavors = list()
+    if linkwith is None : linkwith = []
     for path in srcdir.iterdir() :
         if path.is_dir() :
             flavors.append(path)
